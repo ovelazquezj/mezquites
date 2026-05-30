@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mezquite-contract"
+version = "1.0.0"
+description = "Frontera de integracion (contrato §6) entre el backend del mezquite y el sistema de validacion de imagenes."
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2",
+]
+
+[project.optional-dependencies]
+redis = ["redis>=5"]
+validate = ["jsonschema>=4"]
+dev = ["redis>=5", "jsonschema>=4", "pytest>=8"]
+
+[tool.setuptools.packages.find]
+include = ["mezquite_contract*"]
+
+[tool.setuptools.package-data]
+mezquite_contract = ["schemas/*.json"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

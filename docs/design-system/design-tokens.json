@@ -1,0 +1,51 @@
+{
+  "$comment": "Design system compartido (movil Flutter + web admin). T7. Estetica minimalista tipo eBird. Los valores hex de marca Rotary son PROVISIONALES: token pendiente de la guia de marca oficial de Rotary. Cambiar aqui actualiza ambos clientes.",
+  "meta": {
+    "version": "0.1.0",
+    "status": "provisional",
+    "pending": "Confirmar hex de marca con la guia oficial de Rotary (T7, dato por verificar)."
+  },
+  "color": {
+    "brand": {
+      "rotary_royal_blue": { "value": "#17458F", "status": "PENDIENTE_marca_rotary" },
+      "rotary_gold":       { "value": "#F7A81B", "status": "PENDIENTE_marca_rotary" },
+      "rotary_azure":      { "value": "#0050A2", "status": "PENDIENTE_marca_rotary" }
+    },
+    "eco": {
+      "green_700": { "value": "#2E6B3E", "status": "provisional" },
+      "green_500": { "value": "#4C9A5A", "status": "provisional" },
+      "green_300": { "value": "#A7D3AE", "status": "provisional" }
+    },
+    "neutral": {
+      "ink_900":   { "value": "#1A1C1E" },
+      "ink_600":   { "value": "#44474B" },
+      "ink_300":   { "value": "#C3C7CE" },
+      "surface":   { "value": "#FFFFFF" },
+      "surface_2": { "value": "#F5F7FA" }
+    },
+    "semantic": {
+      "primary":      { "ref": "color.brand.rotary_royal_blue" },
+      "secondary":    { "ref": "color.brand.rotary_gold" },
+      "accent":       { "ref": "color.eco.green_500" },
+      "background":   { "ref": "color.neutral.surface_2" },
+      "on_primary":   { "ref": "color.neutral.surface" },
+      "text":         { "ref": "color.neutral.ink_900" },
+      "text_muted":   { "ref": "color.neutral.ink_600" },
+      "success":      { "ref": "color.eco.green_700" },
+      "info":         { "ref": "color.brand.rotary_azure" }
+    }
+  },
+  "typography": {
+    "font_family_base": { "value": "Inter, Roboto, system-ui, sans-serif" },
+    "scale": {
+      "display": { "size": 28, "weight": 700, "line": 34 },
+      "title":   { "size": 20, "weight": 600, "line": 26 },
+      "body":    { "size": 16, "weight": 400, "line": 24 },
+      "caption": { "size": 13, "weight": 400, "line": 18 }
+    }
+  },
+  "radius":  { "sm": 8, "md": 12, "lg": 20, "pill": 999 },
+  "spacing": { "xs": 4, "sm": 8, "md": 16, "lg": 24, "xl": 32 },
+  "elevation": { "none": 0, "card": 1, "raised": 3 },
+  "density": { "$comment": "Baja densidad visual, minimalista tipo eBird", "level": "comfortable" }
+}

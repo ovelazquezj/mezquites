@@ -1,0 +1,36 @@
+# Stack de desarrollo SIN NUBE (paridad de entornos, gate #6).
+# Incremento 1: broker (Redis) + mock-validator. El backend (FastAPI) y la DB (PostGIS) se
+# incorporan en el Incremento 2; este archivo crece, no se reemplaza.
+#
+#   docker compose -f infra/compose/docker-compose.dev.yml up --build
+#
+# El paso mock → validador real = sustituir SOLO el servicio `mock-validator` por el worker
+# real (mismo Redis, mismos streams). Backend y clientes no cambian.
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  mock-validator:
+    build:
+      context: ../..
+      dockerfile: mock-validator/Dockerfile
+    environment:
+      MOCK_BROKER: redis
+      REDIS_URL: redis://redis:6379/0
+      MOCK_MODE: regla
+      MOCK_LATENCY_MS_MIN: "50"
+      MOCK_LATENCY_MS_MAX: "300"
+      MOCK_MODEL_VERSION: mock
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped

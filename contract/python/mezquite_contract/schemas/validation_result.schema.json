@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mezquite.org/contracts/validation_result/1.0.json",
+  "title": "ValidationResult",
+  "description": "Mensaje publicado por el validador (mock o real) y consumido por el backend. Frontera §6.3. El veredicto es AUTORITATIVO en el backend: valida <=> es_arbol AND parasitos_presentes. NO incluye especie ni nivel G4 (fuera del alcance de la validacion automatica, Q5.A-D1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["observation_id", "es_arbol", "parasitos_presentes", "veredicto", "scores", "model_version", "schema_version"],
+  "properties": {
+    "observation_id": { "type": "string", "format": "uuid" },
+    "es_arbol": { "type": "boolean" },
+    "parasitos_presentes": { "type": "boolean" },
+    "veredicto": { "type": "string", "enum": ["valida", "ruido"] },
+    "scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["arbol", "parasitos"],
+      "properties": {
+        "arbol": { "type": "number", "minimum": 0, "maximum": 1 },
+        "parasitos": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "model_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Version del modelo, o 'mock' en la etapa inicial."
+    },
+    "schema_version": { "type": "string", "const": "1.0" }
+  }
+}

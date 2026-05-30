@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mezquite-mock-validator"
+version = "0.1.0"
+description = "Worker mock que cumple el contrato §6 mientras el validador YOLO real no existe."
+requires-python = ">=3.11"
+# mezquite-contract se instala por separado (ruta local) en el Dockerfile; en dev se resuelve por PYTHONPATH.
+dependencies = [
+    "redis>=5",
+    "pydantic>=2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+mock-validator = "mock_validator.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["mock_validator*"]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "../contract/python"]
+testpaths = ["tests"]
