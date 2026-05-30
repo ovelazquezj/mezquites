@@ -1,0 +1,39 @@
+name: mezquite_app
+description: App del voluntario para el proyecto de ciencia ciudadana del mezquite.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Estado: Riverpod para inyección de dependencias y estado de la app.
+  flutter_riverpod: ^2.6.1
+  # Cliente HTTP para la capa de API REST (/api/v1).
+  http: ^1.2.2
+  # Cámara NATIVA (gate #4): captura directa; la galería NO se usa.
+  camera: ^0.11.0+2
+  # Geolocalización real para inyectar lat/lon en el EXIF/payload (gate #4).
+  geolocator: ^13.0.2
+  # Escritura de EXIF lat/lon/timestamp en el JPEG capturado (gate #4).
+  native_exif: ^0.6.2
+  # Persistencia local sin PII: token, handle, flag de disclaimer visto.
+  shared_preferences: ^2.3.3
+  # Generación de QR para el código de respaldo (recuperación sin PII).
+  qr_flutter: ^4.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  # Pruebas de integración en emulador/dispositivo Android (T1).
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/design-tokens.json

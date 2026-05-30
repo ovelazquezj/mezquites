@@ -1,0 +1,191 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+import '../models/enums.dart';
+import '../models/models.dart';
+import 'api_exception.dart';
+
+/// Cliente de la API REST `/api/v1` del backend del mezquite.
+///
+/// Refleja `backend/app/routers/*` y `backend/app/schemas.py`: nombres de campo
+/// y rutas EXACTOS. Auth por bearer token (sin PII, gate #2).
+///
+/// Endpoints cubiertos:
+///   auth/register, auth/recover, observations (multipart), observations/mine,
+///   me/feedback, me/profile, gamification/rankings, public/observations,
+///   public/indicators, admin/institutions (lista F3).
+class ApiClient {
+  ApiClient({
+    required this.baseUrl,
+    http.Client? httpClient,
+  }) : _http = httpClient ?? http.Client();
+
+  /// Base sin barra final, p.ej. `http://10.0.2.2:8000/api/v1`.
+  final String baseUrl;
+  final http.Client _http;
+
+  String? _token;
+
+  /// Fija el bearer token tras login/registro/recover.
+  void setToken(String? token) => _token = token;
+
+  Uri _uri(String path, [Map<String, String>? query]) =>
+      Uri.parse('$baseUrl$path').replace(queryParameters: query);
+
+  Map<String, String> _headers({bool json = true}) => {
+        if (json) 'Content-Type': 'application/json',
+        if (_token != null) 'Authorization': 'Bearer $_token',
+      };
+
+  Map<String, dynamic> _decode(http.Response r) {
+    if (r.statusCode >= 200 && r.statusCode < 300) {
+      return r.body.isEmpty
+          ? <String, dynamic>{}
+          : (json.decode(r.body) as Map).cast<String, dynamic>();
+    }
+    throw ApiException(r.statusCode, 'Error de la API', body: r.body);
+  }
+
+  List<dynamic> _decodeList(http.Response r) {
+    if (r.statusCode >= 200 && r.statusCode < 300) {
+      return json.decode(r.body) as List<dynamic>;
+    }
+    throw ApiException(r.statusCode, 'Error de la API', body: r.body);
+  }
+
+  // --- Auth (sin PII, gate #2) ---
+
+  /// Alta de cuenta seudonimizada por handle. SIN email/teléfono/nombre.
+  /// [institutionId] null => "Independiente".
+  Future<AuthSession> register({String? institutionId}) async {
+    final r = await _http.post(
+      _uri('/auth/register'),
+      headers: _headers(),
+      body: json.encode({
+        if (institutionId != null) 'institution_id': institutionId,
+        'role': 'voluntario',
+      }),
+    );
+    final session = AuthSession.fromRegister(_decode(r));
+    _token = session.token;
+    return session;
+  }
+
+  /// Recuperación por handle + código de respaldo (sin PII).
+  Future<AuthSession> recover({
+    required String handle,
+    required String backupCode,
+  }) async {
+    final r = await _http.post(
+      _uri('/auth/recover'),
+      headers: _headers(),
+      body: json.encode({'handle': handle, 'backup_code': backupCode}),
+    );
+    final session = AuthSession.fromToken(_decode(r));
+    _token = session.token;
+    return session;
+  }
+
+  // --- Observaciones ---
+
+  /// Envía una observación (multipart: `payload` JSON con 8 etiquetas + `image`).
+  /// Fire-and-forget en el sentido de UI: el caller no debe bloquear esperando.
+  Future<String> submitObservation(ObservationDraft draft) async {
+    final request = http.MultipartRequest('POST', _uri('/observations'));
+    if (_token != null) {
+      request.headers['Authorization'] = 'Bearer $_token';
+    }
+    request.fields['payload'] = json.encode(draft.toPayloadJson());
+    request.files.add(
+      await http.MultipartFile.fromPath('image', draft.imagePath),
+    );
+    final streamed = await _http.send(request);
+    final r = await http.Response.fromStream(streamed);
+    final body = _decode(r);
+    return body['observation_id'] as String;
+  }
+
+  /// Historial propio. SIN estado de validación individual (gate #9).
+  Future<List<MineObservation>> myObservations() async {
+    final r = await _http.get(_uri('/observations/mine'), headers: _headers());
+    return _decodeList(r)
+        .map((e) => MineObservation.fromJson((e as Map).cast()))
+        .toList();
+  }
+
+  // --- Feedback / perfil ---
+
+  /// Feedback AGREGADO de tasa de validación (gate #9).
+  Future<FeedbackAggregate> feedback() async {
+    final r = await _http.get(_uri('/me/feedback'), headers: _headers());
+    return FeedbackAggregate.fromJson(_decode(r));
+  }
+
+  Future<Profile> profile() async {
+    final r = await _http.get(_uri('/me/profile'), headers: _headers());
+    return Profile.fromJson(_decode(r));
+  }
+
+  // --- Gamificación ---
+
+  Future<Rankings> rankings({String period = 'all', String? estado}) async {
+    final r = await _http.get(
+      _uri('/gamification/rankings', {
+        'period': period,
+        if (estado != null) 'estado': estado,
+      }),
+      headers: _headers(),
+    );
+    return Rankings.fromJson(_decode(r));
+  }
+
+  // --- Vistas de datos públicas ---
+
+  /// Observaciones públicas: coords obfuscadas a 1 km server-side (gate #5).
+  Future<List<PublicObservation>> publicObservations({
+    String? estado,
+    int limit = 500,
+  }) async {
+    final r = await _http.get(
+      _uri('/public/observations', {
+        if (estado != null) 'estado': estado,
+        'limit': '$limit',
+      }),
+      headers: _headers(json: false),
+    );
+    return _decodeList(r)
+        .map((e) => PublicObservation.fromJson((e as Map).cast()))
+        .toList();
+  }
+
+  Future<Indicators> publicIndicators({String? estado}) async {
+    final r = await _http.get(
+      _uri('/public/indicators', {if (estado != null) 'estado': estado}),
+      headers: _headers(json: false),
+    );
+    return Indicators.fromJson(_decode(r));
+  }
+
+  // --- Instituciones (lista F3) ---
+  //
+  // Catálogo público (GET /institutions): instituciones APROBADAS, sin auth, para
+  // que el voluntario elija afiliación en el alta (Q4). Las solicitadas viven en
+  // /admin/institutions (rol admin). Si la red falla, la UI degrada a
+  // "Independiente" + "solicitar agregar" (ticket).
+  Future<List<Institution>> listInstitutions() async {
+    final r = await _http.get(_uri('/institutions'), headers: _headers(json: false));
+    if (r.statusCode != 200) {
+      return const <Institution>[];
+    }
+    return _decodeList(r)
+        .map((e) => Institution.fromJson((e as Map).cast()))
+        .toList();
+  }
+
+  void close() => _http.close();
+}
+
+/// Mapea un enum del vocabulario a su valor de wire (defensivo para llamadas
+/// dinámicas en pruebas).
+String wireOfNivel(NivelG4 n) => n.wire;
