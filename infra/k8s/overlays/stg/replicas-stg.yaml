@@ -1,0 +1,14 @@
+# Más réplicas en staging (api stateless tras migración; worker escalable por consumer-group §6).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: result-worker
+spec:
+  replicas: 2

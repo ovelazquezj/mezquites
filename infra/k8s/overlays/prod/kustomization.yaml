@@ -1,0 +1,38 @@
+# Overlay PRODUCCIÓN — nube. Idéntico en forma a stg (mismos manifiestos base, T5): solo cambian
+# namespace, tags de imagen, réplicas y valores de placeholders. Decisiones de proveedor = H6.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: mezquite-prod
+
+resources:
+  - ../../base
+  - managed-endpoints.yaml
+
+images:
+  - name: mezquite/backend
+    newTag: prod
+  - name: mezquite/mock-validator
+    newName: REGISTRY_PLACEHOLDER/mezquite-validacion-yolo
+    newTag: prod
+
+configMapGenerator:
+  - name: mezquite-config
+    behavior: merge
+    literals:
+      - STORAGE_BACKEND=s3
+      - DATABASE_URL=postgresql+psycopg://mezquite@postgres-managed:5432/mezquite
+      - REDIS_URL=redis://redis-managed:6379/0
+      - S3_BUCKET=mezquite-observations-prod
+      - S3_REGION=PLACEHOLDER_REGION
+      - S3_ENDPOINT_URL=PLACEHOLDER_S3_ENDPOINT
+  - name: mezquite-mock-config
+    behavior: merge
+    literals:
+      - REDIS_URL=redis://redis-managed:6379/0
+
+patches:
+  - path: scale-zero-postgres.yaml
+  - path: scale-zero-redis.yaml
+  - path: replicas-prod.yaml
+  - path: mock-to-real.yaml

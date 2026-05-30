@@ -1,0 +1,65 @@
+# ============================================================================================
+# FRONTERA DE VALIDACIÓN (§6) — Deployment AISLADO Y SUSTITUIBLE.  Gate #10.
+# --------------------------------------------------------------------------------------------
+# El mock-validator cumple el contrato §6 (consume `validation_jobs`, produce `validation_results`)
+# mientras el validador YOLO real no existe.
+#
+#   SWAP mock → validador real (gate #10):
+#     Sustituir SOLO este Deployment por el del worker real (otro repo: mezquite-validacion-yolo).
+#     Mismo Redis, mismos streams (validation_jobs / validation_results), mismo contrato.
+#     NO se toca `api`, `result-worker`, ni ningún cliente. En la práctica:
+#       - dev: dejar este mock (no hay YOLO local).
+#       - stg/prod: el overlay reemplaza este Deployment vía un patch/recurso del repo del validador
+#         (este base ya deja la pieza aislada para que el reemplazo sea quirúrgico).
+#
+# Es un Deployment + Service (el Service da un nombre estable por si el validador real expone
+# métricas/health; el contrato en sí va por la cola, no por HTTP). Sin Service para la cola.
+# ============================================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mock-validator
+  labels:
+    app.kubernetes.io/name: mock-validator
+    app.kubernetes.io/component: validator
+    mezquite.org/boundary: "validation-section-6"   # marca la frontera §6 (swappable)
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mock-validator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mock-validator
+        app.kubernetes.io/component: validator
+    spec:
+      containers:
+        - name: mock-validator
+          image: mezquite/mock-validator:dev
+          # CMD por defecto de la imagen: python -m mock_validator
+          envFrom:
+            - configMapRef: { name: mezquite-mock-config }
+          resources:
+            requests:
+              cpu: "25m"
+              memory: "64Mi"
+            limits:
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mock-validator
+  labels:
+    app.kubernetes.io/name: mock-validator
+    mezquite.org/boundary: "validation-section-6"
+spec:
+  selector:
+    app.kubernetes.io/name: mock-validator
+  # ClusterIP sin puertos de tráfico de cola (el contrato §6 va por Redis). Se deja un puerto
+  # placeholder por si el validador real expone health/metrics; ajustable en el swap.
+  ports:
+    - name: metrics
+      port: 9000
+      targetPort: 9000

@@ -1,0 +1,62 @@
+# result-worker: consumidor de `validation_results` (§6). Espeja el servicio `result-worker` del
+# compose: misma imagen que api, command `python -m backend.result_worker`, SIN Service (no expone
+# puertos; solo consume la cola). Lee la MISMA config/secret que api.
+# Recompensa diferida + idempotencia viven en el código; este worker es agnóstico de quién produce
+# los resultados (gate #10: el swap mock→real no lo toca).
+#
+# Comparte el PVC `obsdata` (RWO) con api. En dev (un nodo) ambos pods caben en el mismo nodo; el
+# worker no necesita storage para la cola pero monta el mismo volumen por paridad con el compose.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: result-worker
+  labels:
+    app.kubernetes.io/name: result-worker
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: result-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: result-worker
+        app.kubernetes.io/component: worker
+    spec:
+      initContainers:
+        # El worker escribe en la DB; espera a postgres antes de arrancar el bucle de consumo.
+        - name: wait-postgres
+          image: postgis/postgis:16-3.4
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h postgres -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do
+                echo "esperando a postgres..."; sleep 2;
+              done
+          env:
+            - name: POSTGRES_USER
+              valueFrom: { secretKeyRef: { name: mezquite-secret, key: POSTGRES_USER } }
+            - name: POSTGRES_DB
+              valueFrom: { secretKeyRef: { name: mezquite-secret, key: POSTGRES_DB } }
+      containers:
+        - name: result-worker
+          image: mezquite/backend:dev
+          command: ["python", "-m", "backend.result_worker"]
+          envFrom:
+            - configMapRef: { name: mezquite-config }
+            - secretRef: { name: mezquite-secret }
+          volumeMounts:
+            - name: obsdata
+              mountPath: /data/storage
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              memory: "256Mi"
+      volumes:
+        - name: obsdata
+          persistentVolumeClaim:
+            claimName: obsdata

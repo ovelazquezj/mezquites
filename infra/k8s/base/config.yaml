@@ -1,0 +1,32 @@
+# Configuración NO secreta compartida por api y result-worker (paridad de entornos, gate #6).
+# Espeja las env del compose (infra/compose/docker-compose.dev.yml). Los overlays sobreescriben
+# los valores que cambian por entorno (STORAGE_BACKEND, DATABASE_URL host, REDIS_URL) vía
+# configMapGenerator con `behavior: merge`. NUNCA pongas secretos aquí (ver secret.yaml).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mezquite-config
+data:
+  # --- Broker / cola §6 (T6) ---
+  BROKER: "redis"
+  REDIS_URL: "redis://redis:6379/0"
+  # --- Storage (T4 / gate #6). dev=local; overlays stg/prod => s3 ---
+  STORAGE_BACKEND: "local"
+  STORAGE_LOCAL_DIR: "/data/storage"
+  # --- Base de datos (PostGIS). El host apunta al Service `postgres` in-cluster en dev;
+  #     los overlays stg/prod lo repuntan a la DB gestionada (H6 pendiente) ---
+  DATABASE_URL: "postgresql+psycopg://mezquite:mezquite@postgres:5432/mezquite"
+---
+# Config del mock-validator (espeja las env MOCK_* del compose). Deployment AISLADO:
+# el swap mock → validador real (gate #10) sustituye SOLO ese Deployment, sin tocar este api/worker.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mezquite-mock-config
+data:
+  MOCK_BROKER: "redis"
+  REDIS_URL: "redis://redis:6379/0"
+  MOCK_MODE: "regla"
+  MOCK_LATENCY_MS_MIN: "50"
+  MOCK_LATENCY_MS_MAX: "300"
+  MOCK_MODEL_VERSION: "mock"

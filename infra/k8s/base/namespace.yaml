@@ -1,0 +1,10 @@
+# Una sola instancia lógica (RC1 centralizada, Q8-D1): UN namespace para toda la app.
+# Los estados son filtros geográficos en datos, NO namespaces/instancias por estado.
+# Los overlays NO crean namespaces por entorno aquí; cada overlay fija su propio namespace
+# (mezquite-dev / mezquite-stg / mezquite-prod) vía `namespace:` en su kustomization.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mezquite
+  labels:
+    app.kubernetes.io/part-of: mezquite

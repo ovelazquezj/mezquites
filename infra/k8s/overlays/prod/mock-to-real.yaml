@@ -1,0 +1,15 @@
+# SWAP de la frontera §6 (gate #10) en producción: mock-validator → validador REAL.
+# Idéntico en intención a overlays/stg/mock-to-real.yaml. Se sustituye SOLO este Deployment;
+# api/result-worker/clientes no cambian (mismo Redis, mismos streams, mismo contrato §6).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mock-validator
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+        - name: mock-validator
+          command: null
+          args: null

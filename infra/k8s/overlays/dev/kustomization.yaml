@@ -1,0 +1,28 @@
+# Overlay DEV — clúster K8s local (Rancher Desktop / minikube), SIN NUBE (gate #6).
+# Hereda la base tal cual: STORAGE_BACKEND=local + PVC, redis y postgis IN-CLUSTER, mock habilitado,
+# 1 réplica. Solo añade: namespace dedicado, tag de imagen `:dev`, y NodePort para acceder a la API.
+#
+# Levanta con UN SOLO COMANDO (criterio T5):
+#     kubectl apply -k infra/k8s/overlays/dev
+#   o el script:
+#     infra/k8s/deploy-dev.sh   (Linux/macOS)
+#     infra/k8s/deploy-dev.ps1  (Windows / Rancher Desktop)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: mezquite-dev
+
+resources:
+  - ../../base
+  - api-nodeport.yaml
+
+# Tag de imagen para dev. Construir antes con (contexto = raíz del repo):
+#   docker build -f backend/Dockerfile        -t mezquite/backend:dev .
+#   docker build -f mock-validator/Dockerfile -t mezquite/mock-validator:dev .
+images:
+  - name: mezquite/backend
+    newTag: dev
+  - name: mezquite/mock-validator
+    newTag: dev
+
+# La base ya trae los defaults dev (local/redis/postgis in-cluster); no hace falta override de config.

@@ -1,0 +1,17 @@
+# PLACEHOLDERS (H6): ExternalName a los servicios gestionados de PRODUCCIÓN. El operador humano
+# sustituye `externalName` por el hostname real del proveedor. Ver overlays/stg/managed-endpoints.yaml.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-managed
+spec:
+  type: ExternalName
+  externalName: PLACEHOLDER.db.prod.managed.example
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-managed
+spec:
+  type: ExternalName
+  externalName: PLACEHOLDER.redis.prod.managed.example

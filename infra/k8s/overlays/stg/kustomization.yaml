@@ -1,0 +1,55 @@
+# Overlay STAGING — nube. Mismos manifiestos base (T5), parametrizados:
+#   - STORAGE_BACKEND=s3 (object storage S3-compatible). El PVC `obsdata` queda ocioso.
+#   - DATABASE_URL y REDIS_URL apuntan a servicios GESTIONADOS (placeholders; proveedor concreto =
+#     decisión humana pendiente H6). Aquí van como ExternalName / ConfigMap parametrizable.
+#   - postgres y redis IN-CLUSTER escalados a 0 (se usan los gestionados). Se dejan en el árbol para
+#     poder revertir a in-cluster sin cambiar manifiestos.
+#   - mock-validator REEMPLAZADO por el VALIDADOR REAL (gate #10): ver mock-to-real.yaml.
+#   - réplicas mayores de api/worker.
+#
+# IMPORTANTE (H6): NO se inventa el proveedor cloud. Los valores s3/DB/redis son PLACEHOLDERS que el
+# operador humano sustituye (idealmente por un Secret externo no versionado). Render-only hasta H6.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: mezquite-stg
+
+resources:
+  - ../../base
+  - managed-endpoints.yaml      # ExternalName placeholders para DB/redis/s3 gestionados (H6)
+
+images:
+  - name: mezquite/backend
+    newTag: stg
+  # El validador real se publica desde otro repo; tag placeholder hasta que exista (gate #10).
+  - name: mezquite/mock-validator
+    newName: REGISTRY_PLACEHOLDER/mezquite-validacion-yolo
+    newTag: stg
+
+# Config NO secreta parametrizada por entorno (merge sobre la base).
+configMapGenerator:
+  - name: mezquite-config
+    behavior: merge
+    literals:
+      - STORAGE_BACKEND=s3
+      # Apuntan a Services ExternalName (managed-endpoints.yaml) → endpoint gestionado real (H6).
+      - DATABASE_URL=postgresql+psycopg://mezquite@postgres-managed:5432/mezquite
+      - REDIS_URL=redis://redis-managed:6379/0
+      # Parámetros de object storage (el bucket/endpoint reales = H6).
+      - S3_BUCKET=mezquite-observations-stg
+      - S3_REGION=PLACEHOLDER_REGION
+      - S3_ENDPOINT_URL=PLACEHOLDER_S3_ENDPOINT
+  - name: mezquite-mock-config
+    behavior: merge
+    literals:
+      # El validador real consume REDIS_URL gestionado; MOCK_* se ignoran al hacer el swap.
+      - REDIS_URL=redis://redis-managed:6379/0
+
+patches:
+  # postgres y redis in-cluster a 0 réplicas (se usan los gestionados).
+  - path: scale-zero-postgres.yaml
+  - path: scale-zero-redis.yaml
+  # api/worker con más réplicas en staging.
+  - path: replicas-stg.yaml
+  # Swap de la frontera §6: el Deployment del mock pasa a ejecutar el validador real (gate #10).
+  - path: mock-to-real.yaml

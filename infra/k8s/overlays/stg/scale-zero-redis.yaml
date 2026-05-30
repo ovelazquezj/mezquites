@@ -1,0 +1,7 @@
+# redis in-cluster a 0: en stg se usa el Redis gestionado (managed-endpoints.yaml).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+spec:
+  replicas: 0

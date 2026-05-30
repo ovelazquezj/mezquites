@@ -1,0 +1,14 @@
+# Más réplicas en producción que en staging.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 3
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: result-worker
+spec:
+  replicas: 3

@@ -1,0 +1,112 @@
+# API FastAPI (T2), puerto 8000. Imagen construida desde backend/Dockerfile (contexto = raíz).
+# Espeja el servicio `api` del compose, con una diferencia deliberada para K8s:
+#   - La migración Alembic NO va en el CMD del contenedor principal, sino en un initContainer
+#     `migrate` (alembic upgrade head) que corre UNA vez antes de servir uvicorn. Así varias
+#     réplicas de api no compiten por correr migraciones, y el pod no sirve tráfico hasta migrar.
+#   - Un initContainer `wait-postgres` bloquea hasta que la DB acepte conexiones (reemplaza el
+#     `depends_on: condition: service_healthy` del compose).
+# Storage local (gate #6) montado desde un PVC compartido (la DB guarda solo la clave; el binario
+# vive en el filesystem). En stg/prod los overlays ponen STORAGE_BACKEND=s3 y este PVC deja de usarse.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  labels:
+    app.kubernetes.io/name: api
+    app.kubernetes.io/component: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: api
+        app.kubernetes.io/component: backend
+    spec:
+      initContainers:
+        - name: wait-postgres
+          image: postgis/postgis:16-3.4
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h postgres -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do
+                echo "esperando a postgres..."; sleep 2;
+              done
+          env:
+            - name: POSTGRES_USER
+              valueFrom: { secretKeyRef: { name: mezquite-secret, key: POSTGRES_USER } }
+            - name: POSTGRES_DB
+              valueFrom: { secretKeyRef: { name: mezquite-secret, key: POSTGRES_DB } }
+        - name: migrate
+          image: mezquite/backend:dev
+          command: ["alembic", "-c", "/app/backend/alembic.ini", "upgrade", "head"]
+          envFrom:
+            - configMapRef: { name: mezquite-config }
+            - secretRef: { name: mezquite-secret }
+      containers:
+        - name: api
+          image: mezquite/backend:dev
+          # Solo uvicorn: la migración ya corrió en el initContainer `migrate`.
+          command: ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef: { name: mezquite-config }
+            - secretRef: { name: mezquite-secret }
+          volumeMounts:
+            - name: obsdata
+              mountPath: /data/storage
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "192Mi"
+            limits:
+              memory: "512Mi"
+      volumes:
+        - name: obsdata
+          persistentVolumeClaim:
+            claimName: obsdata
+---
+# PVC para las imágenes en filesystem local (gate #6). En stg/prod (STORAGE_BACKEND=s3) queda ocioso.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: obsdata
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  labels:
+    app.kubernetes.io/name: api
+spec:
+  selector:
+    app.kubernetes.io/name: api
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http

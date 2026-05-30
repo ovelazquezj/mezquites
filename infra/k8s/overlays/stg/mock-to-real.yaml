@@ -1,0 +1,28 @@
+# ============================================================================================
+# SWAP DE LA FRONTERA §6 (gate #10): mock-validator → VALIDADOR REAL (mezquite-validacion-yolo).
+# --------------------------------------------------------------------------------------------
+# Se sustituye SOLO este Deployment. `api`, `result-worker` y los clientes NO cambian: mismo Redis,
+# mismos streams (validation_jobs / validation_results), mismo contrato §6.
+#
+# Qué cambia aquí vs. el mock:
+#   - imagen: la del repo del validador real (definida en `images:` del kustomization, placeholder H6).
+#   - command: el del validador real (default de su imagen) → se ANULA el `python -m mock_validator`.
+#   - env: el validador real lee su propio REDIS_URL (gestionado, vía mezquite-mock-config merge);
+#     las MOCK_* se vuelven inertes (su config las ignora).
+# Las recompensas/etiquetado siguen recomputándose autoritativamente en el backend (gate #9), así que
+# el validador real NO necesita confianza extra: solo cumplir el contrato §6.
+# ============================================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mock-validator
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: mock-validator
+          # `images:` del kustomization repunta la imagen al validador real; aquí se anula el
+          # command del mock para usar el entrypoint propio de la imagen real.
+          command: null
+          args: null

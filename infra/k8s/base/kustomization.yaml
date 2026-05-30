@@ -1,0 +1,21 @@
+# Base kustomize: todos los componentes de la app (RC1 centralizada, una sola instancia lógica).
+# Los overlays (dev/stg/prod) parametrizan ESTOS mismos manifiestos — criterio T5: "los mismos
+# manifiestos parametrizan stg/prod". No duplican recursos; solo aplican patches/merges.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Etiquetas comunes a todos los recursos (trazabilidad / selección).
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: mezquite
+    includeSelectors: false
+
+resources:
+  - namespace.yaml
+  - config.yaml
+  - secret.yaml
+  - redis.yaml
+  - postgres.yaml
+  - api.yaml
+  - result-worker.yaml
+  - mock-validator.yaml

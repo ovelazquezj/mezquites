@@ -1,0 +1,19 @@
+# PLACEHOLDERS (H6): nombres in-cluster estables que apuntan a los servicios GESTIONADOS de nube.
+# El operador humano sustituye `externalName` por el hostname real del proveedor (RDS/CloudSQL,
+# ElastiCache/MemoryStore, etc.). Así DATABASE_URL/REDIS_URL del ConfigMap NO cambian al elegir
+# proveedor: solo cambia el externalName aquí (o el Secret externo que lo provea).
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-managed
+spec:
+  type: ExternalName
+  externalName: PLACEHOLDER.db.managed.example   # H6: hostname real de la DB gestionada
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-managed
+spec:
+  type: ExternalName
+  externalName: PLACEHOLDER.redis.managed.example  # H6: hostname real del Redis gestionado

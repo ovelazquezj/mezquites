@@ -1,0 +1,7 @@
+# postgres in-cluster a 0: en prod se usa la DB gestionada (managed-endpoints.yaml).
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  replicas: 0
