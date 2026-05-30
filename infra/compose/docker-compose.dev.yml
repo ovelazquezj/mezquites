@@ -1,11 +1,17 @@
 # Stack de desarrollo SIN NUBE (paridad de entornos, gate #6).
-# Incremento 1: broker (Redis) + mock-validator. El backend (FastAPI) y la DB (PostGIS) se
-# incorporan en el Incremento 2; este archivo crece, no se reemplaza.
+# Incremento 2: broker (Redis) + mock-validator + DB (PostGIS) + API (FastAPI) + result-worker.
+# Este archivo CRECE, no se reemplaza.
 #
 #   docker compose -f infra/compose/docker-compose.dev.yml up --build
 #
+# Topología (frontera §6 = la cola):
+#   api ──XADD──▶ [mezquite:validation_jobs] ──▶ mock-validator
+#   mock-validator ──XADD──▶ [mezquite:validation_results] ──▶ result-worker
+#
 # El paso mock → validador real = sustituir SOLO el servicio `mock-validator` por el worker
-# real (mismo Redis, mismos streams). Backend y clientes no cambian.
+# real (mismo Redis, mismos streams). Backend y clientes no cambian (gate #10).
+#
+# Sin nube (gate #6): storage = filesystem local (volumen), broker = Redis local, DB = contenedor.
 
 services:
   redis:
@@ -18,6 +24,68 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: mezquite
+      POSTGRES_PASSWORD: mezquite
+      POSTGRES_DB: mezquite
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mezquite -d mezquite"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ../..
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://mezquite:mezquite@postgres:5432/mezquite
+      STORAGE_BACKEND: local            # gate #6: dev/QA sin nube
+      STORAGE_LOCAL_DIR: /data/storage
+      BROKER: redis                     # broker local (conmutable; 'memory' también válido)
+      REDIS_URL: redis://redis:6379/0
+      AUTH_SECRET: dev-insecure-secret-change-me
+    ports:
+      - "8000:8000"
+    volumes:
+      - obsdata:/data/storage           # imágenes en filesystem local (la DB guarda solo la clave)
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Aplica migraciones Alembic y arranca uvicorn (ver backend/Dockerfile CMD).
+    restart: unless-stopped
+
+  result-worker:
+    build:
+      context: ../..
+      dockerfile: backend/Dockerfile
+    command: ["python", "-m", "backend.result_worker"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://mezquite:mezquite@postgres:5432/mezquite
+      STORAGE_BACKEND: local
+      STORAGE_LOCAL_DIR: /data/storage
+      BROKER: redis
+      REDIS_URL: redis://redis:6379/0
+      AUTH_SECRET: dev-insecure-secret-change-me
+    volumes:
+      - obsdata:/data/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started      # asegura que las migraciones ya corrieron
+    restart: unless-stopped
 
   mock-validator:
     build:
@@ -34,3 +102,7 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  pgdata:
+  obsdata:

@@ -22,7 +22,7 @@ visibles. Tres clientes + backend, integrados con un **sistema externo de valida
 |---|---|---|
 | [`contract/`](contract/README.md) | `mezquite_contract` — **frontera §6** (fuente de verdad): schemas, modelos, regla de veredicto, broker conmutable | ✅ Inc 1 |
 | [`mock-validator/`](mock-validator/README.md) | Worker que cumple §6 mientras no existe el YOLO real (modos fijo/aleatorio/regla + latencia) | ✅ Inc 1 |
-| `backend/` | FastAPI + PostGIS: API REST, auth 3 roles sin PII, `tree_id`/obfuscación, productor/consumidor de cola, indicadores | ⏳ Inc 2 |
+| [`backend/`](backend/README.md) | FastAPI + PostGIS: API REST, auth 3 roles sin PII, `tree_id`/obfuscación, productor/consumidor de cola, indicadores | ✅ Inc 2 |
 | `mobile/` | App Flutter del voluntario | ⏳ Inc 3 |
 | `web-admin/` | Web app del consorcio | ⏳ Inc 4 |
 | [`infra/`](infra/compose/docker-compose.dev.yml) | Compose (dev sin nube) + manifiestos K8s | 🟡 Inc 1–2 |
@@ -54,5 +54,6 @@ integración solo por el contrato §6 (mock↔real sin tocar cliente ni backend)
 
 ## Estado
 
-**Incremento 1 (Fundación) completo y verificado:** 30 pruebas verdes. Siguiente: Incremento 2
-(backend FastAPI + PostGIS + manifiestos K8s) sobre la frontera ya probada.
+**Incrementos 1 (Fundación) y 2 (Backend) completos y verificados:** 79 pruebas verdes
+(21 contrato + 9 mock + 49 backend con PostGIS real) + E2E en vivo por compose (submit → mock →
+etiquetado → recompensa diferida). Siguiente: Incremento 3 (app móvil Flutter) y manifiestos K8s.
