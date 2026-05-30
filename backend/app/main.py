@@ -10,7 +10,16 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
 
 from .config import get_settings
-from .routers import admin, auth, gamification, me, observations, public, restricted
+from .routers import (
+    admin,
+    auth,
+    gamification,
+    institutions,
+    me,
+    observations,
+    public,
+    restricted,
+)
 
 API_PREFIX = "/api/v1"
 
@@ -35,6 +44,7 @@ def create_app() -> FastAPI:
         observations.router,
         me.router,
         gamification.router,
+        institutions.router,
         public.router,
         restricted.router,
         admin.router,
