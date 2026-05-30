@@ -24,7 +24,7 @@ visibles. Tres clientes + backend, integrados con un **sistema externo de valida
 | [`mock-validator/`](mock-validator/README.md) | Worker que cumple §6 mientras no existe el YOLO real (modos fijo/aleatorio/regla + latencia) | ✅ Inc 1 |
 | [`backend/`](backend/README.md) | FastAPI + PostGIS: API REST, auth 3 roles sin PII, `tree_id`/obfuscación, productor/consumidor de cola, indicadores | ✅ Inc 2 |
 | [`mobile/`](mobile/) | App Flutter del voluntario (captura cámara+EXIF, gamificación, dashboards) | ✅ Inc 3 |
-| `web-admin/` | Web app del consorcio | ⏳ Inc 4 |
+| [`web-admin/`](web-admin/) | Web app del consorcio (Flutter Web): F3, aliados firmantes, indicadores org., snapshots, dashboards público/restringido | ✅ Inc 4 |
 | [`infra/`](infra/k8s/) | Compose (dev sin nube) + manifiestos K8s (base + overlays dev/stg/prod) | ✅ Inc 1–3 |
 | [`docs/`](ARCHITECTURE.md) | Arquitectura: [data-model](docs/data-model/postgis-model.md), [design-system](docs/design-system/design-tokens.md), [ADRs](docs/adr/) | ✅ Inc 1 |
 | [`TRACEABILITY.md`](TRACEABILITY.md) | Matriz criterio de aceptación → prueba (gate #7) | ✅ vivo |
@@ -54,7 +54,7 @@ integración solo por el contrato §6 (mock↔real sin tocar cliente ni backend)
 
 ## Estado
 
-**Incrementos 1 (Fundación), 2 (Backend), 3 (App móvil Flutter) y T5 (K8s) completos y verificados:**
-**112 pruebas verdes** (21 contrato + 9 mock + 52 backend con PostGIS real + 30 móvil) + APK Android
-construido + manifiestos K8s validados (render + dry-run) + E2E en vivo por compose. Siguiente:
-Incremento 4 (web admin del consorcio) y validación E2E en clúster (Inc 5).
+**Incrementos 1 (Fundación), 2 (Backend), 3 (App móvil), 4 (Web admin) y T5 (K8s) completos y
+verificados:** **138 pruebas verdes** (21 contrato + 9 mock + 52 backend con PostGIS real + 30 móvil
++ 26 web-admin) + APK Android + build web + manifiestos K8s validados (render + dry-run) + E2E en
+vivo por compose. Siguiente: Incremento 5 — validación E2E en clúster (Tester/QA).

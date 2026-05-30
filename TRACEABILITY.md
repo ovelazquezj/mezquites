@@ -17,21 +17,22 @@
 | **Q5.A** El submit no bloquea la UI (fire-and-forget) | backend + móvil | 2–3 | backend encola sin esperar: `test_observation_create.py::test_submit_enqueues_job_without_waiting`; móvil: cola local "pendiente" en `capture_screen.dart` | ✅ |
 | **Q5.B** Vista pública solo coords a 1 km | backend | 2 | `backend/tests/test_obfuscation.py` (helper `obfuscate_1km`, EPSG:6372) + `backend/tests/test_roles.py::test_public_observations_are_obfuscated_to_1km` | ✅ |
 | **Q5.B** Vista restringida exige auth de aliado firmante | backend | 2 | `backend/tests/test_roles.py::test_restricted_requires_aliado_firmante` / `test_restricted_allows_aliado_firmante_with_exact_coords` | ✅ |
-| **Q5.B** Toda vista muestra fecha de snapshot (Qn) | backend + clientes | 2–4 | backend `/public/*` incluye `snapshot_quarter`; móvil `SnapshotStamp` + test ✅ · web admin Inc 4 | 🟡 (backend+móvil ✅) |
-| **Q5.B** La app NO genera PDFs (solo dashboards) | clientes | 3–4 | móvil: `mobile/test/dashboard_boundary_test.dart` (sin export PDF) ✅ · web admin Inc 4 | 🟡 (móvil ✅) |
+| **Q5.B** Toda vista muestra fecha de snapshot (Qn) | backend + clientes | 2–4 | backend `/public/*` incluye `snapshot_quarter`; móvil `SnapshotStamp`; web admin `SnapshotStamp` + `boundary_test.dart` | ✅ |
+| **Q5.B** La app NO genera PDFs (solo dashboards) | clientes | 3–4 | móvil `dashboard_boundary_test.dart` + web admin `boundary_test.dart` (sin dep pdf/printing; sin botón export) | ✅ |
 | **Q7** Disclaimer una vez tras crear cuenta; descarte 1 tap; en Ayuda | móvil | 3 | `mobile/test/disclaimer_test.dart` | ✅ |
 | **Q3** Selector con 4 opciones G4 + rango % visible | móvil | 3 | `mobile/test/g4_selector_test.dart` | ✅ |
 | **Q3** Dos toggles binarios independientes | móvil | 3 | `mobile/test/observation_form_test.dart` (toggles independientes) | ✅ |
 | **Q3** Backend acepta la triple etiqueta | backend | 2 | `backend/tests/test_observation_create.py::test_submit_accepts_eight_labels_and_returns_base_reward` (nivel G4 + 2 flags) | ✅ |
 | **Q2** Submit con 8 campos | backend + móvil | 2–3 | backend (`ObservationCreate`) + móvil `observation_form_test.dart` + `api_client_test.dart` (multipart 8 etiquetas + imagen) | ✅ |
 | **Q2** Backend asigna `tree_id` según R3 (10 m) | backend | 2 | `backend/tests/test_tree_grouping.py` (`ST_DWithin 10` sobre geography) | ✅ |
-| **Q2** Dashboard muestra handle por observación | backend + clientes | 2–4 | backend `/public/observations` incluye `handle`; móvil `dashboard_screen.dart` lo muestra ✅ · web admin Inc 4 | 🟡 (backend+móvil ✅) |
+| **Q2** Dashboard muestra handle por observación | backend + clientes | 2–4 | backend `/public/observations` incluye `handle`; móvil `dashboard_screen.dart`; web admin `public_dashboard_screen.dart` | ✅ |
 | **Q4** Perfil muestra etiqueta L3 | backend + móvil | 2–3 | backend `GET /me/profile` + móvil `profile_screen.dart` (identidad/lifelist/insignias) | ✅ |
 | **Q4** Ningún módulo gatea por nivel | clientes + backend | 2–4 | backend sin checks de nivel; móvil `mobile/test/no_gating_test.dart` | ✅ |
 | **Q4** Registro permite elegir institución y "solicitar agregar" | backend + móvil | 2–3 | backend `GET /institutions` público: `backend/tests/test_institutions_public.py`; móvil dropdown en `register_screen.dart` consume `/institutions` + "solicitar agregar" | ✅ |
 | **Q4** Rankings por periodo (individual + institución) | backend | 2 | `backend/tests/test_rankings_profile.py::test_rankings_individual_and_by_institution` | ✅ |
 | **Q6** Dashboard expone indicadores social/educativo/ecológico automáticos | backend | 2 | `backend/tests/test_indicators.py::test_indicators_compute_automatically` | ✅ |
 | **Q6** Ningún indicador dispara aprobación/reprobación (U1) | backend | 2 | `backend/tests/test_indicators.py::test_indicators_have_no_threshold_logic` (AST: sin umbrales en código) | ✅ |
+| **Q6** Indicadores organizacionales capturados manualmente en la web admin (amendment) | web admin | 4 | `POST /admin/indicators/organizational` desde `org_indicators_screen.dart`; `web-admin/test/api_client_test.dart` (sin umbrales, U1) | ✅ |
 | **Q8** Toda observación atribuible a estado y municipio | backend | 2 | `derive_estado_municipio` (join `admin_boundary`); `/restricted` y filtros exponen estado/municipio · admin_boundary se carga por separado | 🟡 (lógica ✅; carga de límites = dato operativo) |
 | **Q8** Dashboards y rankings con filtro geográfico | backend | 2 | `backend/tests/test_rankings_profile.py::test_rankings_geo_filter` + `test_indicators.py::test_indicators_filter_by_estado` | ✅ |
 | **Q8** Agregar un estado no requiere nueva infraestructura (RC1) | infra | 2 | estado = filtro (`WHERE estado=...`), sin multi-tenancy: revisión + filtros geográficos ✅ | ✅ |
@@ -49,7 +50,7 @@
 | **T6** `submit` retorna sin esperar al validador | backend | 2 | `backend/tests/test_observation_create.py::test_submit_enqueues_job_without_waiting` (InMemoryBroker) + E2E compose | ✅ |
 | **T6** Resultado del **mock** dispara etiquetado válida/ruido y recompensa diferida correctos | contrato + backend | 1–2 | `backend/tests/test_worker_apply.py` (etiquetado + diferida + idempotencia) + E2E compose mock↔worker | ✅ |
 | **T7** Existe design system documentado con tokens Rotary+verde | docs | 1 | `docs/design-system/design-tokens.json` + `.md` | ✅ |
-| **T7** Ninguna pantalla introduce elementos fuera del sistema | clientes | 3–4 | móvil: tema generado solo desde `design-tokens.json`, sin hex literal: `mobile/test/theme_tokens_test.dart` ✅ · web admin Inc 4 | 🟡 (móvil ✅) |
+| **T7** Ninguna pantalla introduce elementos fuera del sistema | clientes | 3–4 | móvil `theme_tokens_test.dart` + web admin `theme_tokens_test.dart` (tema solo desde `design-tokens.json`, sin hex literal) | ✅ |
 
 ## Gates innegociables (Orquestador)
 
@@ -114,3 +115,23 @@ Orquestador. Total del repo: **112 pruebas verdes** (`contract`: 21 · `mock-val
 **Pendiente declarado:** apply E2E real en clúster con build de imágenes (Tester/QA, Inc 5);
 `integration_test` de cámara en hardware; web admin (Inc 4); placeholders de contenido AU2, texto
 final del disclaimer e iconos de marca (dato por verificar / decisión humana).
+
+## Resumen del Incremento 4 (web admin del consorcio)
+
+Construido por el **subagente Dev web admin** (Flutter Web, decisión del Orquestador) y verificado
+por mí. Total del repo: **138 pruebas verdes** (`contract`: 21 · `mock-validator`: 9 · `backend`: 52
+· `mobile`: 30 · `web-admin`: 26). `flutter analyze` limpio + **`flutter build web` ✅**.
+
+- **`web-admin/` (Flutter Web):** login admin sin PII (handle + código de respaldo vía
+  `/auth/recover`), lista F3 (aprobar/crear instituciones), gestión de **aliados firmantes**
+  (promover → coords exactas), **captura manual de indicadores organizacionales** (Q6 amendment, sin
+  umbrales/U1), **snapshots trimestrales**, **dashboard público** (obfuscado 1 km + caveat de origen
+  ciudadano + "Qn" + filtro por estado) y **dashboard restringido** (coords exactas, solo visible si
+  el rol es autorizado). Sin generación de PDFs. Tema solo desde `design-tokens.json`.
+- Cerró del lado web admin: Q4 (F3 + aliados), Q6 (organizacionales), Q5.B (snapshots/Qn/sin PDF/
+  restringido por rol), Q8 (filtro geográfico), T7, y gates #1/#2/#5 en cliente.
+
+**Punto de gobernanza para humanos (no es defecto):** con el contrato actual, `admin_consorcio`
+**no** ve coords exactas a menos que también sea `aliado_firmante` (la bitácora otorga coords
+exactas solo a "aliados firmantes"). El subagente respetó esto sin asumir herencia de acceso; si el
+consorcio espera ver exactas, es una decisión humana (relacionada con EA3/H3, fuera del software).
