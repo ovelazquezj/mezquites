@@ -1,0 +1,30 @@
+name: mezquite_web_admin
+description: "Web app de administración del consorcio (Flutter Web) — proyecto de ciencia ciudadana del mezquite."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  # Estado / inyección de dependencias (mismo patrón que la app móvil).
+  flutter_riverpod: ^2.6.1
+  # Cliente HTTP para la capa de API REST (/api/v1) del backend real.
+  http: ^1.2.2
+  # Persistencia local sin PII: solo el bearer token + handle del admin.
+  shared_preferences: ^2.3.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    # Fuente ÚNICA de estilo (T7). Copiado de docs/design-system/design-tokens.json.
+    - assets/design-tokens.json
