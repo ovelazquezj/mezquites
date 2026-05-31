@@ -18,6 +18,9 @@ htmlcov/
 .env.*
 !.env.example
 
+# Runtime de los scripts de administracion (scripts/manage.ps1)
+.logs/
+
 # Flutter / Dart (Incremento 3)
 .dart_tool/
 .flutter-plugins
