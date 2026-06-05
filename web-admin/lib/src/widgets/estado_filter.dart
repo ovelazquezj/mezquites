@@ -46,7 +46,7 @@ class _EstadoFilterState extends State<EstadoFilter> {
             key: const Key('estado-filter-field'),
             controller: _controller,
             decoration: const InputDecoration(
-              labelText: 'Filtrar por estado (Q8)',
+              labelText: 'Filtrar por estado',
               hintText: 'p.ej. Aguascalientes',
               isDense: true,
             ),

@@ -32,8 +32,8 @@ class Copy {
   static const captureCameraOnly =
       'La foto se toma con la cámara del dispositivo. No se admiten imágenes '
       'de la galería.';
-  static const captureNivelLabel = 'Nivel de paxtle (copa colonizada)';
-  static const captureNivelHint = 'Tu estimación visual. Dato autodeclarado.';
+  static const captureNivelLabel = 'Nivel de paxtle (parte de la copa cubierta)';
+  static const captureNivelHint = 'Lo estimas tú a ojo; no se revisa.';
   static const captureCuscutaLabel = '¿Cúscuta visible?';
   static const captureDanioLabel = '¿Signos de daño? (defoliación / ramas muertas)';
   static const captureTamanioLabel = 'Tamaño del árbol';
@@ -46,7 +46,7 @@ class Copy {
   static const feedbackTitle = 'Tu aporte';
   static const feedbackNote =
       'El resultado de cada foto no se muestra de forma individual. Aquí ves '
-      'una tasa agregada de tus aportaciones.';
+      'un resumen de tus aportaciones.';
 
   // --- Aprendizaje (Q5.C; sin gating, gate #3) ---
   static const learningTitle = 'Aprendizaje';
@@ -69,7 +69,8 @@ class Copy {
   // --- Cuenta (sin PII, gate #2) ---
   static const accountTitle = 'Tu cuenta';
   static const noPiiNote =
-      'No pedimos correo, teléfono ni nombre. Tu identidad es un handle.';
+      'No pedimos correo, teléfono ni nombre. Te identificas con un nombre de '
+      'usuario.';
   static const backupTitle = 'Guarda tu código de respaldo';
   static const backupNote =
       'Este código (y su QR) es la ÚNICA forma de recuperar tu cuenta. '

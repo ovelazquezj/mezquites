@@ -55,7 +55,7 @@ class SessionController extends StateNotifier<SessionState> {
         _api.setToken(null);
         state = const SessionState(
           error:
-              'Esta cuenta no tiene rol de administración del consorcio. Acceso denegado.',
+              'Esta cuenta no tiene permisos de administración del consorcio.',
         );
         return false;
       }
@@ -65,14 +65,14 @@ class SessionController extends StateNotifier<SessionState> {
       _api.setToken(null);
       state = SessionState(
         error: e.isAuthError
-            ? 'Handle o código de respaldo inválido.'
-            : 'No se pudo iniciar sesión (${e.statusCode}).',
+            ? 'Usuario o código de respaldo inválido.'
+            : 'No se pudo iniciar sesión. Inténtalo de nuevo.',
       );
       return false;
     } catch (_) {
       _api.setToken(null);
       state = const SessionState(
-        error: 'No se pudo contactar al backend. Verifica API_BASE_URL.',
+        error: 'No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.',
       );
       return false;
     }

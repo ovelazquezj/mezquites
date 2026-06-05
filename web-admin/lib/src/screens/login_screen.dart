@@ -63,7 +63,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 8),
                     Text(
                       'Proyecto de ciencia ciudadana del mezquite. '
-                      'Acceso sin datos personales: handle + código de respaldo.',
+                      'Acceso sin datos personales: tu usuario y tu código de '
+                      'respaldo.',
                       style: theme.textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 24),
@@ -71,7 +72,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       key: const Key('login-handle'),
                       controller: _handleCtrl,
                       decoration: const InputDecoration(
-                        labelText: 'Handle',
+                        labelText: 'Usuario',
                         hintText: 'p.ej. obs-7HQ4K2',
                       ),
                     ),
@@ -97,25 +98,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   CircularProgressIndicator(strokeWidth: 2))
                           : const Text('Entrar'),
                     ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Divider(),
-                    ),
-                    Text('¿Ya tienes un token?',
-                        style: theme.textTheme.bodyMedium),
                     const SizedBox(height: 8),
-                    TextField(
-                      key: const Key('login-token'),
-                      controller: _tokenCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Pegar token (Bearer)',
+                    // Acceso por token: solo para uso técnico. Oculto por
+                    // defecto para no confundir al usuario no experto.
+                    Theme(
+                      data: theme.copyWith(dividerColor: Colors.transparent),
+                      child: ExpansionTile(
+                        key: const Key('login-advanced'),
+                        tilePadding: EdgeInsets.zero,
+                        childrenPadding: EdgeInsets.zero,
+                        expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+                        title: Text('Opciones avanzadas',
+                            style: theme.textTheme.bodyMedium),
+                        children: [
+                          TextField(
+                            key: const Key('login-token'),
+                            controller: _tokenCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'Pegar token de acceso',
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          OutlinedButton(
+                            key: const Key('login-token-submit'),
+                            onPressed: _loginWithToken,
+                            child: const Text('Entrar con token'),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton(
-                      key: const Key('login-token-submit'),
-                      onPressed: _loginWithToken,
-                      child: const Text('Entrar con token'),
                     ),
                     if (session.error != null) ...[
                       const SizedBox(height: 16),

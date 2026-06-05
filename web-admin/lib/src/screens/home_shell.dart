@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/session.dart';
+import '../ui/copy.dart';
 import 'allies_screen.dart';
 import 'institutions_screen.dart';
 import 'org_indicators_screen.dart';
@@ -33,19 +34,19 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   List<_NavItem> _items(bool canSeeRestricted) {
     return [
-      _NavItem(Icons.dashboard_outlined, 'Dashboard público',
+      _NavItem(Icons.dashboard_outlined, Copy.navPublic,
           () => const PublicDashboardScreen()),
-      _NavItem(Icons.account_balance_outlined, 'Lista F3',
+      _NavItem(Icons.account_balance_outlined, Copy.navInstitutions,
           () => const InstitutionsScreen()),
-      _NavItem(Icons.handshake_outlined, 'Aliados firmantes',
+      _NavItem(Icons.handshake_outlined, Copy.navAllies,
           () => const AlliesScreen()),
-      _NavItem(Icons.fact_check_outlined, 'Indicadores org.',
+      _NavItem(Icons.fact_check_outlined, Copy.navIndicators,
           () => const OrgIndicatorsScreen()),
-      _NavItem(Icons.camera_outlined, 'Snapshots',
+      _NavItem(Icons.camera_outlined, Copy.navSnapshots,
           () => const SnapshotsScreen()),
       // Vista restringida: SOLO si el rol autoriza coords exactas (gate #5).
       if (canSeeRestricted)
-        _NavItem(Icons.lock_outline, 'Dashboard restringido',
+        _NavItem(Icons.lock_outline, Copy.navRestricted,
             () => const RestrictedDashboardScreen()),
     ];
   }

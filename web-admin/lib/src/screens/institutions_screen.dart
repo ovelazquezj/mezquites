@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_exception.dart';
 import '../models/models.dart';
 import '../state/session.dart';
+import '../ui/copy.dart';
 
 /// Lista F3 / instituciones (Q4). Ver lista completa (aprobadas + solicitadas),
 /// crear/aprobar, y "solicitar agregar" (ticket a EA3, status=solicitada).
@@ -54,14 +55,14 @@ class _InstitutionsScreenState extends ConsumerState<InstitutionsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_requestOnly
-                ? 'Solicitud creada (ticket a EA3).'
+                ? 'Solicitud enviada al consorcio para su revisión.'
                 : 'Institución aprobada y agregada.'),
           ),
         );
         setState(_reload);
       }
-    } on ApiException catch (e) {
-      _showError('No se pudo crear (${e.statusCode}).');
+    } on ApiException catch (_) {
+      _showError('No se pudo guardar. Inténtalo de nuevo.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -79,10 +80,11 @@ class _InstitutionsScreenState extends ConsumerState<InstitutionsScreen> {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Text('Lista F3 — Instituciones', style: theme.textTheme.displayLarge),
+        Text('Instituciones', style: theme.textTheme.displayLarge),
         const SizedBox(height: 8),
         Text(
-          'Lista cerrada administrada por EA3 (Q4). "Solicitadas" son tickets a EA3.',
+          'Las nuevas instituciones las revisa y aprueba el consorcio. Las '
+          'marcadas como "Solicitada" quedan pendientes de esa revisión.',
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: 16),
@@ -124,7 +126,7 @@ class _InstitutionsScreenState extends ConsumerState<InstitutionsScreen> {
                           value: _requestOnly,
                           onChanged: (v) => setState(() => _requestOnly = v),
                         ),
-                        const Text('Solo solicitar (EA3)'),
+                        const Text('Solo solicitar (revisión del consorcio)'),
                       ],
                     ),
                     FilledButton(
@@ -146,7 +148,7 @@ class _InstitutionsScreenState extends ConsumerState<InstitutionsScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (snap.hasError) {
-              return Text('No se pudo cargar la lista: ${snap.error}');
+              return const Text('No se pudo cargar la lista. Inténtalo de nuevo.');
             }
             final rows = snap.data ?? const <Institution>[];
             if (rows.isEmpty) {
@@ -157,7 +159,7 @@ class _InstitutionsScreenState extends ConsumerState<InstitutionsScreen> {
                 columns: const [
                   DataColumn(label: Text('Nombre')),
                   DataColumn(label: Text('Estado')),
-                  DataColumn(label: Text('Status')),
+                  DataColumn(label: Text('Situación')),
                 ],
                 rows: [
                   for (final i in rows)
@@ -165,7 +167,7 @@ class _InstitutionsScreenState extends ConsumerState<InstitutionsScreen> {
                       DataCell(Text(i.name)),
                       DataCell(Text(i.estado ?? '—')),
                       DataCell(Chip(
-                        label: Text(i.status),
+                        label: Text(Copy.institutionStatus(i.status)),
                         backgroundColor: i.isRequested
                             ? theme.colorScheme.secondary.withValues(alpha: 0.2)
                             : theme.colorScheme.tertiary

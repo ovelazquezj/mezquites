@@ -193,10 +193,10 @@ class OrganizationalIndicatorKey {
   static const List<OrganizationalIndicatorKey> all = [
     OrganizationalIndicatorKey(
         'mesas_formales_autoridades', 'Mesas formales con autoridades'),
+    OrganizationalIndicatorKey('aliados_firmantes_coords',
+        'Aliados firmantes con acceso a ubicación exacta'),
+    OrganizationalIndicatorKey('eventos_w3', 'Eventos realizados'),
     OrganizationalIndicatorKey(
-        'aliados_firmantes_coords', 'Aliados firmantes con coords exactas'),
-    OrganizationalIndicatorKey('eventos_w3', 'Eventos W3 ejecutados'),
-    OrganizationalIndicatorKey(
-        'menciones_mediaticas', 'Menciones / coberturas mediáticas'),
+        'menciones_mediaticas', 'Menciones en medios'),
   ];
 }

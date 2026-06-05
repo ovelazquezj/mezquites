@@ -51,8 +51,8 @@ class _OrgIndicatorsScreenState extends ConsumerState<OrgIndicatorsScreen> {
         _valueCtrl.clear();
       });
       _snack('Indicador registrado.');
-    } on ApiException catch (e) {
-      _snack('No se pudo registrar (${e.statusCode}).');
+    } on ApiException catch (_) {
+      _snack('No se pudo registrar. Inténtalo de nuevo.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -74,8 +74,8 @@ class _OrgIndicatorsScreenState extends ConsumerState<OrgIndicatorsScreen> {
             style: theme.textTheme.displayLarge),
         const SizedBox(height: 8),
         Text(
-          'Captura manual (Q6). Solo registro y seguimiento: ningún indicador '
-          'dispara aprobación/reprobación ni umbrales (U1).',
+          'Captura manual. Solo se registran y se les da seguimiento: ningún '
+          'indicador define metas, semáforos ni aprobación/reprobación.',
           key: const Key('org-u1-note'),
           style: theme.textTheme.bodyMedium,
         ),

@@ -75,7 +75,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           const InfoNote(Copy.noPiiNote),
           const SizedBox(height: 16),
           SectionCard(
-            title: 'Afiliación (opcional)',
+            title: '¿Perteneces a una institución? (opcional)',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -129,7 +129,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     width: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Crear handle y continuar'),
+                : const Text('Crear mi cuenta'),
           ),
         ],
       ),

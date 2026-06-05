@@ -71,7 +71,7 @@ class ProfileScreen extends ConsumerWidget {
                   feedbackAsync.when(
                     loading: () =>
                         const LinearProgressIndicator(),
-                    error: (e, _) => const Text('Sin feedback por ahora.'),
+                    error: (e, _) => const Text('Sin resumen por ahora.'),
                     // SOLO agregado: nunca por observación (gate #9).
                     data: (f) => Text(
                       f.message,
@@ -125,7 +125,7 @@ class _ProfileBody extends StatelessWidget {
           child: Column(
             children: [
               StatTile(
-                label: 'Lifelist (árboles únicos)',
+                label: 'Árboles distintos registrados',
                 value: '${profile.lifelistTrees}',
               ),
               StatTile(

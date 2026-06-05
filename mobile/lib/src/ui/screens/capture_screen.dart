@@ -51,7 +51,10 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
       if (!mounted) return;
       setState(() => _controller = controller);
     } catch (e) {
-      setState(() => _error = '$e');
+      final msg = e is CaptureException
+          ? e.message
+          : 'No se pudo usar la cámara. Inténtalo de nuevo.';
+      setState(() => _error = msg);
     } finally {
       if (mounted) setState(() => _initializing = false);
     }
@@ -65,7 +68,10 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
       if (!mounted) return;
       setState(() => _shot = result);
     } catch (e) {
-      setState(() => _error = '$e');
+      final msg = e is CaptureException
+          ? e.message
+          : 'No se pudo usar la cámara. Inténtalo de nuevo.';
+      setState(() => _error = msg);
     }
   }
 

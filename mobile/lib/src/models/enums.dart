@@ -40,7 +40,7 @@ enum Contexto {
   campoAbierto('campo_abierto', 'Campo abierto'),
   bordeCultivo('borde_cultivo', 'Borde de cultivo'),
   urbano('urbano', 'Urbano'),
-  ripario('ripario', 'Ripario'),
+  ripario('ripario', 'Junto a un río o arroyo'),
   otro('otro', 'Otro');
 
   const Contexto(this.wire, this.label);

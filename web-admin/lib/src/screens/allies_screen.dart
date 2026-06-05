@@ -37,7 +37,7 @@ class _AlliesScreenState extends ConsumerState<AlliesScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                'Cuenta $_lastPromoted promovida a aliado firmante (coords exactas).'),
+                'Cuenta $_lastPromoted autorizada como aliado firmante (acceso a ubicación exacta).'),
           ),
         );
       }
@@ -46,8 +46,8 @@ class _AlliesScreenState extends ConsumerState<AlliesScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.statusCode == 404
-                ? 'No existe una cuenta con ese handle.'
-                : 'No se pudo promover (${e.statusCode}).'),
+                ? 'No existe una cuenta con ese usuario.'
+                : 'No se pudo autorizar. Inténtalo de nuevo.'),
           ),
         );
       }
@@ -77,9 +77,9 @@ class _AlliesScreenState extends ConsumerState<AlliesScreen> {
                 Expanded(
                   child: Text(
                     'Un aliado firmante es la ÚNICA cuenta (además del consorcio) '
-                    'que puede ver coordenadas EXACTAS de los árboles (vista '
-                    'restringida). El resto del público solo ve coordenadas '
-                    'obfuscadas a 1 km. Promover habilita ese acceso.',
+                    'que puede ver la ubicación EXACTA de los árboles. El resto '
+                    'del público solo ve ubicaciones aproximadas (~1 km). '
+                    'Autorizar a alguien le da ese acceso.',
                     key: const Key('allies-coords-explainer'),
                     style: theme.textTheme.bodyMedium,
                   ),
@@ -95,7 +95,7 @@ class _AlliesScreenState extends ConsumerState<AlliesScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Promover cuenta', style: theme.textTheme.titleLarge),
+                Text('Autorizar una cuenta', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -105,7 +105,7 @@ class _AlliesScreenState extends ConsumerState<AlliesScreen> {
                         key: const Key('ally-handle'),
                         controller: _handleCtrl,
                         decoration: const InputDecoration(
-                          labelText: 'Handle de la cuenta',
+                          labelText: 'Usuario de la cuenta',
                           hintText: 'p.ej. obs-7HQ4K2',
                         ),
                       ),
@@ -114,13 +114,13 @@ class _AlliesScreenState extends ConsumerState<AlliesScreen> {
                     FilledButton(
                       key: const Key('ally-promote'),
                       onPressed: _busy ? null : _promote,
-                      child: const Text('Promover a aliado firmante'),
+                      child: const Text('Autorizar como aliado firmante'),
                     ),
                   ],
                 ),
                 if (_lastPromoted != null) ...[
                   const SizedBox(height: 12),
-                  Text('Última promoción: $_lastPromoted',
+                  Text('Último autorizado: $_lastPromoted',
                       style: theme.textTheme.bodyMedium),
                 ],
               ],

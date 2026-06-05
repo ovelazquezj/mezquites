@@ -43,7 +43,7 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
         (route) => false,
       );
     } catch (e) {
-      setState(() => _error = 'Handle o código inválido.');
+      setState(() => _error = 'Usuario o código inválido.');
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -62,7 +62,7 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
           TextField(
             key: const Key('recover_handle'),
             controller: _handle,
-            decoration: const InputDecoration(labelText: 'Handle'),
+            decoration: const InputDecoration(labelText: 'Usuario'),
           ),
           const SizedBox(height: 12),
           TextField(

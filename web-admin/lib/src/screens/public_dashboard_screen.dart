@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/models.dart';
 import '../state/session.dart';
+import '../ui/copy.dart';
 import '../widgets/caveat_banner.dart';
 import '../widgets/estado_filter.dart';
 
@@ -47,11 +48,11 @@ class _PublicDashboardScreenState
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Text('Dashboard público', style: theme.textTheme.displayLarge),
+        Text(Copy.navPublic, style: theme.textTheme.displayLarge),
         const SizedBox(height: 8),
         Text(
-          'Datos abiertos con coordenadas obfuscadas a 1 km. Pieza única: sin '
-          'exportación a PDF ni reportes narrativos.',
+          'Datos abiertos con ubicaciones aproximadas (~1 km). Vista de solo '
+          'consulta.',
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: 16),
@@ -70,7 +71,7 @@ class _PublicDashboardScreenState
               return const Center(child: CircularProgressIndicator());
             }
             if (snap.hasError) {
-              return Text('No se pudo cargar el dashboard: ${snap.error}');
+              return const Text('No se pudo cargar el panel. Inténtalo de nuevo.');
             }
             final data = snap.data!;
             final ind = data.indicators;
@@ -155,7 +156,7 @@ class _Metric extends StatelessWidget {
         Text('$value',
             style: theme.textTheme.titleLarge
                 ?.copyWith(color: theme.colorScheme.primary)),
-        Text(label, style: theme.textTheme.bodySmall),
+        Text(Copy.indicatorLabel(label), style: theme.textTheme.bodySmall),
       ],
     );
   }
@@ -183,17 +184,17 @@ class _ObservationsTable extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Observaciones (coords obfuscadas a 1 km)',
+            Text('Observaciones (ubicación aproximada ~1 km)',
                 style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 columns: const [
-                  DataColumn(label: Text('Handle')),
-                  DataColumn(label: Text('Lat (1 km)')),
-                  DataColumn(label: Text('Lon (1 km)')),
-                  DataColumn(label: Text('Nivel G4')),
+                  DataColumn(label: Text('Usuario')),
+                  DataColumn(label: Text('Latitud (~1 km)')),
+                  DataColumn(label: Text('Longitud (~1 km)')),
+                  DataColumn(label: Text('Nivel de paxtle')),
                   DataColumn(label: Text('Cúscuta')),
                   DataColumn(label: Text('Daño')),
                   DataColumn(label: Text('Estado')),
@@ -205,7 +206,7 @@ class _ObservationsTable extends StatelessWidget {
                       DataCell(Text(o.handle)),
                       DataCell(Text(o.lat.toStringAsFixed(2))),
                       DataCell(Text(o.lon.toStringAsFixed(2))),
-                      DataCell(Text(o.nivelG4)),
+                      DataCell(Text(Copy.nivelG4(o.nivelG4))),
                       DataCell(Text(o.flagCuscuta ? 'sí' : 'no')),
                       DataCell(Text(o.flagDanio ? 'sí' : 'no')),
                       DataCell(Text(o.estado ?? '—')),

@@ -25,7 +25,7 @@ class AccountScreen extends ConsumerWidget {
           const InfoNote(Copy.noPiiNote),
           const SizedBox(height: 8),
           SectionCard(
-            title: 'Tu handle',
+            title: 'Tu usuario',
             child: Text(
               session?.handle ?? '—',
               style: theme.textTheme.titleLarge,

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_exception.dart';
 import '../models/models.dart';
 import '../state/session.dart';
+import '../ui/copy.dart';
 import '../widgets/estado_filter.dart';
 
 /// Dashboard RESTRINGIDO (Q5.B): observaciones con coords **exactas**
@@ -41,12 +42,11 @@ class _RestrictedDashboardScreenState
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Text('Dashboard restringido — coords exactas',
-            style: theme.textTheme.displayLarge),
+        Text(Copy.navRestricted, style: theme.textTheme.displayLarge),
         const SizedBox(height: 8),
         Text(
-          'Coordenadas exactas. Acceso solo para aliados firmantes autorizados '
-          '(protección del árbol). Pieza única: sin exportación a PDF.',
+          'Ubicaciones exactas. Acceso solo para aliados firmantes autorizados '
+          '(para proteger los árboles). Vista de solo consulta.',
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: 16),
@@ -72,15 +72,15 @@ class _RestrictedDashboardScreenState
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Text(
-                      'Acceso denegado: tu rol no autoriza coordenadas exactas '
-                      '(requiere aliado firmante).',
+                      'Acceso denegado: tu cuenta no tiene permiso para ver '
+                      'ubicaciones exactas (requiere ser aliado firmante).',
                       key: const Key('restricted-denied'),
                       style: theme.textTheme.bodyMedium,
                     ),
                   ),
                 );
               }
-              return Text('No se pudo cargar: $err');
+              return const Text('No se pudo cargar. Inténtalo de nuevo.');
             }
             final rows = snap.data ?? const <RestrictedObservation>[];
             if (rows.isEmpty) {
@@ -93,10 +93,10 @@ class _RestrictedDashboardScreenState
                   scrollDirection: Axis.horizontal,
                   child: DataTable(
                     columns: const [
-                      DataColumn(label: Text('Handle')),
-                      DataColumn(label: Text('Lat exacta')),
-                      DataColumn(label: Text('Lon exacta')),
-                      DataColumn(label: Text('Nivel G4')),
+                      DataColumn(label: Text('Usuario')),
+                      DataColumn(label: Text('Latitud exacta')),
+                      DataColumn(label: Text('Longitud exacta')),
+                      DataColumn(label: Text('Nivel de paxtle')),
                       DataColumn(label: Text('Estado')),
                       DataColumn(label: Text('Municipio')),
                       DataColumn(label: Text('Validación')),
@@ -107,10 +107,10 @@ class _RestrictedDashboardScreenState
                           DataCell(Text(o.handle)),
                           DataCell(Text(o.lat.toStringAsFixed(6))),
                           DataCell(Text(o.lon.toStringAsFixed(6))),
-                          DataCell(Text(o.nivelG4)),
+                          DataCell(Text(Copy.nivelG4(o.nivelG4))),
                           DataCell(Text(o.estado ?? '—')),
                           DataCell(Text(o.municipio ?? '—')),
-                          DataCell(Text(o.validationState)),
+                          DataCell(Text(Copy.validationState(o.validationState))),
                         ]),
                     ],
                   ),

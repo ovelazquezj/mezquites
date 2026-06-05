@@ -45,7 +45,7 @@ class BackupCodeScreen extends ConsumerWidget {
           const InfoNote(Copy.backupNote),
           const SizedBox(height: 16),
           SectionCard(
-            title: 'Tu handle',
+            title: 'Tu usuario',
             child: SelectableText(
               session.handle,
               key: const Key('handle_value'),

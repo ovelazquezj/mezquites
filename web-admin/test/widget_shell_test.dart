@@ -8,6 +8,7 @@ import 'package:http/testing.dart';
 import 'package:mezquite_web_admin/src/api/api_client.dart';
 import 'package:mezquite_web_admin/src/screens/home_shell.dart';
 import 'package:mezquite_web_admin/src/state/session.dart';
+import 'package:mezquite_web_admin/src/ui/copy.dart';
 
 import 'helpers.dart';
 
@@ -57,15 +58,15 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(_shellAsAdmin());
     await tester.pump();
-    expect(find.text('Dashboard restringido'), findsNothing,
+    expect(find.text(Copy.navRestricted), findsNothing,
         reason: 'gate #5: un admin puro no ve coords exactas');
     // Sí ve los módulos admin en el NavigationRail.
-    expect(find.text('Lista F3'), findsOneWidget);
-    expect(find.text('Aliados firmantes'), findsOneWidget);
-    expect(find.text('Indicadores org.'), findsOneWidget);
-    expect(find.text('Snapshots'), findsOneWidget);
-    // "Dashboard público" aparece como etiqueta del nav y como título de la
+    expect(find.text(Copy.navInstitutions), findsOneWidget);
+    expect(find.text(Copy.navAllies), findsOneWidget);
+    expect(find.text(Copy.navIndicators), findsOneWidget);
+    expect(find.text(Copy.navSnapshots), findsOneWidget);
+    // El panel público aparece como etiqueta del nav y como título de la
     // pantalla seleccionada por defecto → al menos uno.
-    expect(find.text('Dashboard público'), findsWidgets);
+    expect(find.text(Copy.navPublic), findsWidgets);
   });
 }

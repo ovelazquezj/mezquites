@@ -47,7 +47,7 @@ def feedback(
     total = len(rows)
     validas = sum(1 for r in rows if r[0] == "valida")
     if total == 0:
-        message = "Aún no hay observaciones validadas para mostrar tu tasa agregada."
+        message = "Aún no hay observaciones evaluadas para mostrar tu resumen."
     else:
         message = f"De tus últimas {total} observaciones evaluadas, {validas} resultaron válidas."
     return FeedbackAggregate(

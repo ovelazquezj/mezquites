@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_exception.dart';
 import '../models/models.dart';
 import '../state/session.dart';
+import '../ui/copy.dart';
 import '../widgets/caveat_banner.dart';
 
 /// Snapshots trimestrales (Q5.B). Dispara un snapshot (POST /admin/snapshots) y
@@ -46,13 +47,13 @@ class _SnapshotsScreenState extends ConsumerState<SnapshotsScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Snapshot ${res.quarter} creado.')),
+          SnackBar(content: Text('Corte ${res.quarter} publicado.')),
         );
       }
-    } on ApiException catch (e) {
+    } on ApiException catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No se pudo crear el snapshot (${e.statusCode}).')),
+          const SnackBar(content: Text('No se pudo publicar el corte. Inténtalo de nuevo.')),
         );
       }
     } finally {
@@ -66,7 +67,7 @@ class _SnapshotsScreenState extends ConsumerState<SnapshotsScreen> {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Text('Snapshots trimestrales', style: theme.textTheme.displayLarge),
+        Text(Copy.navSnapshots, style: theme.textTheme.displayLarge),
         const SizedBox(height: 12),
         SnapshotStamp(quarter: _currentQuarter),
         const SizedBox(height: 16),
@@ -77,8 +78,8 @@ class _SnapshotsScreenState extends ConsumerState<SnapshotsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Cadencia trimestral (Q5.B). Disparar un snapshot publica el '
-                  'estado vigente del dataset público (coords obfuscadas a 1 km).',
+                  'Cada trimestre se publica un corte con el estado vigente de '
+                  'los datos públicos (ubicaciones aproximadas ~1 km).',
                   style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 16),
@@ -86,7 +87,7 @@ class _SnapshotsScreenState extends ConsumerState<SnapshotsScreen> {
                   key: const Key('snapshot-create'),
                   onPressed: _busy ? null : _createSnapshot,
                   icon: const Icon(Icons.camera_outlined),
-                  label: const Text('Disparar snapshot trimestral'),
+                  label: const Text('Publicar el corte del trimestre'),
                 ),
                 if (_last != null) ...[
                   const SizedBox(height: 16),
