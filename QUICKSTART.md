@@ -45,8 +45,11 @@ Todo se levanta **sin nube** con un solo `docker compose`.
 Sitúate en la raíz del repo en todos los pasos salvo donde se indique `cd`:
 
 ```powershell
-cd C:\Users\ovela\OneDrive\Desktop\CIDRIA_PROJECT\Rotary\mezquites
+cd C:\dev\mezquites
 ```
+
+> **No** pongas el repo en OneDrive ni en rutas muy largas: el límite de 260 caracteres de Windows
+> (MAX_PATH) rompe los builds de Android/Gradle. Mantén el checkout en una ruta corta como `C:\dev`.
 
 ---
 
@@ -292,6 +295,92 @@ Para cerrar la app: presiona `q` en la terminal de `flutter run`.
 
 ---
 
+## Parte 4-bis — Probar la app en un **teléfono real** (despliegue por ngrok)
+
+La Parte 4 corre en el **emulador** contra `10.0.2.2`. Para probar el APK en tu **teléfono físico
+desde cualquier red** (Wi-Fi o datos), exponemos el backend local por **HTTPS** con un túnel **ngrok**
+de dominio fijo. Todo se administra con un solo script: **`scripts\demo.ps1`**.
+
+```
+teléfono (APK) --HTTPS--> https://<Domain> --ngrok--> http://localhost:8000 (Docker)
+```
+
+> **Por qué HTTPS:** Android (targetSdk 35) bloquea tráfico HTTP en claro en release. El túnel ngrok
+> da HTTPS, así que no hay que tocar el manifiesto. La app ya envía el header
+> `ngrok-skip-browser-warning` para saltarse la página intersticial de ngrok-free.
+
+### 4b.1 Requisitos (una vez)
+
+| Requisito | Cómo |
+|---|---|
+| `ngrok` en PATH | `winget install ngrok` |
+| Cuenta ngrok + token | `ngrok config add-authtoken <token>` (lo copias de tu panel en ngrok.com) |
+| Dominio fijo reservado | En ngrok.com → **Domains** → reserva uno (p.ej. `component-embody-sympathy.ngrok-free.dev`) |
+| Teléfono con **depuración USB** | Conéctalo por USB y autoriza la PC; `adb devices` debe listarlo |
+
+### 4b.2 Construye el APK apuntando al dominio (una vez)
+
+La URL queda **horneada** en el build (no hay UI de configuración), así que solo se rehace si cambias
+el dominio:
+
+```powershell
+cd mobile
+flutter build apk --release --dart-define=API_BASE_URL=https://<Domain>/api/v1
+```
+**✓ Verifica:** termina con `✓ Built build\app\outputs\flutter-apk\app-release.apk`. Es un APK
+**universal** (incluye `arm64-v8a`, la arquitectura de la mayoría de los teléfonos).
+
+### 4b.3 Instala el APK en el teléfono
+
+```powershell
+$adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+& $adb install -r mobile\build\app\outputs\flutter-apk\app-release.apk
+```
+**✓ Verifica:** responde `Success`. (Si `adb devices` sale vacío: revisa el cable, autoriza la
+depuración USB en el teléfono, o reinicia con `& $adb kill-server; & $adb start-server`.)
+
+### 4b.4 Arranca el stack de demo (backend + túnel)
+
+```powershell
+.\scripts\demo.ps1 start
+```
+Levanta el backend en Docker (`up --build -d`) y el túnel ngrok con tu dominio fijo. Luego:
+
+```powershell
+.\scripts\demo.ps1 status
+```
+**✓ Verifica:**
+- `healthz local -> {"status":"ok"}` y los 5 contenedores **Up** (postgres/redis **healthy**).
+- `tunel: https://<Domain> -> http://localhost:8000`.
+- El `healthz` público puede mostrar el **aviso intersticial de ngrok** (`ERR_NGROK_6024`) cuando se
+  consulta desde un navegador — es esperado; **la app lo evita** con su header. Para comprobarlo como
+  lo hace la app: `curl.exe -s -H "ngrok-skip-browser-warning: true" https://<Domain>/healthz` →
+  `{"status":"ok"}`.
+
+> Si tu dominio es el de por defecto (`component-embody-sympathy.ngrok-free.dev`) no necesitas pasar
+> `-Domain`; en caso contrario: `.\scripts\demo.ps1 start -Domain mi-dominio.ngrok-free.dev` (y rehaz
+> el APK del paso 4b.2 con esa URL).
+
+### 4b.5 Abre la app en el teléfono y recorre el flujo
+
+Abre **Mezquite** en el teléfono y sigue el mismo recorrido del voluntario de la Parte 4.3 (registro
+→ captura por cámara → mapa → perfil). Ahora los datos viajan a tu backend local por el túnel.
+
+### 4b.6 Comandos útiles del día a día
+
+| Comando | Qué hace |
+|---|---|
+| `.\scripts\demo.ps1 status` | Estatus de todo + URL pública + healthz |
+| `.\scripts\demo.ps1 logs api` | Logs en vivo de un servicio (`api`/`result-worker`/`mock-validator`/`postgres`/`redis`) |
+| `.\scripts\demo.ps1 logs ngrok` | Logs del túnel |
+| `.\scripts\demo.ps1 restart backend` | Reinicia solo el backend (deja el túnel) |
+| `.\scripts\demo.ps1 stop` | Detiene túnel + backend (los datos persisten en los volúmenes) |
+
+Para **poblar datos** (admin, voluntarios, observaciones, snapshot) usa la **Parte 2** tal cual —
+funciona igual con el stack de demo arriba.
+
+---
+
 ## Parte 5 — Confirmar la capa de **acceso abierto** (resumen)
 
 Con datos cargados (Parte 2), el "acceso abierto" está vivo y es verificable de tres formas:
@@ -315,6 +404,11 @@ docker compose -f infra/compose/docker-compose.dev.yml down
 
 # Detener y BORRAR los datos (empezar de cero)
 docker compose -f infra/compose/docker-compose.dev.yml down -v
+```
+
+Si levantaste el **despliegue por ngrok** (Parte 4-bis), detén también el túnel con un solo comando:
+```powershell
+.\scripts\demo.ps1 stop      # detiene túnel + backend (los datos persisten)
 ```
 
 ## Apéndice B — Solución de problemas
