@@ -36,6 +36,9 @@ class ApiClient {
   Map<String, String> _headers({bool json = true}) => {
         if (json) 'Content-Type': 'application/json',
         if (_token != null) 'Authorization': 'Bearer $_token',
+        // Evita la página intersticial de ngrok-free en túneles de demo.
+        // Backends que no son ngrok ignoran este header.
+        'ngrok-skip-browser-warning': 'true',
       };
 
   Map<String, dynamic> _decode(http.Response r) {
@@ -93,6 +96,7 @@ class ApiClient {
   /// Fire-and-forget en el sentido de UI: el caller no debe bloquear esperando.
   Future<String> submitObservation(ObservationDraft draft) async {
     final request = http.MultipartRequest('POST', _uri('/observations'));
+    request.headers['ngrok-skip-browser-warning'] = 'true';
     if (_token != null) {
       request.headers['Authorization'] = 'Bearer $_token';
     }

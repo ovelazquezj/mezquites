@@ -85,3 +85,41 @@ ventana y su árbol de procesos.
 .\scripts\start.ps1 mobile      # 3) arranca emulador + app del voluntario
 .\scripts\status.ps1            # ver que los tres estén arriba
 ```
+
+## `demo.ps1` — despliegue por ngrok (probar en un teléfono real)
+
+Para que la **app del teléfono** se conecte al backend de la laptop **desde cualquier red** (Wi-Fi o
+datos), `demo.ps1` administra el **backend (Docker)** + un **túnel ngrok** con dominio fijo, exponiendo
+la API por **HTTPS**.
+
+```
+teléfono (APK) --HTTPS--> https://<Domain> --ngrok--> http://localhost:8000 (Docker)
+```
+
+```powershell
+.\scripts\demo.ps1 start              # backend + túnel ngrok
+.\scripts\demo.ps1 status             # estatus + URL pública + healthz (local y público)
+.\scripts\demo.ps1 logs api           # logs en vivo de un servicio (api|result-worker|mock-validator|postgres|redis)
+.\scripts\demo.ps1 logs ngrok         # logs del túnel
+.\scripts\demo.ps1 restart backend    # reinicia solo el backend
+.\scripts\demo.ps1 stop               # detiene túnel + backend (datos persisten)
+```
+
+| Acción | Objetivo | Qué hace |
+|---|---|---|
+| `start` | `all` (def) `backend` `ngrok` | Levanta backend (`up --build -d`) y/o el túnel. |
+| `stop` | idem | `docker compose stop` y/o mata ngrok (los datos persisten). |
+| `restart` | idem | `stop` + `start`. |
+| `status` | idem | `ps` + healthz local + URL pública + healthz público. |
+| `logs` | `all` `ngrok` o un **servicio** | Sigue los logs en vivo (`-NoFollow` para volcar y salir). |
+
+- **Dominio:** por defecto `component-embody-sympathy.ngrok-free.dev`; cámbialo con `-Domain`.
+- **Requisito:** `ngrok` en PATH y autenticado una vez (`ngrok config add-authtoken <token>`).
+- **El APK** debe construirse apuntando a ese dominio (una sola vez, porque la URL queda fija):
+  ```powershell
+  cd mobile
+  flutter build apk --release --dart-define=API_BASE_URL=https://<Domain>/api/v1
+  ```
+- La app móvil ya envía el header `ngrok-skip-browser-warning` para evitar la página intersticial de
+  ngrok-free.
+- ngrok en background guarda sus logs en `.logs\ngrok.log`; el PID en `.logs\ngrok.pid`.
