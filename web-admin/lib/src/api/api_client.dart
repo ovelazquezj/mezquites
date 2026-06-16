@@ -126,6 +126,44 @@ class ApiClient {
     return _decode(r)['temp_password'] as String;
   }
 
+  // --- ARCO: cancelación de cuenta (CR-006). SOLO administrador. ---
+
+  /// Busca cuentas por coincidencia parcial de handle para localizar la que se
+  /// va a cancelar (GET /admin/accounts?handle=...). No expone PII (solo `has_email`).
+  /// El backend exige rol `administrador`; lanza [ApiException] 403 si no lo es.
+  Future<List<AdminAccountSummary>> searchAccounts({
+    String? handle,
+    int limit = 50,
+  }) async {
+    final r = await _http.get(
+      _uri('/admin/accounts', {
+        if (handle != null && handle.isNotEmpty) 'handle': handle,
+        'limit': '$limit',
+      }),
+      headers: _headers(json: false),
+    );
+    return _decodeList(r)
+        .map((e) => AdminAccountSummary.fromJson((e as Map).cast()))
+        .toList();
+  }
+
+  /// Cancelación ARCO (DELETE /admin/accounts/{id}): anonimiza las observaciones,
+  /// elimina la identidad y audita sin PII (gates #2/#7). SOLO administrador.
+  /// `reason` es el motivo para la auditoría; NO debe contener datos personales.
+  Future<DeleteAccountResult> deleteAccount({
+    required String accountId,
+    String? reason,
+  }) async {
+    final r = await _http.delete(
+      _uri('/admin/accounts/$accountId'),
+      headers: _headers(),
+      body: json.encode({
+        if (reason != null && reason.isNotEmpty) 'reason': reason,
+      }),
+    );
+    return DeleteAccountResult.fromJson(_decode(r));
+  }
+
   // --- Admin: instituciones (lista F3, Q4) ---
 
   /// Lista F3 COMPLETA (aprobadas + solicitadas). Rol admin_consorcio.

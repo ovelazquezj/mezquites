@@ -20,6 +20,35 @@ class Copy {
   static const navMonitor = 'Monitor de revisión';
   // Gestión de usuarios (CR-002, solo administrador).
   static const navUsers = 'Usuarios del equipo';
+  // Cancelación de cuenta — derecho ARCO (CR-006, solo administrador).
+  static const navAccounts = 'Eliminar cuenta';
+  // Términos y Aviso de privacidad (CR-006).
+  static const navLegal = 'Legal';
+
+  // --- ARCO: eliminar cuenta (CR-006, solo administrador) ---
+  static const accountsIntro =
+      'Una persona puede pedir que eliminemos su cuenta (derecho de cancelación '
+      'de la LFPDPPP). Al hacerlo, su identidad se borra y sus observaciones se '
+      'vuelven anónimas: el dato ecológico se conserva en el panel público, pero '
+      'ya no queda ligado a esa persona. Esta acción no se puede deshacer.';
+  static const accountsSearchLabel = 'Buscar por usuario o handle';
+  static const accountsSearch = 'Buscar';
+  static const accountsEmpty = 'No se encontraron cuentas con ese criterio.';
+  static const accountsDelete = 'Eliminar cuenta';
+  static const accountsReasonLabel = 'Motivo (para el registro de auditoría)';
+  static const accountsReasonHint =
+      'No incluyas datos personales; queda en la bitácora de auditoría.';
+  static const accountsConfirmTitle = '¿Eliminar esta cuenta?';
+  static const accountsConfirmCancel = 'Cancelar';
+  static const accountsConfirmOk = 'Sí, eliminar';
+
+  // --- Legal: Términos y Aviso de privacidad (CR-006) ---
+  static const legalIntro =
+      'Términos y Condiciones y Aviso de privacidad del piloto. Son un BORRADOR '
+      'sujeto a revisión legal del consorcio; no constituyen asesoría legal.';
+  static const legalTermsTitle = 'Términos y Condiciones';
+  static const legalPrivacyTitle = 'Aviso de privacidad';
+  static const legalDraftBadge = 'BORRADOR · sujeto a revisión legal del consorcio';
 
   // --- Revisión humana (CR-001) ---
   static const reviewIntro =

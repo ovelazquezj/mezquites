@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/session.dart';
 import '../ui/copy.dart';
+import 'accounts_screen.dart';
 import 'allies_screen.dart';
 import 'institutions_screen.dart';
+import 'legal_screen.dart';
 import 'monitor_screen.dart';
 import 'org_indicators_screen.dart';
 import 'public_dashboard_screen.dart';
@@ -54,6 +56,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       if (session.canManageUsers)
         _NavItem(Icons.group_outlined, Copy.navUsers,
             () => const UsersScreen()),
+      // ARCO — Eliminar cuenta: SOLO administrador (CR-006).
+      if (session.canDeleteAccounts)
+        _NavItem(Icons.person_remove_outlined, Copy.navAccounts,
+            () => const AccountsScreen()),
       // Módulos de administración: solo admin_consorcio/administrador.
       if (isAdmin) ...[
         _NavItem(Icons.account_balance_outlined, Copy.navInstitutions,
@@ -69,6 +75,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       if (session.canSeeRestricted)
         _NavItem(Icons.lock_outline, Copy.navRestricted,
             () => const RestrictedDashboardScreen()),
+      // Legal (Términos + Aviso de privacidad): visible para toda la consola (CR-006).
+      _NavItem(Icons.gavel_outlined, Copy.navLegal, () => const LegalScreen()),
     ];
   }
 
