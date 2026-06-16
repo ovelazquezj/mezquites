@@ -1,5 +1,3 @@
-> ⚠️ BORRADOR — contenido educativo sujeto a revisión de la universidad/expertos del consorcio (AU2). No es asesoría técnica.
-
 # Una buena foto
 
 Una buena foto hace que tu observación sea mucho más útil. La idea es que, al verla, cualquiera pueda

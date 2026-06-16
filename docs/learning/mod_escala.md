@@ -1,5 +1,3 @@
-> ⚠️ BORRADOR — contenido educativo sujeto a revisión de la universidad/expertos del consorcio (AU2). No es asesoría técnica.
-
 # La escala de observación
 
 Cuando documentas un mezquite, te pedimos estimar qué tanto de su copa está cubierta por paxtle o

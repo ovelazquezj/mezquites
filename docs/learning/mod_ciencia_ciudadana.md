@@ -1,5 +1,3 @@
-> ⚠️ BORRADOR — contenido educativo sujeto a revisión de la universidad/expertos del consorcio (AU2). No es asesoría técnica.
-
 # ¿Por qué participar?
 
 La ciencia ciudadana es una forma de hacer ciencia entre muchas personas. No necesitas ser experto:

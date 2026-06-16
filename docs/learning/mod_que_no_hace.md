@@ -1,5 +1,3 @@
-> ⚠️ BORRADOR — contenido educativo sujeto a revisión de la universidad/expertos del consorcio (AU2). No es asesoría técnica.
-
 # Qué hace y qué NO hace la app
 
 Para que quede claro desde el principio: esta app sirve para **documentar y aprender**. Con ella tomas

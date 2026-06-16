@@ -1,5 +1,3 @@
-> ⚠️ BORRADOR — contenido educativo sujeto a revisión de la universidad/expertos del consorcio (AU2). No es asesoría técnica.
-
 # Reconocer la cúscuta
 
 La cúscuta (*Cuscuta* spp.) es muy fácil de reconocer una vez que sabes qué buscar: parece una maraña

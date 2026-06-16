@@ -1,5 +1,3 @@
-> ⚠️ BORRADOR — contenido educativo sujeto a revisión de la universidad/expertos del consorcio (AU2). No es asesoría técnica.
-
 # ¿Qué es el mezquite?
 
 El mezquite (*Prosopis laevigata*) es un árbol propio de las zonas secas de México. Está muy bien

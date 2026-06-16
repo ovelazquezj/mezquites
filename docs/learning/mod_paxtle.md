@@ -1,5 +1,3 @@
-> ⚠️ BORRADOR — contenido educativo sujeto a revisión de la universidad/expertos del consorcio (AU2). No es asesoría técnica.
-
 # Reconocer el paxtle (heno motita)
 
 El paxtle, también llamado "heno motita", es la planta *Tillandsia recurvata*. Se ve como pequeñas
