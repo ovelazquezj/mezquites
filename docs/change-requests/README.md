@@ -17,6 +17,7 @@ unidad construible** (Arquitecto, Dev backend, Dev web-admin, Dev móvil, Tester
 | [CR-005](CR-005-fe-web-voluntario.md) | FE web del voluntario (teléfono/tablet) | ✅ **Integrado en `main`** (web + branding completo; demo HTTPS por ngrok) | CR-002, CR-003, CR-004 W3 |
 | [CR-006](CR-006-arco-terminos-privacidad.md) | ARCO (eliminar cuenta) + Términos y Aviso de privacidad | ✅ **Integrado en `main`** (UI web-admin + legales; texto = BORRADOR del consorcio) | CR-002 |
 | [CR-007](CR-007-contenidos-aprender.md) | Contenidos de "Aprender" (texto propio + enlaces "Saber más" curados) | 🟢 **En curso** (carriles A contenido + B móvil) | — |
+| [CR-008](CR-008-despliegue-azure.md) | Despliegue en **Azure** (Container Apps + PostgreSQL Flexible Server + Static Web Apps + Key Vault) + backend **Azure Blob** | 📋 **Propuesto — formalizado** (ruta de lanzamiento 10-jul) | CR-004 W1 (auth real) |
 
 **Secuencia acordada:** **CR-001** primero (funda los roles y enmienda gates); **CR-003** en paralelo
 (independiente, branding); **CR-002** al final (depende de los roles de CR-001 + Firebase externo).

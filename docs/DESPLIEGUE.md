@@ -221,6 +221,108 @@ los pendientes de la §7.
 
 ---
 
+## 5-bis. Despliegue en Azure por Container Apps (ruta de lanzamiento, **sin K8s**)
+
+> **Esta es la ruta elegida para el lanzamiento del 10-jul** (CR-008). Materializa **H6 = Azure** con
+> **servicios gestionados** (sin administrar un clúster Kubernetes). Los overlays de §4/§5 siguen
+> siendo válidos si algún día se prefiere AKS; aquí se opta por Container Apps por simplicidad.
+>
+> **Contexto seguro resuelto:** web (Static Web Apps) y API (Container Apps) van **ambas por HTTPS**,
+> así que la cámara/geolocalización del navegador funcionan **sin** el proxy de "un solo origen"
+> (que solo hacía falta en la demo local por ngrok). Basta **CORS** (CR-004 W3) hacia el dominio del front.
+
+### 5-bis.1 Mapa de servicios
+
+| Pieza | Servicio Azure | Notas |
+|---|---|---|
+| Imagen del backend | **Azure Container Registry (ACR)** | `mezquite/backend` |
+| API | **Azure Container Apps** | ingress **externo HTTPS**, escala (incl. a 0), env desde Key Vault |
+| Base de datos | **Azure Database for PostgreSQL – Flexible Server** | PostGIS: allowlist `azure.extensions=POSTGIS` + `CREATE EXTENSION postgis` |
+| Imágenes (storage) | **Azure Blob Storage** | backend nativo `STORAGE_BACKEND=azure_blob` (URLs por SAS) |
+| Web voluntario + admin | **Azure Static Web Apps** | builds Flutter Web (HTTPS) |
+| Secretos | **Azure Key Vault** | `AUTH_SECRET`, DB, `AZURE_STORAGE_*`, `SMTP_*`, Firebase |
+
+### 5-bis.2 Provisión (una vez)
+
+```bash
+RG=mezquite-prod; LOC=mexicocentral          # o la región del patrocinador
+az group create -n $RG -l $LOC
+# Registro de imágenes
+az acr create -n mezquiteacr -g $RG --sku Basic --admin-enabled true
+# PostgreSQL Flexible Server + PostGIS
+az postgres flexible-server create -g $RG -n mezquite-pg --tier Burstable --sku-name Standard_B1ms \
+  --version 16 --storage-size 32 --admin-user mezadmin --admin-password '<SECRETO>'
+az postgres flexible-server parameter set -g $RG -s mezquite-pg --name azure.extensions --value POSTGIS
+#   luego, conectado a la DB:  CREATE EXTENSION IF NOT EXISTS postgis;
+# Storage (Blob)
+az storage account create -g $RG -n mezquitestorage --sku Standard_LRS
+az storage container create --account-name mezquitestorage -n observaciones
+# Key Vault
+az keyvault create -g $RG -n mezquite-kv
+# Entorno de Container Apps
+az containerapp env create -g $RG -n mezquite-env -l $LOC
+```
+
+### 5-bis.3 Secretos en Key Vault (nada en git, gate #2)
+
+```bash
+az keyvault secret set --vault-name mezquite-kv -n auth-secret      --value "$(openssl rand -hex 32)"
+az keyvault secret set --vault-name mezquite-kv -n database-url     --value "postgresql+psycopg://mezadmin:<SECRETO>@mezquite-pg.postgres.database.azure.com:5432/postgres?sslmode=require"
+az keyvault secret set --vault-name mezquite-kv -n azure-storage-cs --value "<connection-string-del-storage>"
+# + smtp-password, firebase, etc. cuando apliquen
+```
+
+### 5-bis.4 Backend en Container Apps
+
+```bash
+# Build + push a ACR
+az acr build -r mezquiteacr -t mezquite/backend:prod -f backend/Dockerfile .
+# Crear la Container App con ingress HTTPS externo y secretos referenciados a Key Vault
+az containerapp create -g $RG -n mezquite-api --environment mezquite-env \
+  --image mezquiteacr.azurecr.io/mezquite/backend:prod \
+  --ingress external --target-port 8000 \
+  --min-replicas 1 --max-replicas 3 \
+  --env-vars STORAGE_BACKEND=azure_blob AZURE_STORAGE_CONTAINER=observaciones \
+             AUTH_PROVIDER=firebase \
+             "CORS_ALLOW_ORIGINS=https://<web-voluntario>,https://<web-admin>" \
+             "DATABASE_URL=secretref:database-url" \
+             "AUTH_SECRET=secretref:auth-secret" \
+             "AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-cs"
+```
+
+Las **migraciones Alembic** corren al arrancar (mismo CMD que en Compose/K8s). El **primer
+administrador** se siembra por CLI una vez (§2.3) apuntando `DATABASE_URL` a la Flexible Server, o con
+`BOOTSTRAP_ADMIN_*` como secretos.
+
+### 5-bis.5 Web (voluntario + admin) en Static Web Apps
+
+```bash
+API=https://$(az containerapp show -g $RG -n mezquite-api --query properties.configuration.ingress.fqdn -o tsv)
+# Voluntario
+cd mobile && flutter build web --release --dart-define=API_BASE_URL=$API/api/v1 \
+  --dart-define=AUTH_MODE=firebase
+az staticwebapp create -g $RG -n mezquite-web --source build/web ...    # o despliegue por CI/CD
+# Admin (mismo patrón desde web-admin/)
+```
+
+Tras conocer los dominios definitivos de las Static Web Apps, **ajusta `CORS_ALLOW_ORIGINS`** de la
+Container App (paso 5-bis.4) a esos orígenes exactos.
+
+### 5-bis.6 Smoke test
+
+```bash
+curl https://$API/healthz                       # -> {"status":"ok"}
+# en el navegador del teléfono (HTTPS): registro/login Google · captura con cámara + geo · envío
+# en la web admin: login admin · bandeja de revisión humana · dashboards
+```
+
+### 5-bis.7 Pendientes propios de esta ruta
+- **Auth real**: `AUTH_PROVIDER=firebase` requiere el proyecto Firebase de **CR-004 W1** (hoy probado con mock).
+- **Backend `azure_blob`**: es código de CR-008 (clase `AzureBlobStorage` + `azure-storage-blob`); hasta integrarlo, `STORAGE_BACKEND` solo ofrece `local|s3`.
+- **SKU/costos**: confirmar con el patrocinador (Flexible Server, Container Apps, Static Web Apps).
+
+---
+
 ## 6. Cambios en camino que afectan el despliegue
 
 > Estos cambios están **acordados pero aún no implementados**. Los anoto aquí para que la guía esté
