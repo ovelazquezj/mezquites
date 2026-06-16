@@ -61,6 +61,16 @@ class Copy {
   static const learningNote =
       'Contenidos abiertos. Ningún módulo se bloquea: explora a tu ritmo.';
 
+  /// Banner de borrador en el detalle de cada módulo (CR-007). El contenido
+  /// formativo es BORRADOR sujeto a revisión de expertos/universidad (AU2/H4);
+  /// es informativo y NO es asesoría técnica (gate #1).
+  static const learningDraftBanner =
+      'BORRADOR sujeto a revisión de expertos del consorcio (AU2). Es contenido '
+      'informativo y educativo, no asesoría técnica ni recomendaciones de manejo.';
+
+  /// Encabezado de la sección de enlaces externos en el detalle.
+  static const learningMoreTitle = 'Saber más';
+
   // --- Perfil / gamificación (Q4) ---
   static const profileTitle = 'Perfil';
   static const rankingsTitle = 'Rankings';
@@ -243,39 +253,73 @@ class OnboardingPageData {
   ];
 }
 
-/// Módulo de Aprendizaje (placeholder AU2). Mide engagement; SIN gating.
+/// Módulo de Aprendizaje (CR-007). Mide engagement; SIN gating (gate #3).
+///
+/// El cuerpo del módulo NO vive aquí: se renderiza desde un asset markdown
+/// bundleado (`assetPath`). La fuente única del contenido es `docs/learning/`,
+/// que el orquestador copia a `mobile/assets/learning/` en la integración; en
+/// dev/tests usamos stubs breves (ver `mobile/assets/learning/`). El contenido
+/// es BORRADOR (AU2/H4) y la UI solo lo renderiza (gates #1/#8).
 class LearningModule {
   const LearningModule({
     required this.id,
     required this.title,
     required this.summary,
+    required this.assetPath,
   });
 
   final String id;
   final String title;
   final String summary;
 
-  // [PLACEHOLDER_AU2]: el contenido formativo real lo produce AU2 (Q5.C-D1).
+  /// Ruta del markdown bundleado que la pantalla de detalle renderiza.
+  final String assetPath;
+
+  /// Los 7 módulos de "Aprender" (CR-007 §3). Ids/assets EXACTOS: el orquestador
+  /// reemplaza los stubs de `assets/learning/<id>.md` por el contenido real de
+  /// `docs/learning/<id>.md` (misma convención de nombres).
   static const placeholders = <LearningModule>[
     LearningModule(
       id: 'mod_que_es',
       title: '¿Qué es el mezquite?',
       summary: 'Conoce al árbol que documentamos y su papel en el ecosistema.',
+      assetPath: 'assets/learning/mod_que_es.md',
     ),
     LearningModule(
       id: 'mod_paxtle',
-      title: 'Reconocer el paxtle',
+      title: 'Reconocer el paxtle (heno motita)',
       summary: 'Cómo identificar visualmente la presencia y cobertura de paxtle.',
+      assetPath: 'assets/learning/mod_paxtle.md',
+    ),
+    LearningModule(
+      id: 'mod_cuscuta',
+      title: 'Reconocer la cúscuta',
+      summary: 'Hilos amarillos/anaranjados que sí extraen savia del mezquite.',
+      assetPath: 'assets/learning/mod_cuscuta.md',
     ),
     LearningModule(
       id: 'mod_escala',
-      title: 'La escala de observación',
-      summary: 'Sano, leve, moderado, severo: cómo estimar el % de copa.',
+      title: 'La escala de observación (G4)',
+      summary: 'Sano, leve, moderado, severo: cómo estimar el % de copa a ojo.',
+      assetPath: 'assets/learning/mod_escala.md',
     ),
     LearningModule(
       id: 'mod_buena_foto',
       title: 'Una buena foto',
       summary: 'Encuadre, luz y distancia para que tu observación sea útil.',
+      assetPath: 'assets/learning/mod_buena_foto.md',
+    ),
+    LearningModule(
+      id: 'mod_ciencia_ciudadana',
+      title: '¿Por qué participar?',
+      summary: 'Tus observaciones forman un dataset abierto para el consorcio.',
+      assetPath: 'assets/learning/mod_ciencia_ciudadana.md',
+    ),
+    LearningModule(
+      id: 'mod_que_no_hace',
+      title: 'Qué hace y qué NO hace la app',
+      summary: 'Documentamos y educamos; no controlamos plagas ni damos recetas.',
+      assetPath: 'assets/learning/mod_que_no_hace.md',
     ),
   ];
 }
