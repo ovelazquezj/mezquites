@@ -11,6 +11,46 @@ def fake_jpeg(payload: bytes = b"fake-image-bytes") -> tuple[str, io.BytesIO, st
     return ("obs.jpg", io.BytesIO(payload), "image/jpeg")
 
 
+def jpeg_with_gps() -> bytes:
+    """JPEG real (Pillow) con tags EXIF GPS, para probar el saneo del gate #5 (CR-001)."""
+    from PIL import Image
+
+    img = Image.new("RGB", (8, 8), (10, 120, 60))
+    exif = Image.Exif()
+    exif[0x010F] = "TestCam"  # Make (tag NO-GPS; debe sobrevivir al saneo)
+    gps = exif.get_ifd(0x8825)
+    gps[1] = "N"
+    gps[2] = (21.0, 53.0, 7.0)
+    gps[3] = "W"
+    gps[4] = (102.0, 17.0, 30.0)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", exif=exif)
+    return buf.getvalue()
+
+
+def submit_jpeg_with_gps(client, token: str, *, lat: float = 21.88, lon: float = -102.29) -> str:
+    """Sube una observación cuya imagen lleva GPS en EXIF. Devuelve el observation_id."""
+    captured_at = datetime.now(timezone.utc)
+    payload = {
+        "lat": lat,
+        "lon": lon,
+        "captured_at": captured_at.isoformat(),
+        "nivel_g4": "leve",
+        "flag_cuscuta": False,
+        "flag_danio": False,
+        "tamanio": "mediano",
+        "contexto": "campo_abierto",
+    }
+    resp = client.post(
+        "/api/v1/observations",
+        headers=auth_header(token),
+        data={"payload": json.dumps(payload)},
+        files={"image": ("obs.jpg", io.BytesIO(jpeg_with_gps()), "image/jpeg")},
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()["observation_id"]
+
+
 def register(client, role: str = "voluntario", institution_id: str | None = None) -> dict:
     body: dict = {"role": role}
     if institution_id:

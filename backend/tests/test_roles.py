@@ -48,17 +48,10 @@ def test_admin_endpoints_require_admin_role(client, db_session):
 
 def test_public_observations_are_obfuscated_to_1km(client, db_session):
     """La vista pública NUNCA expone coords más finas que 1 km (gate #5)."""
-    from sqlalchemy import text
-
     firmante = register(client, role="aliado_firmante")
     exact_lat, exact_lon = 21.885311, -102.291622
-    resp = submit_observation(client, firmante["token"], lat=exact_lat, lon=exact_lon)
-    obs_id = resp.json()["observation_id"]
-    # Marcar como válida para que entre al dataset público (gate #9).
-    db_session.execute(
-        text("UPDATE observation SET validation_state='valida' WHERE id=:i"), {"i": obs_id}
-    )
-    db_session.commit()
+    # CR-001: la observación nace 'aceptada' y ya es visible (no requiere validación).
+    submit_observation(client, firmante["token"], lat=exact_lat, lon=exact_lon)
 
     pub = client.get("/api/v1/public/observations").json()
     assert len(pub) == 1

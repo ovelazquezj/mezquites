@@ -1,8 +1,8 @@
-"""Submit de observación: 8 etiquetas (Q2), triple etiqueta M3 (Q3), fire-and-forget (T6).
+"""Submit de observación: 8 etiquetas (Q2), triple etiqueta M3 (Q3), aceptación por defecto (CR-001).
 
-- Backend acepta las 8 etiquetas y persiste en 'pendiente' (gate #8: no valida G4/especie).
-- Submit responde de inmediato con recompensa base y NO devuelve estado de validación individual.
-- El submit ENCOLA un job en JOBS_STREAM sin esperar al validador (gate #6/T6, InMemoryBroker).
+- Backend acepta las 8 etiquetas y persiste en 'aceptada' (no valida G4/especie; autodeclarados).
+- Submit responde de inmediato con recompensa base y NO devuelve estado individual al voluntario.
+- El submit NO encola ningún job (frontera §6/YOLO inactiva, gate #10 superado) — AC7.
 """
 
 from __future__ import annotations
@@ -27,31 +27,41 @@ def test_submit_accepts_eight_labels_and_returns_base_reward(client, db_session)
     assert "validation_state" not in body
 
 
-def test_submit_persists_pendiente(client, db_session):
+def test_submit_persists_aceptada(client, db_session):
+    """Aceptación por defecto (CR-001): la observación nace 'aceptada'."""
     from sqlalchemy import text
 
     reg = register(client)
     submit_observation(client, reg["token"], lat=21.88, lon=-102.29)
-    state = db_session.execute(text("SELECT validation_state FROM observation")).scalar_one()
-    assert state == "pendiente"
+    state = db_session.execute(text("SELECT estado_revision FROM observation")).scalar_one()
+    assert state == "aceptada"
 
 
-def test_submit_enqueues_job_without_waiting(client, db_session):
-    """Fire-and-forget: el job queda en JOBS_STREAM; el submit no espera al validador (T6)."""
+def test_submit_does_not_enqueue_any_job(client, db_session):
+    """AC7: el submit NO publica en JOBS_STREAM (frontera §6 inactiva, gate #10 superado)."""
     reg = register(client)
-    resp = submit_observation(client, reg["token"], lat=21.88, lon=-102.29)
-    obs_id = resp.json()["observation_id"]
+    submit_observation(client, reg["token"], lat=21.88, lon=-102.29)
 
     broker = client.broker
     broker.ensure_group(JOBS_STREAM, VALIDATOR_GROUP)
     jobs = broker.consume(JOBS_STREAM, VALIDATOR_GROUP, "test-validator", count=10)
-    assert len(jobs) == 1
-    _, message = jobs[0]
-    assert message["observation_id"] == obs_id
-    assert message["image_ref"].startswith("observations/")
-    # El job lleva captured_at/lat/lon (contrato §6.2) y NO lleva veredicto.
-    assert "veredicto" not in message
-    assert message["lat"] == 21.88
+    assert jobs == []  # no se encoló nada
+
+
+def test_submit_awards_base_and_deferred_on_upload(client, db_session):
+    """CR-001: puntos base + diferida al subir (un rechazo posterior no los revierte)."""
+    from sqlalchemy import text
+
+    reg = register(client)
+    resp = submit_observation(client, reg["token"], lat=21.88, lon=-102.29)
+    obs_id = resp.json()["observation_id"]
+    kinds = {
+        row[0]
+        for row in db_session.execute(
+            text("SELECT kind FROM points_ledger WHERE observation_id=:i"), {"i": obs_id}
+        ).all()
+    }
+    assert kinds == {"base", "diferida"}
 
 
 def test_submit_rejects_invalid_nivel_g4(client, db_session):
