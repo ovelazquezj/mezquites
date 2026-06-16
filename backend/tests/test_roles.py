@@ -46,8 +46,8 @@ def test_admin_endpoints_require_admin_role(client, db_session):
     assert resp.status_code == 201
 
 
-def test_public_observations_are_obfuscated_to_1km(client, db_session):
-    """La vista pública NUNCA expone coords más finas que 1 km (gate #5)."""
+def test_public_observations_are_obfuscated_to_grid(client, db_session):
+    """La vista pública NUNCA expone coords más finas que la celda (gate #5; CR-009: 300 m)."""
     firmante = register(client, role="aliado_firmante")
     exact_lat, exact_lon = 21.885311, -102.291622
     # CR-001: la observación nace 'aceptada' y ya es visible (no requiere validación).
@@ -55,7 +55,7 @@ def test_public_observations_are_obfuscated_to_1km(client, db_session):
 
     pub = client.get("/api/v1/public/observations").json()
     assert len(pub) == 1
-    # Las coords públicas difieren de las exactas (obfuscadas a celda de 1 km).
+    # Las coords públicas difieren de las exactas (obfuscadas al centro de celda).
     assert pub[0]["lat"] != exact_lat
     assert pub[0]["lon"] != exact_lon
     assert "snapshot_quarter" in pub[0]

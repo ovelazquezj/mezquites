@@ -244,14 +244,33 @@ class RankingsResponse(BaseModel):
 
 class PublicObservation(BaseModel):
     handle: str
-    lat: float = Field(description="Obfuscada a celda de 1 km (gate #5).")
-    lon: float = Field(description="Obfuscada a celda de 1 km (gate #5).")
+    lat: float = Field(description="Obfuscada a la celda de obfuscación (gate #5; CR-009: 300 m).")
+    lon: float = Field(description="Obfuscada a la celda de obfuscación (gate #5; CR-009: 300 m).")
     nivel_g4: str
     flag_cuscuta: bool
     flag_danio: bool
     estado: str | None
     municipio: str | None
     captured_at: datetime
+    snapshot_quarter: str  # "Qn" — toda vista muestra fecha de snapshot
+
+
+class PublicGridCell(BaseModel):
+    """Celda agregada del mapa de calor público (CR-009, §4.1).
+
+    Agrega las observaciones **no-rechazadas** por celda de obfuscación (gate #5; CR-009: 300 m).
+    NUNCA expone coords más finas que la celda ni listas de árboles: solo el centro de celda
+    obfuscado y conteos agregados. Especie y nivel G4 son AUTODECLARADOS (gate #8).
+    """
+
+    lat: float = Field(description="Centro de celda obfuscado (gate #5; CR-009: 300 m).")
+    lon: float = Field(description="Centro de celda obfuscado (gate #5; CR-009: 300 m).")
+    n: int = Field(description="Observaciones no-rechazadas en la celda.")
+    n_paxtle: int = Field(description="Con daño/paxtle autodeclarado (flag_danio).")
+    n_cuscuta: int = Field(description="Con cúscuta autodeclarada (flag_cuscuta).")
+    g4_indice: float = Field(
+        description="Promedio del nivel G4 mapeado 0..3 (sano=0..severo=3), autodeclarado (gate #8)."
+    )
     snapshot_quarter: str  # "Qn" — toda vista muestra fecha de snapshot
 
 
