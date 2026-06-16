@@ -79,3 +79,41 @@ def test_google_login_accepts_institution(client, db_session):
     assert resp.status_code == 200, resp.text
     account = db_session.query(Account).filter(Account.provider_subject == "dave").one()
     assert str(account.institution_id) == str(inst.id)
+
+
+def test_ac4_db_rejects_email_on_voluntario(client, db_session):
+    """AC4 (gate #2 acotado): la DB IMPIDE guardar email en una cuenta no-administrador.
+
+    El CHECK ``ck_account_email_only_admin`` es la salvaguarda autoritativa contra PII de más en
+    cuentas de voluntario (el camino de la app nunca lo intenta, pero el constraint lo blinda).
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    bad = Account(
+        handle="obs-BADPII",
+        auth_provider="social_google",
+        provider_subject="evil",
+        role="voluntario",
+        email="alguien@correo.mx",  # PROHIBIDO para voluntario
+    )
+    db_session.add(bad)
+    try:
+        db_session.commit()
+        committed = True
+    except IntegrityError:
+        db_session.rollback()
+        committed = False
+    assert committed is False, "la DB NO debe permitir email en una cuenta voluntario (gate #2)"
+
+
+def test_ac4_no_voluntario_account_carries_pii(client, db_session):
+    """AC4: tras varios logins sociales, NINGUNA cuenta voluntario tiene email/username."""
+    for sub in ("u1", "u2", "u3"):
+        _google_login(client, token=f"mock:{sub}")
+    voluntarios = db_session.query(Account).filter(Account.role == "voluntario").all()
+    assert len(voluntarios) >= 3
+    for v in voluntarios:
+        assert v.email is None
+        assert v.username is None
+        assert v.password_hash is None
+        assert v.provider_subject is not None  # solo el id opaco
