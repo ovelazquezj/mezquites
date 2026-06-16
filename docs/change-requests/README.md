@@ -14,6 +14,7 @@ unidad construible** (Arquitecto, Dev backend, Dev web-admin, Dev móvil, Tester
 | [CR-002](CR-002-auth-identidad-real.md) | Autenticación con identidad real (Google/Firebase + usuario/contraseña) | ✅ **Integrado en `main`** (con `MockAuthProvider`; Google real pendiente de Firebase) | CR-001 |
 | [CR-003](CR-003-branding-onboarding-app.md) | Branding, splash, ícono y onboarding (apps Flutter) | ✅ **Integrado en `main`** | — |
 | [CR-004](CR-004-firebase-ios-cors.md) | Cierres de producción: Google/Firebase real · iOS · CORS | **Propuesto** (pendiente de revisión) | CR-002, CR-003 |
+| [CR-005](CR-005-fe-web-voluntario.md) | FE web del voluntario (Flutter Web) | **Propuesto** (pendiente de revisión) | CR-002, CR-003, CR-004 W3 |
 
 **Secuencia acordada:** **CR-001** primero (funda los roles y enmienda gates); **CR-003** en paralelo
 (independiente, branding); **CR-002** al final (depende de los roles de CR-001 + Firebase externo).
