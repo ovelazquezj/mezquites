@@ -2,6 +2,49 @@ import 'package:flutter/material.dart';
 
 import 'design_tokens.dart';
 
+/// Rampa de severidad del mapa de calor (CR-009), expuesta por el tema para no
+/// hardcodear colores en la UI (T7). Son 4 paradas (0..3 = sano, leve, moderado,
+/// severo): verde → amarillo → naranja → rojo. Es severidad AUTODECLARADA
+/// (gate #8): el color comunica intensidad, no un veredicto experto.
+@immutable
+class HeatRampTheme extends ThemeExtension<HeatRampTheme> {
+  const HeatRampTheme({required this.stops});
+
+  /// Las 4 paradas del degradado, de sano (0) a severo (3).
+  final List<Color> stops;
+
+  /// Color del calor para un índice 0..3 (interpolación lineal por tramos).
+  Color colorFor(double g4Indice) {
+    final v = g4Indice.clamp(0.0, 3.0);
+    final i = v.floor().clamp(0, stops.length - 2);
+    final t = v - i;
+    return Color.lerp(stops[i], stops[i + 1], t)!;
+  }
+
+  /// Paleta por defecto (la única; vive en el tema, no en los widgets).
+  static const defaults = HeatRampTheme(stops: [
+    Color(0xFF2E7D32), // 0 sano     — verde
+    Color(0xFFFBC02D), // 1 leve     — amarillo
+    Color(0xFFEF6C00), // 2 moderado — naranja
+    Color(0xFFC62828), // 3 severo   — rojo
+  ],);
+
+  @override
+  HeatRampTheme copyWith({List<Color>? stops}) =>
+      HeatRampTheme(stops: stops ?? this.stops);
+
+  @override
+  HeatRampTheme lerp(ThemeExtension<HeatRampTheme>? other, double t) {
+    if (other is! HeatRampTheme) return this;
+    return HeatRampTheme(
+      stops: [
+        for (var i = 0; i < stops.length; i++)
+          Color.lerp(stops[i], other.stops[i], t)!,
+      ],
+    );
+  }
+}
+
 /// Genera el [ThemeData] de Flutter EXCLUSIVAMENTE desde [DesignTokens] (T7).
 ///
 /// Estética minimalista tipo eBird, baja densidad. No hay colores ni medidas
@@ -67,6 +110,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
+      extensions: const [HeatRampTheme.defaults],
       scaffoldBackgroundColor: background,
       fontFamily: tokens.fontFamilyBase,
       visualDensity: VisualDensity.comfortable,

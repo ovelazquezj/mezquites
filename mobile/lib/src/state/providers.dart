@@ -160,3 +160,9 @@ final publicObservationsProvider =
 final publicIndicatorsProvider = FutureProvider.autoDispose<Indicators>(
   (ref) => ref.watch(apiClientProvider).publicIndicators(),
 );
+
+/// Celdas del mapa de calor público (CR-009). Sin auth: alimenta la vista
+/// "Mapa" (con o sin sesión). Coords ya obfuscadas server-side (gate #5).
+final publicGridProvider = FutureProvider.autoDispose<List<GridCell>>(
+  (ref) => ref.watch(apiClientProvider).publicGrid(),
+);

@@ -78,11 +78,43 @@ class Copy {
       'Tu etiqueta de identidad reconoce tu trayectoria. No desbloquea '
       'funciones: todas están disponibles desde el primer día.';
 
-  // --- Dashboards cliente ---
+  // --- Mapa de calor público (CR-009) ---
   static const dashboardTitle = 'Mapa de observaciones';
+
+  /// Título de la vista de mapa (entrada pública y pestaña "Mapa").
+  static const mapTitle = 'Mapa del mezquite';
+
+  /// Nota de obfuscación (gate #5 enmendado: 1 km → 300 m).
   static const obfuscationNote =
-      'Las ubicaciones públicas se muestran aproximadas (celda de ~1 km) para '
+      'Las ubicaciones públicas se muestran aproximadas (celda de ~300 m) para '
       'proteger los árboles.';
+
+  /// Entrada pública SIN login desde la Bienvenida (gate #3: abre siempre).
+  static const publicMapButton = 'Ver el mapa público';
+
+  /// Botón "ⓘ": abre el panel con disclaimer + indicadores.
+  static const mapInfoTooltip = 'Acerca de estos datos';
+  static const mapInfoTitle = 'Acerca de estos datos';
+
+  /// Disclaimer del mapa (gates #5/#1). Ubicaciones aproximadas + dato
+  /// ciudadano sin validación experta + nivel autodeclarado.
+  static const mapDisclaimer =
+      'Las ubicaciones son aproximadas (~300 m) para proteger a los árboles; '
+      'nunca se muestra la posición exacta. Es un dato de origen ciudadano, sin '
+      'validación por expertos, y el nivel de paxtle es autodeclarado por quien '
+      'observa. El mapa muestra presencia e impacto del paxtle, no acciones de '
+      'control ni de manejo.';
+
+  /// Leyenda del calor (por g4_indice 0..3).
+  static const mapLegendTitle = 'Nivel de paxtle (autodeclarado)';
+  static const mapEmpty = 'Aún no hay observaciones públicas para mostrar.';
+  static const mapError = 'No se pudo cargar el mapa. Intenta de nuevo.';
+
+  /// Niveles de la leyenda (verde → rojo), 0..3.
+  static const mapLegendLevels = ['Sano', 'Leve', 'Moderado', 'Severo'];
+
+  /// Indicadores numéricos detrás del botón "ⓘ".
+  static const mapIndicatorsTitle = 'Indicadores';
 
   // --- Cuenta + login (CR-002: identidad real con mínima PII, gate #2 acotado) ---
   static const accountTitle = 'Tu cuenta';
@@ -152,7 +184,7 @@ class Copy {
       'No venta ni cesión indebida. No vendemos tus datos ni los cedemos para '
       'fines ajenos al proyecto.\n\n'
       'Ubicación aproximada. Las ubicaciones que se muestran públicamente se '
-      'difuminan a una celda de aproximadamente 1 km para proteger los árboles. '
+      'difuminan a una celda de aproximadamente 300 m para proteger los árboles. '
       'Las coordenadas exactas solo se comparten con el aliado firmante del '
       'sitio correspondiente.\n\n'
       'Conservación. El identificador de tu cuenta se conserva mientras tu '

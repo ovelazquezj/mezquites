@@ -230,7 +230,8 @@ class Rankings {
       );
 }
 
-/// Observación pública con coords OBFUSCADAS a 1 km (gate #5).
+/// Observación pública con coords OBFUSCADAS a la celda pública (gate #5;
+/// CR-009 enmienda el radio de 1 km a 300 m server-side).
 /// La app NUNCA muestra coords más finas que esto.
 class PublicObservation {
   const PublicObservation({
@@ -248,7 +249,7 @@ class PublicObservation {
 
   final String handle;
 
-  /// Centro de celda de 1 km (obfuscado server-side, gate #5).
+  /// Centro de celda pública (obfuscado server-side, gate #5; CR-009 = 300 m).
   final double lat;
   final double lon;
   final String nivelG4;
@@ -270,6 +271,47 @@ class PublicObservation {
         estado: j['estado'] as String?,
         municipio: j['municipio'] as String?,
         capturedAt: DateTime.parse(j['captured_at'] as String),
+        snapshotQuarter: j['snapshot_quarter'] as String,
+      );
+}
+
+/// Celda del mapa de calor público (CR-009). Agrega las observaciones
+/// NO RECHAZADAS por celda de 300 m; el centro de celda viene OBFUSCADO
+/// server-side (gate #5 enmendado: 1 km → 300 m). La app NUNCA recibe ni
+/// muestra coords más finas que la celda.
+class GridCell {
+  const GridCell({
+    required this.lat,
+    required this.lon,
+    required this.n,
+    required this.nPaxtle,
+    required this.nCuscuta,
+    required this.g4Indice,
+    required this.snapshotQuarter,
+  });
+
+  /// Centro de celda de 300 m (obfuscado server-side, gate #5).
+  final double lat;
+  final double lon;
+
+  /// Nº de observaciones en la celda.
+  final int n;
+
+  /// Nº con paxtle (flag_danio) y con cúscuta (flag_cuscuta).
+  final int nPaxtle;
+  final int nCuscuta;
+
+  /// Promedio 0..3 (sano, leve, moderado, severo) → intensidad del calor.
+  final double g4Indice;
+  final String snapshotQuarter;
+
+  factory GridCell.fromJson(Map<String, dynamic> j) => GridCell(
+        lat: (j['lat'] as num).toDouble(),
+        lon: (j['lon'] as num).toDouble(),
+        n: (j['n'] as num).toInt(),
+        nPaxtle: (j['n_paxtle'] as num).toInt(),
+        nCuscuta: (j['n_cuscuta'] as num).toInt(),
+        g4Indice: (j['g4_indice'] as num).toDouble(),
         snapshotQuarter: j['snapshot_quarter'] as String,
       );
 }

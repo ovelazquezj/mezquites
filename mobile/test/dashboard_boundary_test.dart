@@ -2,9 +2,10 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// Q5.B: la app NO genera PDFs (solo dashboards). Gate #5: las vistas públicas
-/// muestran la advertencia de obfuscación a ~1 km. Gate #1: ningún copy promete
-/// control fitosanitario / reducción de infestación / recomendaciones de manejo.
+/// Q5.B: la app NO genera PDFs (solo visualiza). Gate #5 (enmendado por CR-009,
+/// 1 km → 300 m): las vistas públicas muestran la advertencia de obfuscación a
+/// ~300 m. Gate #1: ningún copy promete control fitosanitario / reducción de
+/// infestación / recomendaciones de manejo.
 void main() {
   test('la app no genera PDFs (Q5.B)', () {
     final pubspec = File('pubspec.yaml').readAsStringSync();
@@ -26,12 +27,16 @@ void main() {
     expect(offenders, isEmpty);
   });
 
-  test('el dashboard advierte la obfuscación a ~1 km (gate #5)', () {
-    final src =
-        File('lib/src/ui/screens/dashboard_screen.dart').readAsStringSync();
-    expect(src.contains('obfuscationNote'), isTrue);
+  test('el mapa advierte la obfuscación a ~300 m (gate #5, CR-009)', () {
+    // El mapa de calor es mapa puro; el aviso de ubicación aproximada vive en
+    // el panel "ⓘ" (disclaimer) y en la nota de obfuscación del copy.
     final copy = File('lib/src/ui/copy.dart').readAsStringSync();
-    expect(copy.contains('1 km'), isTrue);
+    // Gate #5 enmendado por CR-009: 1 km → 300 m. El copy ya NO promete 1 km.
+    expect(copy.contains('~300 m'), isTrue);
+    expect(copy.contains('~1 km'), isFalse,
+        reason: 'Gate #5 enmendado (CR-009): la obfuscación pública es ~300 m.',);
+    // El disclaimer del mapa nombra el radio aproximado y la falta de validación.
+    expect(copy.contains('mapDisclaimer'), isTrue);
   });
 
   test('gate #1: ningún copy promete control fitosanitario o manejo', () {

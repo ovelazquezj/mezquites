@@ -6,6 +6,7 @@ import '../../state/providers.dart';
 import '../copy.dart';
 import '../widgets/common.dart';
 import '../widgets/disclaimer_dialog.dart';
+import 'heat_map_screen.dart';
 import 'home_shell.dart';
 import 'legal_screen.dart';
 
@@ -142,6 +143,18 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                         )
                       : const Icon(Icons.login),
                   label: const Text(Copy.signInWithGoogle),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Entrada pública al mapa de calor SIN iniciar sesión (CR-009,
+              // gate #3: abre siempre; los datos públicos no requieren auth).
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  key: const Key('open_public_map'),
+                  onPressed: () => HeatMapScreen.openPublic(context),
+                  icon: const Icon(Icons.map_outlined),
+                  label: const Text(Copy.publicMapButton),
                 ),
               ),
               const SizedBox(height: 8),
