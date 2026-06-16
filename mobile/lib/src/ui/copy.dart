@@ -39,14 +39,16 @@ class Copy {
   static const captureTamanioLabel = 'Tamaño del árbol';
   static const captureContextoLabel = 'Contexto del sitio';
   static const captureSubmit = 'Registrar observación';
+  // Revisión humana (CR-001): toda observación se acepta al instante.
   static const captureQueued =
-      'Observación registrada. ¡Gracias por contribuir!';
+      'Observación registrada y aceptada. ¡Gracias por contribuir!';
 
-  // --- Feedback agregado (gate #9) ---
+  // --- Resumen agregado de aportaciones (CR-001) ---
   static const feedbackTitle = 'Tu aporte';
   static const feedbackNote =
-      'El resultado de cada foto no se muestra de forma individual. Aquí ves '
-      'un resumen de tus aportaciones.';
+      'Tus observaciones se aceptan al registrarlas. El equipo del consorcio '
+      'las revisa después; aquí ves un resumen de tus aportaciones, nunca el '
+      'resultado de una foto en particular.';
 
   // --- Aprendizaje (Q5.C; sin gating, gate #3) ---
   static const learningTitle = 'Aprendizaje';

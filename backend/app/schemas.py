@@ -73,8 +73,8 @@ class ObservationCreate(BaseModel):
 class ObservationSubmitResponse(BaseModel):
     observation_id: uuid.UUID
     base_points: int
-    message: str = "Observación registrada. ¡Gracias por contribuir!"
-    # NO se devuelve validation_state (Q5.A-D1: sin estado de validación individual).
+    message: str = "Observación registrada y aceptada. ¡Gracias por contribuir!"
+    # NO se devuelve estado de revisión individual (Q5.A-D1: sin acusación por observación).
 
 
 class ObservationMine(BaseModel):

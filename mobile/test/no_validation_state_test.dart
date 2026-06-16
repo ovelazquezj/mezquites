@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mezquite_app/src/models/models.dart';
+import 'package:mezquite_app/src/ui/copy.dart';
 
 /// Gate #9 / Q5.A-D1: la app del voluntario NUNCA muestra estado de validación
 /// individual. El modelo MineObservation no tiene `validationState`, y el
@@ -48,10 +49,17 @@ void main() {
       'window': 20,
       'total_considered': 8,
       'validas': 6,
-      'message': 'De tus últimas 8 observaciones evaluadas, 6 resultaron válidas.',
+      'message': 'De tus últimas 8 observaciones, 6 siguen aceptadas.',
     });
     expect(f.window, 20);
     expect(f.totalConsidered, 8);
     expect(f.validas, 6);
+  });
+
+  test('AC6: el copy de envío dice "registrada y aceptada" (CR-001)', () {
+    expect(Copy.captureQueued.toLowerCase(), contains('aceptada'));
+    // El copy del aporte no promete resultado por foto individual (Q5.A-D1).
+    expect(Copy.feedbackNote.toLowerCase(), contains('resumen'));
+    expect(Copy.feedbackNote.toLowerCase(), contains('en particular'));
   });
 }
