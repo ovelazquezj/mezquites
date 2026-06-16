@@ -161,6 +161,9 @@ etiquetando su grado de soporte. Etiquetas usadas en toda la bitácora:
     snapshots públicos. Institución concreta = *decisión humana pendiente*.
   - **Acceso = A2 + C2:** vista pública con **coordenadas obfuscadas a grid 1 km × 1 km**; vista
     restringida a **aliados firmantes** con coords exactas.
+    > **Enmendado por CR-009 (2026-06-16):** la celda pública pasa de **1 km → 300 m** (mapa de calor
+    > público). Sigue siendo celda agregada que oculta el árbol exacto; coords exactas solo a
+    > `aliado_firmante`. Ver gate #5 enmendado.
   - **Destinatarios = todos** (autoridades estatales, CONAFOR regional, universidades, municipios,
     público). Transparencia operacional.
   - **Cadencia = trimestral** (snapshots cada 3 meses).
@@ -447,7 +450,13 @@ contexto. El **sistema de validación (YOLO) NO se desarrolla aquí** — track 
    (reset por SMTP). El JWT sigue sin PII. Ver amendment de Q5.D-D1.
 3. **Sin gating:** ningún módulo bloquea funcionalidad por nivel o por capacitación.
 4. **Captura:** solo cámara nativa con EXIF; galería deshabilitada.
-5. **Obfuscación:** vista pública nunca expone coords más finas que grid 1 km.
+5. ~~**Obfuscación:** vista pública nunca expone coords más finas que grid 1 km.~~
+   **Enmendado por CR-009 (2026-06-16):** la celda pública se afina de **1 km → 300 m** para soportar el
+   **mapa de calor** público (Aguascalientes). Sigue siendo **celda agregada** (≈9 ha): no revela el árbol
+   exacto ni coords más finas que 300 m; las coords exactas siguen **solo** para `aliado_firmante`.
+   Conmutable por `obfuscation_grid_m` (gate #6). **Motivo:** la protección del árbol se sostiene a 300 m
+   (la celda agrupa varios árboles); la decisión humana del 2026-06-16 acepta el trade-off para la
+   visualización de impacto.
 6. **Paridad de entornos:** dev/QA corren sin nube (storage/broker/DB conmutables).
 7. **Trazabilidad:** cada criterio de aceptación de la bitácora tiene prueba asociada.
 8. ~~**Alcance de validación:** la validación automática se limita a **es-árbol + presencia-de-parásitos**
