@@ -33,6 +33,9 @@ class AuthSession {
   /// Solo el `administrador` gestiona usuarios de backend (CR-002).
   bool get canManageUsers => role == 'administrador';
 
+  /// Solo el `administrador` ejecuta la cancelación ARCO de cuentas (CR-006).
+  bool get canDeleteAccounts => role == 'administrador';
+
   /// Roles con acceso a la consola del consorcio (CR-001 amplía los de revisión).
   bool get canEnterAdminConsole => isAdmin || canReview;
 }
@@ -87,6 +90,59 @@ class BackendUserCreated extends BackendUser {
         hasEmail: (j['has_email'] ?? false) as bool,
         mustChangePassword: (j['must_change_password'] ?? false) as bool,
         tempPassword: (j['temp_password'] ?? '') as String,
+      );
+}
+
+/// Resumen de una cuenta para la pantalla ARCO de cancelación (CR-006). SOLO
+/// `administrador`. Gate #2: NUNCA expone PII (email/sub/username); solo `hasEmail`
+/// como señal y el conteo de observaciones que se anonimizarían al eliminar.
+class AdminAccountSummary {
+  AdminAccountSummary({
+    required this.id,
+    required this.handle,
+    required this.role,
+    required this.authProvider,
+    required this.hasEmail,
+    required this.observations,
+  });
+
+  final String id;
+  final String handle;
+  final String role;
+  final String authProvider;
+  final bool hasEmail;
+  final int observations;
+
+  factory AdminAccountSummary.fromJson(Map<String, dynamic> j) =>
+      AdminAccountSummary(
+        id: (j['id'] ?? '') as String,
+        handle: (j['handle'] ?? '') as String,
+        role: (j['role'] ?? '') as String,
+        authProvider: (j['auth_provider'] ?? '') as String,
+        hasEmail: (j['has_email'] ?? false) as bool,
+        observations: (j['observations'] ?? 0) as int,
+      );
+}
+
+/// Resultado de la cancelación ARCO (DELETE /admin/accounts/{id}). Sin PII.
+/// `observationsAnonymized`: nº de observaciones cuyo vínculo a la persona se rompió
+/// (el dato ecológico se conserva en el dataset público).
+class DeleteAccountResult {
+  DeleteAccountResult({
+    required this.deletedAccountId,
+    required this.observationsAnonymized,
+    required this.message,
+  });
+
+  final String deletedAccountId;
+  final int observationsAnonymized;
+  final String message;
+
+  factory DeleteAccountResult.fromJson(Map<String, dynamic> j) =>
+      DeleteAccountResult(
+        deletedAccountId: (j['deleted_account_id'] ?? '') as String,
+        observationsAnonymized: (j['observations_anonymized'] ?? 0) as int,
+        message: (j['message'] ?? '') as String,
       );
 }
 

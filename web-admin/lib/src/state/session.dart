@@ -36,6 +36,9 @@ class SessionState {
   /// Gestión de usuarios de backend (CR-002): SOLO `administrador`.
   bool get canManageUsers => session?.canManageUsers ?? false;
 
+  /// Cancelación ARCO de cuentas (CR-006): SOLO `administrador`.
+  bool get canDeleteAccounts => session?.canDeleteAccounts ?? false;
+
   SessionState copyWith({AuthSession? session, String? error}) =>
       SessionState(session: session, error: error);
 }

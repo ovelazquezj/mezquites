@@ -164,4 +164,67 @@ void main() {
       expect(rec.requests.single.url.path, '/api/v1/restricted/observations');
     });
   });
+
+  group('ARCO — cancelación de cuenta (CR-006, solo administrador)', () {
+    test('searchAccounts hace GET /admin/accounts con handle', () async {
+      final rec = RequestRecorder();
+      final api = _client(rec, responder: (req) {
+        return http.Response(
+            json.encode([
+              {
+                'id': 'a1',
+                'handle': 'obs-juan',
+                'role': 'voluntario',
+                'auth_provider': 'social_google',
+                'has_email': false,
+                'observations': 3,
+              }
+            ]),
+            200,
+            headers: {'content-type': 'application/json'});
+      });
+      final rows = await api.searchAccounts(handle: 'juan');
+      final req = rec.requests.single;
+      expect(req.method, 'GET');
+      expect(req.url.path, '/api/v1/admin/accounts');
+      expect(req.url.queryParameters['handle'], 'juan');
+      expect(rows, hasLength(1));
+      expect(rows.single.handle, 'obs-juan');
+      expect(rows.single.observations, 3);
+    });
+
+    test('deleteAccount hace DELETE /admin/accounts/{id} con motivo', () async {
+      final rec = RequestRecorder();
+      final api = _client(rec, responder: (req) {
+        return http.Response(
+            json.encode({
+              'deleted_account_id': 'a1',
+              'observations_anonymized': 5,
+              'message': 'Cuenta eliminada y observaciones anonimizadas.',
+            }),
+            200,
+            headers: {'content-type': 'application/json'});
+      });
+      final res = await api.deleteAccount(
+          accountId: 'a1', reason: 'solicitud del titular');
+      final req = rec.requests.single;
+      expect(req.method, 'DELETE');
+      expect(req.url.path, '/api/v1/admin/accounts/a1');
+      expect(_jsonBody(req)['reason'], 'solicitud del titular');
+      expect(res.observationsAnonymized, 5);
+    });
+
+    test('deleteAccount 403 (rol insuficiente) → ApiException auth', () async {
+      final rec = RequestRecorder();
+      final api = _client(rec, responder: (req) {
+        return http.Response(json.encode({'detail': 'forbidden'}), 403,
+            headers: {'content-type': 'application/json'});
+      });
+      await expectLater(
+        api.deleteAccount(accountId: 'a1'),
+        throwsA(isA<ApiException>()
+            .having((e) => e.isAuthError, 'isAuthError', isTrue)),
+      );
+    });
+  });
 }
