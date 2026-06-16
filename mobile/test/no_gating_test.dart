@@ -9,14 +9,20 @@ import 'helpers.dart';
 void main() {
   testWidgets('todos los módulos de Aprendizaje son abribles (sin bloqueo)',
       (tester) async {
+    // Superficie alta: la lista (lazy) renderiza los 7 módulos sin recortar.
+    tester.view.physicalSize = const Size(1080, 3200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     await tester.pumpWidget(wrap(const LearningScreen()));
     await tester.pumpAndSettle();
 
-    // Los 4 módulos placeholder aparecen y ninguno está deshabilitado.
+    // Los 7 módulos (CR-007) aparecen y ninguno está deshabilitado.
     final tiles = find.byType(ListTile);
-    expect(tiles, findsNWidgets(4));
+    expect(tiles, findsNWidgets(7));
 
-    for (var i = 0; i < 4; i++) {
+    for (var i = 0; i < 7; i++) {
       final tile = tester.widget<ListTile>(tiles.at(i));
       expect(tile.onTap, isNotNull,
           reason: 'Ningún módulo debe estar bloqueado (gate #3).',);

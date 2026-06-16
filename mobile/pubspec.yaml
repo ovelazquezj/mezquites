@@ -36,6 +36,11 @@ dependencies:
   # En navegador de teléfono/tablet abre la cámara real (gate #4, W0=a). El móvil NATIVO sigue
   # usando `camera`+`native_exif` (sin galería); image_picker solo se usa en la rama web.
   image_picker: ^1.1.2
+  # --- Contenidos de "Aprender" (CR-007) ---
+  # Render del markdown bundleado (texto propio + enlaces "Saber más"). Compila en web.
+  flutter_markdown: ^0.7.4
+  # Abrir los enlaces "Saber más" en el navegador EXTERNO (LaunchMode.externalApplication).
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
@@ -54,6 +59,9 @@ flutter:
   assets:
     - assets/design-tokens.json
     - assets/branding/
+    # Contenidos de "Aprender" (CR-007): markdown bundleado por módulo. Stubs en
+    # dev/tests; el orquestador los reemplaza por docs/learning/ en la integración.
+    - assets/learning/
 
 # --- Ícono de app (CR-003) ---
 # Genera mipmaps Android (mdpi→xxxhdpi) desde el master de marca; adaptive icon
