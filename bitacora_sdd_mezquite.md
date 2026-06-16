@@ -208,6 +208,33 @@ etiquetando su grado de soporte. Etiquetas usadas en toda la bitácora:
   respaldo / QR); sin flujo de verificación de tutor; si hay módulo Comunidad con UGC, reporte al
   comité sin moderación previa; dashboard/exports muestran caveat de origen ciudadano.
 
+> **AMENDMENT Q5.D-D1 — Autenticación con identidad real (CR-002, decisión humana del 2026-06-15).**
+> El usuario decide pasar de la auth **seudónima sin PII** a **identidad real**, enmendando el
+> **gate #2** de forma **acotada** (no se abre la puerta a PII arbitraria). Motivo: cuentas atadas a
+> personas reales para la app social (Google) y para el consorcio (usuario/contraseña), manteniendo el
+> mínimo de datos:
+> - **App (voluntarios) = mínima PII.** El inicio de sesión es **Sign in with Google** vía **Firebase
+>   Auth** (solo Google al inicio; Facebook a futuro). La cuenta guarda **solo el id opaco del
+>   proveedor** (`provider` + `sub`, columna `provider_subject`). **Prohibido** persistir email o
+>   nombre del token de Google. El `handle` se conserva como **identificador de presentación sin PII**
+>   (atribución pública I2), derivado del `sub`, no del email.
+> - **Backend (administrador/evaluador/analista) = identidad real por diseño.** Acceso por
+>   **usuario + contraseña** (hash **argon2**). **Solo el `administrador` guarda email** (para reset por
+>   correo vía SMTP); `evaluador`/`analista` **sin email** (su reset lo dispara el administrador).
+> - **Alta controlada.** El **administrador crea** evaluador/analista (invitación + contraseña
+>   temporal); **no** hay auto-registro abierto de roles. `POST /auth/register` **deja de aceptar
+>   `role`** (siempre `voluntario`) y el **primer administrador** se siembra por **config/CLI**
+>   (bootstrap). Esto cierra además el hueco histórico del gate #5 (auto-asignación de rol).
+> - **Cuentas móviles actuales: arranque limpio**, sin migración de las cuentas seudónimas previas.
+> - **Salvaguarda gate #6 (paridad).** El login social no corre offline; se introduce un **proveedor de
+>   auth conmutable** (`AUTH_PROVIDER=mock|firebase`) — `mock` en dev/QA/test (sin red ni Google),
+>   `firebase` en prod. Igual que broker/storage.
+> - **Acotación del gate #2 (lo que sigue prohibido):** **ninguna cuenta `voluntario` guarda
+>   email/teléfono/nombre**; solo `provider_subject`. El token JWT sigue sin PII en el payload. La PII
+>   en el backend se limita a `email` de `administrador`. Gates #3/#4/#5/#7 intactos.
+> - **Legal/operativo (no software, del usuario):** aviso de privacidad + borrado de datos
+>   (Google/Play, LFPDPPP). Sin esto la app no sale de modo desarrollo.
+
 ### Q7-D1 — Salvaguardas (consolidación)
 - **Decisión.** Recomendaciones de manejo → boundary Q1-D1. Georreferencia → Q5.B-D1 (protección del
   árbol). Menores → Q5.D-D1. PII → no se captura. **Disclaimer único al primer uso (D1):** buenas
@@ -413,7 +440,11 @@ contexto. El **sistema de validación (YOLO) NO se desarrolla aquí** — track 
 ### Gates que el Orquestador debe verificar
 1. **Boundary Q1:** rechazar toda promesa de control fitosanitario directo, reducción medible de
    infestación o recomendaciones químicas/mecánicas autónomas.
-2. **Sin PII:** ninguna feature exige email/teléfono/nombre real; recuperación sin PII.
+2. ~~**Sin PII:** ninguna feature exige email/teléfono/nombre real; recuperación sin PII.~~
+   **Enmendado (acotado) por CR-002 (2026-06-15):** identidad real con mínima PII. La app (`voluntario`)
+   guarda **solo** `provider_subject` (id opaco de Google), **nunca** email/teléfono/nombre; el backend
+   guarda identidad real por diseño (usuario/contraseña argon2) y **solo `administrador` guarda email**
+   (reset por SMTP). El JWT sigue sin PII. Ver amendment de Q5.D-D1.
 3. **Sin gating:** ningún módulo bloquea funcionalidad por nivel o por capacitación.
 4. **Captura:** solo cámara nativa con EXIF; galería deshabilitada.
 5. **Obfuscación:** vista pública nunca expone coords más finas que grid 1 km.
