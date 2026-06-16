@@ -20,7 +20,16 @@ from pydantic import BaseModel, Field
 
 class RegisterRequest(BaseModel):
     institution_id: uuid.UUID | None = None  # F3; None ⇒ "Independiente"
-    role: Literal["voluntario", "aliado_firmante", "admin_consorcio"] = "voluntario"
+    # NOTA (CR-001): el registro aún admite asignar rol (los nuevos roles de revisión incluidos);
+    # la restricción del registro a `voluntario` + bootstrap de roles por CLI es alcance de CR-002.
+    role: Literal[
+        "voluntario",
+        "aliado_firmante",
+        "admin_consorcio",
+        "administrador",
+        "evaluador",
+        "analista",
+    ] = "voluntario"
 
 
 class RegisterResponse(BaseModel):
@@ -85,11 +94,15 @@ class ObservationMine(BaseModel):
 
 
 class FeedbackAggregate(BaseModel):
-    """Feedback AGREGADO de tasa de validación (Q5.A-D1). NUNCA acusación individual."""
+    """Feedback AGREGADO de aportaciones (Q5.A-D1). NUNCA acusación individual.
+
+    Revisión humana (CR-001): toda observación se acepta al subir, así que el resumen pasa a
+    "aceptadas / contadas" sobre las últimas N. ``validas`` = no-rechazadas (compatibilidad de campo).
+    """
 
     window: int
     total_considered: int
-    validas: int
+    validas: int  # no-rechazadas (aceptadas + confirmadas) en la ventana
     message: str
 
 
@@ -153,7 +166,7 @@ class RestrictedObservation(BaseModel):
     estado: str | None
     municipio: str | None
     captured_at: datetime
-    validation_state: str
+    estado_revision: str  # aceptada | confirmada | rechazada (revisión humana, CR-001)
 
 
 class Indicators(BaseModel):
@@ -192,3 +205,70 @@ class SnapshotResponse(BaseModel):
     quarter: str
     created_at: datetime
     observations_total: int
+
+
+# --- Revisión humana (CR-001) ---
+
+
+class ReviewQueueItem(BaseModel):
+    """Fila de la cola de revisión (sin coord exacta; solo estado/municipio, gate #5)."""
+
+    observation_id: uuid.UUID
+    handle: str
+    captured_at: datetime
+    estado_revision: str
+    nivel_g4: str
+    flag_cuscuta: bool
+    flag_danio: bool
+    tamanio: str | None
+    contexto: str | None
+    estado: str | None
+    municipio: str | None
+
+
+class HumanReviewEntry(BaseModel):
+    """Una entrada del log append-only de revisión humana."""
+
+    veredicto: str
+    nota: str | None
+    reviewer_handle: str
+    created_at: datetime
+
+
+class ReviewObservationDetail(BaseModel):
+    """Detalle para revisión: 8 etiquetas + metadata + estado + historial (sin coord exacta)."""
+
+    observation_id: uuid.UUID
+    handle: str
+    captured_at: datetime
+    estado_revision: str
+    nivel_g4: str
+    flag_cuscuta: bool
+    flag_danio: bool
+    tamanio: str | None
+    contexto: str | None
+    estado: str | None
+    municipio: str | None
+    historial: list[HumanReviewEntry]
+
+
+class VerdictRequest(BaseModel):
+    veredicto: Literal["confirmada", "rechazada"]
+    nota: str | None = None
+
+
+class VerdictResponse(BaseModel):
+    observation_id: uuid.UUID
+    estado_revision: str
+    message: str
+
+
+class ReviewStats(BaseModel):
+    """Conteos por estado_revision + throughput de revisión (Monitor del analista)."""
+
+    aceptadas: int
+    confirmadas: int
+    rechazadas: int
+    total: int
+    pendientes_de_revision: int  # = aceptadas (aún sin veredicto humano)
+    revisiones_totales: int  # filas en human_review
