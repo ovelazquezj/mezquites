@@ -12,9 +12,12 @@ unidad construible** (Arquitecto, Dev backend, Dev web-admin, Dev móvil, Tester
 |---|---|---|---|
 | [CR-001](CR-001-revision-humana.md) | Revisión humana en el backend (sin YOLO) | Aprobado, **sin codificar** | — |
 | [CR-002](CR-002-auth-identidad-real.md) | Autenticación con identidad real (Google/Firebase + usuario/contraseña) | Aprobado, **sin codificar** | CR-001 |
+| [CR-003](CR-003-branding-onboarding-app.md) | Branding, splash, ícono y onboarding (apps Flutter) | Aprobado, **sin codificar** | — |
 
-**Secuencia acordada:** primero **CR-001** (no depende de servicios externos), luego **CR-002**
-(requiere proyecto Firebase + huellas + aviso de privacidad del usuario).
+**Secuencia acordada:** **CR-001** primero (funda los roles y enmienda gates); **CR-003** en paralelo
+(independiente, branding); **CR-002** al final (depende de los roles de CR-001 + Firebase externo).
+Orden de **integración** recomendado: CR-001 → CR-003 → CR-002 (minimiza conflictos en archivos móviles
+compartidos `app.dart`/`pubspec.yaml`/`copy.dart`).
 
 ## Cómo ejecutar un CR con el equipo de agentes
 
