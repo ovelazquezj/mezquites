@@ -16,6 +16,7 @@ unidad construible** (Arquitecto, Dev backend, Dev web-admin, Dev móvil, Tester
 | [CR-004](CR-004-firebase-ios-cors.md) | Cierres de producción: Google/Firebase real · iOS · CORS | **W3 (CORS) ✅ integrado**; W1 (Firebase) / W2 (iOS) **propuestos** | CR-002, CR-003 |
 | [CR-005](CR-005-fe-web-voluntario.md) | FE web del voluntario (teléfono/tablet) | ✅ **Integrado en `main`** (web + branding completo; demo HTTPS por ngrok) | CR-002, CR-003, CR-004 W3 |
 | [CR-006](CR-006-arco-terminos-privacidad.md) | ARCO (eliminar cuenta) + Términos y Aviso de privacidad | ✅ **Integrado en `main`** (UI web-admin + legales; texto = BORRADOR del consorcio) | CR-002 |
+| [CR-007](CR-007-contenidos-aprender.md) | Contenidos de "Aprender" (texto propio + enlaces "Saber más" curados) | 🟢 **En curso** (carriles A contenido + B móvil) | — |
 
 **Secuencia acordada:** **CR-001** primero (funda los roles y enmienda gates); **CR-003** en paralelo
 (independiente, branding); **CR-002** al final (depende de los roles de CR-001 + Firebase externo).
