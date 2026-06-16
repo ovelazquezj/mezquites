@@ -99,7 +99,7 @@ class _RestrictedDashboardScreenState
                       DataColumn(label: Text('Nivel de paxtle')),
                       DataColumn(label: Text('Estado')),
                       DataColumn(label: Text('Municipio')),
-                      DataColumn(label: Text('Validación')),
+                      DataColumn(label: Text('Revisión')),
                     ],
                     rows: [
                       for (final o in rows)
@@ -110,7 +110,7 @@ class _RestrictedDashboardScreenState
                           DataCell(Text(Copy.nivelG4(o.nivelG4))),
                           DataCell(Text(o.estado ?? '—')),
                           DataCell(Text(o.municipio ?? '—')),
-                          DataCell(Text(Copy.validationState(o.validationState))),
+                          DataCell(Text(Copy.estadoRevision(o.estadoRevision))),
                         ]),
                     ],
                   ),

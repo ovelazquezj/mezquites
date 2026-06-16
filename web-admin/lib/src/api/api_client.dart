@@ -191,5 +191,76 @@ class ApiClient {
         .toList();
   }
 
+  // --- Revisión humana (CR-001): rol evaluador/analista/administrador ---
+
+  /// Cola de revisión (sin coord exacta, gate #5). Filtros opcionales.
+  Future<List<ReviewQueueItem>> reviewQueue({
+    String? estadoRevision,
+    String? estado,
+    String? municipio,
+    int limit = 100,
+    int offset = 0,
+  }) async {
+    final r = await _http.get(
+      _uri('/review/queue', {
+        if (estadoRevision != null && estadoRevision.isNotEmpty)
+          'estado_revision': estadoRevision,
+        if (estado != null && estado.isNotEmpty) 'estado': estado,
+        if (municipio != null && municipio.isNotEmpty) 'municipio': municipio,
+        'limit': '$limit',
+        'offset': '$offset',
+      }),
+      headers: _headers(json: false),
+    );
+    return _decodeList(r)
+        .map((e) => ReviewQueueItem.fromJson((e as Map).cast()))
+        .toList();
+  }
+
+  /// Detalle + historial de veredictos de una observación (sin coord exacta).
+  Future<ReviewObservationDetail> reviewDetail(String observationId) async {
+    final r = await _http.get(
+      _uri('/review/observations/$observationId'),
+      headers: _headers(json: false),
+    );
+    return ReviewObservationDetail.fromJson(_decode(r));
+  }
+
+  /// URL de la imagen para el visor (el bearer va en el header del propio GET).
+  /// La sirve el backend con EXIF GPS saneado salvo aliado_firmante (gate #5).
+  Uri reviewImageUri(String observationId) =>
+      _uri('/review/observations/$observationId/image');
+
+  /// Bytes de la imagen (EXIF GPS saneado server-side salvo aliado_firmante).
+  Future<List<int>> reviewImageBytes(String observationId) async {
+    final r =
+        await _http.get(reviewImageUri(observationId), headers: _headers(json: false));
+    if (r.statusCode >= 200 && r.statusCode < 300) return r.bodyBytes;
+    throw ApiException(r.statusCode, 'No se pudo cargar la imagen', body: r.body);
+  }
+
+  /// Emite un veredicto humano (confirmada|rechazada). Solo evaluador/administrador.
+  Future<Map<String, dynamic>> submitVerdict({
+    required String observationId,
+    required String veredicto,
+    String? nota,
+  }) async {
+    final r = await _http.post(
+      _uri('/review/observations/$observationId/verdict'),
+      headers: _headers(),
+      body: json.encode({
+        'veredicto': veredicto,
+        if (nota != null && nota.isNotEmpty) 'nota': nota,
+      }),
+    );
+    return _decode(r);
+  }
+
+  /// Métricas de la cola de revisión (Monitor del analista).
+  Future<ReviewStats> reviewStats() async {
+    final r = await _http.get(_uri('/review/stats'), headers: _headers(json: false));
+    return ReviewStats.fromJson(_decode(r));
+  }
+
   void close() => _http.close();
 }

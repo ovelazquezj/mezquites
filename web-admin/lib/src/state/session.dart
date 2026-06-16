@@ -29,6 +29,10 @@ class SessionState {
   /// exactas): rol `aliado_firmante` (la autorización real la impone el backend).
   bool get canSeeRestricted => session?.role == 'aliado_firmante';
 
+  /// Capacidades de revisión humana (CR-001). La autorización real la impone el backend.
+  bool get canReview => session?.canReview ?? false;
+  bool get canEmitVerdict => session?.canEmitVerdict ?? false;
+
   SessionState copyWith({AuthSession? session, String? error}) =>
       SessionState(session: session, error: error);
 }
@@ -51,11 +55,11 @@ class SessionController extends StateNotifier<SessionState> {
         handle: handle.trim(),
         backupCode: backupCode.trim(),
       );
-      if (!session.isAdmin) {
+      if (!session.canEnterAdminConsole) {
         _api.setToken(null);
         state = const SessionState(
           error:
-              'Esta cuenta no tiene permisos de administración del consorcio.',
+              'Esta cuenta no tiene permisos para la consola del consorcio.',
         );
         return false;
       }
@@ -88,14 +92,14 @@ class SessionController extends StateNotifier<SessionState> {
     }
     final role = (claims['role'] ?? '') as String;
     final handle = (claims['handle'] ?? '') as String;
-    if (role != 'admin_consorcio') {
+    final session = AuthSession(handle: handle, role: role, token: token.trim());
+    if (!session.canEnterAdminConsole) {
       state = const SessionState(
         error:
-            'El token no corresponde al rol de administración del consorcio. Acceso denegado.',
+            'El token no corresponde a un rol de la consola del consorcio. Acceso denegado.',
       );
       return false;
     }
-    final session = AuthSession(handle: handle, role: role, token: token.trim());
     _api.setToken(session.token);
     state = SessionState(session: session);
     return true;
