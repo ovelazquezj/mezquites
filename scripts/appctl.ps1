@@ -42,7 +42,7 @@ param(
     [switch]$Build,
     [switch]$NoFollow
 )
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 
 # --- Rutas (autolocalizadas) ---
 $Root      = Split-Path $PSScriptRoot -Parent
