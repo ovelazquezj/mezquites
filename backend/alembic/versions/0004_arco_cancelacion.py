@@ -65,7 +65,7 @@ def upgrade() -> None:
     op.execute(
         sa.text(
             "INSERT INTO account (id, handle, auth_provider, role, identity_label) "
-            "VALUES (:id, :handle, 'social_google', 'voluntario', 'cuenta_eliminada') "
+            "VALUES (CAST(:id AS uuid), :handle, 'social_google', 'voluntario', 'cuenta_eliminada') "
             "ON CONFLICT (id) DO NOTHING"
         ).bindparams(id=SENTINEL_ACCOUNT_ID, handle=SENTINEL_HANDLE)
     )
@@ -75,5 +75,5 @@ def downgrade() -> None:
     op.drop_index("account_deletion_created_idx", table_name="account_deletion")
     op.drop_table("account_deletion")
     op.execute(
-        sa.text("DELETE FROM account WHERE id = :id").bindparams(id=SENTINEL_ACCOUNT_ID)
+        sa.text("DELETE FROM account WHERE id = CAST(:id AS uuid)").bindparams(id=SENTINEL_ACCOUNT_ID)
     )
