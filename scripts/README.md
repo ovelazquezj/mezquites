@@ -7,6 +7,64 @@ vez o un componente a la vez.
 > **Independiente de la ruta:** los scripts se autolocalizan con `$PSScriptRoot`, así que **siguen
 > funcionando si mueves el repo** (p. ej. a `C:\dev`). No hay rutas absolutas codificadas.
 
+---
+
+## ⭐ `appctl` — controlador de DEMOS y PRUEBAS (front + back)
+
+Un solo comando para **toda la app** con `start | stop | restart | status | logs`, por componente o
+todo a la vez. Hay versión **PowerShell** (`appctl.ps1`) y **Bash** (`appctl.sh`) — idénticas.
+
+```powershell
+.\scripts\appctl.ps1 start            # backend + web + túnel + admin
+.\scripts\appctl.ps1 status           # estado + URLs (pública y local)
+.\scripts\appctl.ps1 logs web         # logs de un componente
+.\scripts\appctl.ps1 restart web -Build   # reconstruye y reinicia la web
+.\scripts\appctl.ps1 stop             # detiene todo (los datos del backend persisten)
+```
+```bash
+./scripts/appctl.sh start             # idéntico en Bash (git-bash / WSL / Linux / macOS)
+./scripts/appctl.sh status
+./scripts/appctl.sh restart web --build
+./scripts/appctl.sh logs tunnel
+./scripts/appctl.sh stop
+```
+
+| Componente | Qué levanta | Dónde se abre |
+|---|---|---|
+| **backend** | Docker Compose: postgres + redis + api | `http://localhost:8000` (Swagger en `…/api/v1/docs`) |
+| **web** | App del **voluntario** (Flutter Web) tras un **reverse-proxy** (web + API en un solo origen) | se abre por el **túnel** (ver abajo) |
+| **tunnel** | Túnel **ngrok HTTPS** → el proxy | **`https://<Domain>`** ← la web del voluntario |
+| **admin** | **Web-admin** del consorcio (Flutter Web estático) | `http://localhost:5001` |
+
+| Acción | Objetivo | Qué hace |
+|---|---|---|
+| `start` | `all` (def) `backend` `web` `tunnel` `admin` | Arranca el/los componente(s). |
+| `stop` | idem | Detiene (datos del backend persisten). |
+| `restart` | idem | `stop` + `start`. |
+| `status` | idem | Estado + URLs (pública y local) + healthz. |
+| `logs` | un componente (`backend`/`web`/`tunnel`/`admin`) | Sigue los logs en vivo (`-NoFollow`/`--no-follow` para volcar y salir). |
+
+**Cómo se prueba (importante):**
+- La **web del voluntario** se abre por el **túnel HTTPS** (`https://<Domain>`), porque la **cámara y la
+  geolocalización** del navegador **requieren contexto seguro (HTTPS)**. La 1ª vez ngrok muestra un aviso →
+  toca **"Visit Site"**. (En la URL del túnel, página y API comparten origen vía el proxy: sin CORS ni
+  contenido mixto.)
+- El **web-admin** se abre en `http://localhost:5001` (consola del operador); inicia sesión con el
+  **usuario/contraseña** del administrador (bootstrap, ver `QUICKSTART.md` 2.2).
+- `-Build` / `--build` reconstruye el build web (necesario al cambiar de `-Domain` o tras cambios de UI).
+
+**Requisitos:** Docker (Rancher Desktop), Flutter en PATH, `ngrok` autenticado (`ngrok config add-authtoken`),
+Python 3 (sirve el web y el proxy). PIDs/logs en `.logs\` (ignorado por git).
+
+> El dominio fijo por defecto es `component-embody-sympathy.ngrok-free.dev`; cámbialo con
+> `-Domain mi-dominio.ngrok-free.dev` (PS) o `--domain=mi-dominio…` (Bash) y reconstruye con `-Build`.
+
+> **`appctl` vs los de abajo:** usa **`appctl`** para demos/pruebas de la app completa por HTTPS.
+> `manage.ps1` es para **desarrollo local** (web-admin en Chrome + emulador Android); `demo.ps1` es el
+> controlador previo (solo backend + ngrok directo). Quedan disponibles, pero `appctl` es el recomendado.
+
+---
+
 ## Uso
 
 Desde la raíz del repo:
