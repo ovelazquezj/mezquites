@@ -19,6 +19,16 @@ class AuthSession {
       );
 
   bool get isAdmin => role == 'admin_consorcio';
+
+  /// Roles que pueden ver la cola de revisión (lectura). `analista` es solo lectura.
+  bool get canReview =>
+      role == 'evaluador' || role == 'analista' || role == 'administrador';
+
+  /// Roles que pueden emitir veredicto (NO incluye `analista`).
+  bool get canEmitVerdict => role == 'evaluador' || role == 'administrador';
+
+  /// Roles con acceso a la consola del consorcio (CR-001 amplía los de revisión).
+  bool get canEnterAdminConsole => isAdmin || canReview;
 }
 
 /// Institución de la lista F3 (Q4). `status`: "aprobada" | "solicitada".
@@ -121,7 +131,7 @@ class RestrictedObservation {
     required this.estado,
     required this.municipio,
     required this.capturedAt,
-    required this.validationState,
+    required this.estadoRevision,
   });
 
   final String handle;
@@ -133,7 +143,7 @@ class RestrictedObservation {
   final String? estado;
   final String? municipio;
   final DateTime capturedAt;
-  final String validationState;
+  final String estadoRevision;
 
   factory RestrictedObservation.fromJson(Map<String, dynamic> j) =>
       RestrictedObservation(
@@ -148,7 +158,152 @@ class RestrictedObservation {
         capturedAt:
             DateTime.tryParse((j['captured_at'] ?? '') as String) ??
                 DateTime.fromMillisecondsSinceEpoch(0),
-        validationState: (j['validation_state'] ?? '') as String,
+        estadoRevision: (j['estado_revision'] ?? '') as String,
+      );
+}
+
+/// Fila de la cola de revisión humana (CR-001). SIN coord exacta (gate #5).
+class ReviewQueueItem {
+  ReviewQueueItem({
+    required this.observationId,
+    required this.handle,
+    required this.capturedAt,
+    required this.estadoRevision,
+    required this.nivelG4,
+    required this.flagCuscuta,
+    required this.flagDanio,
+    required this.tamanio,
+    required this.contexto,
+    required this.estado,
+    required this.municipio,
+  });
+
+  final String observationId;
+  final String handle;
+  final DateTime capturedAt;
+  final String estadoRevision;
+  final String nivelG4;
+  final bool flagCuscuta;
+  final bool flagDanio;
+  final String? tamanio;
+  final String? contexto;
+  final String? estado;
+  final String? municipio;
+
+  factory ReviewQueueItem.fromJson(Map<String, dynamic> j) => ReviewQueueItem(
+        observationId: (j['observation_id'] ?? '') as String,
+        handle: (j['handle'] ?? '') as String,
+        capturedAt: DateTime.tryParse((j['captured_at'] ?? '') as String) ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+        estadoRevision: (j['estado_revision'] ?? '') as String,
+        nivelG4: (j['nivel_g4'] ?? '') as String,
+        flagCuscuta: (j['flag_cuscuta'] ?? false) as bool,
+        flagDanio: (j['flag_danio'] ?? false) as bool,
+        tamanio: j['tamanio'] as String?,
+        contexto: j['contexto'] as String?,
+        estado: j['estado'] as String?,
+        municipio: j['municipio'] as String?,
+      );
+}
+
+/// Una entrada del log append-only de revisión humana (auditoría, gate #7).
+class HumanReviewEntry {
+  HumanReviewEntry({
+    required this.veredicto,
+    required this.nota,
+    required this.reviewerHandle,
+    required this.createdAt,
+  });
+
+  final String veredicto;
+  final String? nota;
+  final String reviewerHandle;
+  final DateTime createdAt;
+
+  factory HumanReviewEntry.fromJson(Map<String, dynamic> j) => HumanReviewEntry(
+        veredicto: (j['veredicto'] ?? '') as String,
+        nota: j['nota'] as String?,
+        reviewerHandle: (j['reviewer_handle'] ?? '') as String,
+        createdAt: DateTime.tryParse((j['created_at'] ?? '') as String) ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+      );
+}
+
+/// Detalle de una observación en revisión + historial. SIN coord exacta (gate #5).
+class ReviewObservationDetail {
+  ReviewObservationDetail({
+    required this.observationId,
+    required this.handle,
+    required this.capturedAt,
+    required this.estadoRevision,
+    required this.nivelG4,
+    required this.flagCuscuta,
+    required this.flagDanio,
+    required this.tamanio,
+    required this.contexto,
+    required this.estado,
+    required this.municipio,
+    required this.historial,
+  });
+
+  final String observationId;
+  final String handle;
+  final DateTime capturedAt;
+  final String estadoRevision;
+  final String nivelG4;
+  final bool flagCuscuta;
+  final bool flagDanio;
+  final String? tamanio;
+  final String? contexto;
+  final String? estado;
+  final String? municipio;
+  final List<HumanReviewEntry> historial;
+
+  factory ReviewObservationDetail.fromJson(Map<String, dynamic> j) =>
+      ReviewObservationDetail(
+        observationId: (j['observation_id'] ?? '') as String,
+        handle: (j['handle'] ?? '') as String,
+        capturedAt: DateTime.tryParse((j['captured_at'] ?? '') as String) ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+        estadoRevision: (j['estado_revision'] ?? '') as String,
+        nivelG4: (j['nivel_g4'] ?? '') as String,
+        flagCuscuta: (j['flag_cuscuta'] ?? false) as bool,
+        flagDanio: (j['flag_danio'] ?? false) as bool,
+        tamanio: j['tamanio'] as String?,
+        contexto: j['contexto'] as String?,
+        estado: j['estado'] as String?,
+        municipio: j['municipio'] as String?,
+        historial: ((j['historial'] ?? []) as List)
+            .map((e) => HumanReviewEntry.fromJson((e as Map).cast<String, dynamic>()))
+            .toList(),
+      );
+}
+
+/// Métricas de la cola de revisión (Monitor del analista). Sin umbrales (U1).
+class ReviewStats {
+  ReviewStats({
+    required this.aceptadas,
+    required this.confirmadas,
+    required this.rechazadas,
+    required this.total,
+    required this.pendientesDeRevision,
+    required this.revisionesTotales,
+  });
+
+  final int aceptadas;
+  final int confirmadas;
+  final int rechazadas;
+  final int total;
+  final int pendientesDeRevision;
+  final int revisionesTotales;
+
+  factory ReviewStats.fromJson(Map<String, dynamic> j) => ReviewStats(
+        aceptadas: (j['aceptadas'] ?? 0) as int,
+        confirmadas: (j['confirmadas'] ?? 0) as int,
+        rechazadas: (j['rechazadas'] ?? 0) as int,
+        total: (j['total'] ?? 0) as int,
+        pendientesDeRevision: (j['pendientes_de_revision'] ?? 0) as int,
+        revisionesTotales: (j['revisiones_totales'] ?? 0) as int,
       );
 }
 

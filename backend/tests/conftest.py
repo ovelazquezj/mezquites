@@ -143,7 +143,7 @@ def db_session(engine):
     with engine.begin() as conn:
         conn.execute(
             text(
-                "TRUNCATE points_ledger, validation_event, observation, tree, "
+                "TRUNCATE points_ledger, human_review, validation_event, observation, tree, "
                 "account, institution, organizational_indicator, snapshot, admin_boundary "
                 "RESTART IDENTITY CASCADE"
             )

@@ -115,6 +115,33 @@ etiquetando su grado de soporte. Etiquetas usadas en toda la bitácora:
   **válida** genera puntos y se etiqueta como tal; una **no válida** se etiqueta como ruido y no
   genera puntos; existe feedback agregado de tasa de validación; el submit no bloquea la UI.
 
+> **AMENDMENT Q5.A-D1 — Revisión humana en el backend (CR-001, decisión humana del 2026-06-15).**
+> El modelo de validación automática (YOLO) descrito arriba queda **superado por decisión humana**.
+> El intercambio §6/contrato/cola **NO se borra** (la frontera queda inactiva, reactivable), pero el
+> piloto adopta un **modelo de revisión humana** con las siguientes reglas, que **superan** la cadena
+> de validación automática anterior:
+> - **Aceptación por defecto.** Toda observación se **acepta** al subir (`estado_revision='aceptada'`),
+>   queda **visible** en el dataset público y **otorga puntos al instante** (recompensa base **y**
+>   diferida en el mismo submit). Ya no hay estado "pendiente" a la espera de un validador.
+> - **Calidad por revisión humana.** Personas con rol de revisión (ver abajo) deciden la calidad desde
+>   la web admin: **confirman** (`confirmada`) o **rechazan** (`rechazada`) una observación. El
+>   veredicto y el etiquetado siguen siendo **autoritativos en el backend**. Cada decisión se registra
+>   en un **log append-only `human_review`** (gate #7, trazabilidad).
+> - **Un rechazo NO revierte puntos.** Los puntos ya otorgados al subir se conservan; el rechazo solo
+>   saca a la observación del dataset público.
+> - **Visibilidad pública = todo lo no-rechazado** (`estado_revision <> 'rechazada'`): tanto
+>   `aceptada` como `confirmada` aparecen en las vistas públicas.
+> - **Roles nuevos de backend (CR-001), sin tocar los existentes:** `administrador` (gestión + puede
+>   emitir veredicto), `evaluador` (puede emitir veredicto) y `analista` (**solo lectura**: monitorea
+>   métricas, sin veredicto). Son roles de **acceso a vistas**, nunca gating funcional (gate #3 intacto).
+> - **Salvaguarda de obfuscación (gate #5 INTACTO).** La imagen guardada conserva GPS en EXIF; al
+>   servirla a `evaluador`/`analista` (que **no** son `aliado_firmante`) el backend **elimina el GPS
+>   del EXIF** antes de responder. La UI de revisión muestra a lo más municipio/estado, nunca coord
+>   exacta, salvo rol `aliado_firmante`.
+> - **Sin PII (gate #2 intacto):** en este CR las cuentas siguen seudónimas; la identidad real es CR-002.
+> El resto de Q5.A-D1 (solo cámara nativa con EXIF; sin estado de validación individual al voluntario;
+> feedback agregado; submit no bloquea la UI) **sigue vigente**.
+
 ### Q5.A-D2 — Bootstrap del sistema de validación (arranque en frío)
 - **Decisión.** El sistema de validación se entrena **fuera de esta bitácora**
   (`bitacora_srs_c_yolo.md`), mediante **YOLO preentrenado + finetuning** sobre el **set de imágenes
@@ -392,12 +419,22 @@ contexto. El **sistema de validación (YOLO) NO se desarrolla aquí** — track 
 5. **Obfuscación:** vista pública nunca expone coords más finas que grid 1 km.
 6. **Paridad de entornos:** dev/QA corren sin nube (storage/broker/DB conmutables).
 7. **Trazabilidad:** cada criterio de aceptación de la bitácora tiene prueba asociada.
-8. **Alcance de validación:** la validación automática se limita a **es-árbol + presencia-de-parásitos**
-   (Q5.A-D1); ninguna feature debe afirmar validación de especie o de nivel G4.
-9. **Etiquetado válida/ruido:** solo las imágenes **válidas** generan puntos y entran al dataset;
-   las **no válidas** se etiquetan como ruido (dataset "no validadas") y no generan puntos.
-10. **Contrato §6:** la integración con el validador se hace exclusivamente por la cola y el contrato
-    de la §6; el software debe funcionar contra el **mock** sin cambios de cliente al pasar al real.
+8. ~~**Alcance de validación:** la validación automática se limita a **es-árbol + presencia-de-parásitos**
+   (Q5.A-D1); ninguna feature debe afirmar validación de especie o de nivel G4.~~
+   **SUPERADO por decisión humana del 2026-06-15 (CR-001):** se **elimina** la validación automática;
+   la calidad la decide una persona desde la web admin (ver amendment de Q5.A-D1). El sistema sigue sin
+   afirmar validación de especie ni de nivel G4 (autodeclarados).
+9. ~~**Etiquetado válida/ruido:** solo las imágenes **válidas** generan puntos y entran al dataset;
+   las **no válidas** se etiquetan como ruido (dataset "no validadas") y no generan puntos.~~
+   **REEMPLAZADO por decisión humana del 2026-06-15 (CR-001):** **aceptación por defecto** + veredicto
+   humano. Toda observación nace `aceptada`, otorga puntos al subir (base + diferida) y es visible;
+   un revisor la **confirma** o **rechaza** (log `human_review`, autoritativo en backend). Público =
+   `estado_revision <> 'rechazada'`. Un rechazo no revierte puntos.
+10. ~~**Contrato §6:** la integración con el validador se hace exclusivamente por la cola y el contrato
+    de la §6; el software debe funcionar contra el **mock** sin cambios de cliente al pasar al real.~~
+    **INACTIVO por decisión humana del 2026-06-15 (CR-001):** la frontera §6 (cola + contrato + mock)
+    **NO se borra** pero queda **inactiva** (el submit ya no encola). Si en el futuro se reactiva la
+    validación automática, el paso mock→real sigue sin tocar cliente ni backend.
 
 ---
 

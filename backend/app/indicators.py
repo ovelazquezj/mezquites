@@ -4,10 +4,11 @@ Gate (Q6/U1): **ningún indicador dispara lógica de aprobación/reprobación**.
 expone. El régimen es de seguimiento, no de evaluación.
 
 Categorías (Q6-D1):
-- Social: registrados; activos (≥1 obs/30 días); observaciones totales y validadas; instituciones
-  activas (F3).
+- Social: registrados; activos (≥1 obs/30 días); observaciones totales y confirmadas por revisión
+  humana (CR-001); instituciones activas (F3).
 - Educativo: engagement formativo (placeholders agregados; los datos de Aprendizaje los aporta el
-  cliente móvil en Inc 3); distribución de etiquetas de identidad E3; tasa de validación promedio.
+  cliente móvil en Inc 3); distribución de etiquetas de identidad E3; proporción de observaciones
+  no-rechazadas (revisión humana, CR-001).
 - Ecológico: árboles únicos (tree_id); árboles en serie temporal (≥2 obs, gap >30 días); cobertura
   geográfica (# municipios con ≥1 obs); distribución de niveles de infestación.
 - Organizacional: capturado manualmente en la web admin (tabla `organizational_indicator`).
@@ -48,8 +49,8 @@ def compute_indicators(db: Session, *, estado: str | None = None) -> dict:
         "observaciones_totales": db.execute(
             text(f"SELECT count(*) FROM observation {obs_filter}"), params
         ).scalar_one(),
-        "observaciones_validadas": db.execute(
-            text(f"SELECT count(*) FROM observation {obs_filter} AND validation_state = 'valida'"),
+        "observaciones_confirmadas": db.execute(
+            text(f"SELECT count(*) FROM observation {obs_filter} AND estado_revision = 'confirmada'"),
             params,
         ).scalar_one(),
         "instituciones_activas": db.execute(
@@ -71,13 +72,13 @@ def compute_indicators(db: Session, *, estado: str | None = None) -> dict:
             text("SELECT identity_label, count(*) FROM account GROUP BY identity_label")
         ).all()
     }
+    # Proporción de observaciones NO-rechazadas (revisión humana, CR-001). Sin umbrales (U1).
     val_rate = db.execute(
         text(
             f"""
             SELECT COALESCE(
-                avg(CASE WHEN validation_state = 'valida' THEN 1.0
-                         WHEN validation_state = 'ruido'  THEN 0.0 END), 0)
-            FROM observation {obs_filter} AND validation_state IN ('valida','ruido')
+                avg(CASE WHEN estado_revision <> 'rechazada' THEN 1.0 ELSE 0.0 END), 0)
+            FROM observation {obs_filter}
             """
         ),
         params,
@@ -85,7 +86,7 @@ def compute_indicators(db: Session, *, estado: str | None = None) -> dict:
     educativo = {
         # Engagement formativo: lo aporta el cliente móvil (Inc 3); aquí queda el agregado disponible.
         "distribucion_identidad_e3": identity_dist,
-        "tasa_validacion_promedio": round(float(val_rate or 0.0), 4),
+        "proporcion_no_rechazadas": round(float(val_rate or 0.0), 4),
     }
 
     arboles_unicos = db.execute(text("SELECT count(*) FROM tree")).scalar_one()

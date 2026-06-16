@@ -11,10 +11,10 @@
 | **Q5.A** Captura SOLO cámara nativa | móvil | 3 | `mobile/test/capture_camera_test.dart` (galería deshabilitada; sin `image_picker`) | ✅ |
 | **Q5.A** Cada observación lleva EXIF del momento de toma | móvil + backend | 2–3 | móvil inyecta EXIF GPS/fecha (`capture_service.dart` + test); backend exige `lat`/`lon`/`captured_at`: `backend/tests/test_observation_create.py` | ✅ |
 | **Q5.A** UI no muestra estado de validación individual | móvil | 3 | móvil: `mobile/test/no_validation_state_test.dart` (modelo sin `validation_state`); backend tampoco lo devuelve | ✅ |
-| **Q5.A** Imagen **válida** → puntos y se etiqueta como tal | backend | 2 | `backend/tests/test_worker_apply.py::test_valid_result_labels_valida_and_awards_deferred` | ✅ |
-| **Q5.A** Imagen **no válida** → ruido, sin puntos | backend | 2 | `backend/tests/test_worker_apply.py::test_noise_result_labels_ruido_and_no_deferred` | ✅ |
-| **Q5.A** Existe feedback **agregado** de tasa de validación | backend + móvil | 2–3 | backend `GET /me/feedback` agregado: `test_rankings_profile.py::test_feedback_is_aggregate_not_individual`; móvil: `profile_screen.dart` + `api_client_test.dart` | ✅ |
-| **Q5.A** El submit no bloquea la UI (fire-and-forget) | backend + móvil | 2–3 | backend encola sin esperar: `test_observation_create.py::test_submit_enqueues_job_without_waiting`; móvil: cola local "pendiente" en `capture_screen.dart` | ✅ |
+| **Q5.A** (CR-001) Toda observación nace **aceptada** y otorga puntos al subir | backend | CR-001 | `backend/tests/test_observation_create.py::test_submit_persists_aceptada` / `::test_submit_awards_base_and_deferred_on_upload` | ✅ |
+| **Q5.A** (CR-001) Calidad por **revisión humana** (confirmada/rechazada) autoritativa en backend | backend | CR-001 | `backend/tests/test_review.py` (verdict cambia `estado_revision` + log `human_review`) | ✅ |
+| **Q5.A** Existe resumen **agregado** de aportaciones (sin acusación individual) | backend + móvil | 2–CR-001 | backend `GET /me/feedback` agregado: `test_rankings_profile.py::test_feedback_is_aggregate_not_individual`; móvil: `profile_screen.dart` + `no_validation_state_test.dart` | ✅ |
+| **Q5.A** El submit no bloquea la UI | backend + móvil | 2–CR-001 | backend responde 201 sin encolar: `test_observation_create.py::test_submit_does_not_enqueue_any_job`; móvil: cola local "pendiente" de envío en `capture_screen.dart` | ✅ |
 | **Q5.B** Vista pública solo coords a 1 km | backend | 2 | `backend/tests/test_obfuscation.py` (helper `obfuscate_1km`, EPSG:6372) + `backend/tests/test_roles.py::test_public_observations_are_obfuscated_to_1km` | ✅ |
 | **Q5.B** Vista restringida exige auth de aliado firmante | backend | 2 | `backend/tests/test_roles.py::test_restricted_requires_aliado_firmante` / `test_restricted_allows_aliado_firmante_with_exact_coords` | ✅ |
 | **Q5.B** Toda vista muestra fecha de snapshot (Qn) | backend + clientes | 2–4 | backend `/public/*` incluye `snapshot_quarter`; móvil `SnapshotStamp`; web admin `SnapshotStamp` + `boundary_test.dart` | ✅ |
@@ -47,8 +47,8 @@
 | **T3** Consulta devuelve coord redondeada a celda de 1 km | backend/DB | 2 | `backend/tests/test_obfuscation.py` (`obfuscate_1km`, proyección métrica EPSG:6372) | ✅ |
 | **T4** Cambiar entorno alterna disco local ↔ bucket sin tocar código | backend | 2 | `backend/tests/test_storage_provider.py` (local + s3 con moto) | ✅ |
 | **T5** Levanta en K8s local con un comando; mismos manifiestos a stg/prod | infra | 2–3 | `infra/k8s/` (base+overlays kustomize); `kubectl apply -k infra/k8s/overlays/dev` / `deploy-dev.ps1`; render limpio + `--dry-run=server` contra k3s; overlays stg/prod parametrizan vía patches | ✅ (manifiestos+dry-run; apply E2E real = Inc 5) |
-| **T6** `submit` retorna sin esperar al validador | backend | 2 | `backend/tests/test_observation_create.py::test_submit_enqueues_job_without_waiting` (InMemoryBroker) + E2E compose | ✅ |
-| **T6** Resultado del **mock** dispara etiquetado válida/ruido y recompensa diferida correctos | contrato + backend | 1–2 | `backend/tests/test_worker_apply.py` (etiquetado + diferida + idempotencia) + E2E compose mock↔worker | ✅ |
+| **T6** `submit` retorna sin esperar (CR-001: ya no encola) | backend | 2–CR-001 | `backend/tests/test_observation_create.py::test_submit_does_not_enqueue_any_job` + `test_yolo_disconnected.py` (InMemoryBroker) | ✅ |
+| ~~**T6** Resultado del **mock** dispara etiquetado válida/ruido~~ | — | — | **Superado por CR-001** (validación automática retirada; ver "Revisión humana" abajo). Código YOLO conservado e importable: `test_yolo_disconnected.py` | ⏸️ |
 | **T7** Existe design system documentado con tokens Rotary+verde | docs | 1 | `docs/design-system/design-tokens.json` + `.md` | ✅ |
 | **T7** Ninguna pantalla introduce elementos fuera del sistema | clientes | 3–4 | móvil `theme_tokens_test.dart` + web admin `theme_tokens_test.dart` (tema solo desde `design-tokens.json`, sin hex literal) | ✅ |
 
@@ -60,12 +60,33 @@
 | 2. Sin PII | `account` sin email/teléfono; `/auth/register` y `/auth/recover` sin PII; token sin PII: `backend/tests/test_security_no_pii.py` (8 pruebas) | ✅ |
 | 3. Sin gating | backend: sin checks de nivel/capacitación; móvil: Learning/HomeShell sin bloqueos, identidad no desbloquea: `mobile/test/no_gating_test.dart` | ✅ |
 | 4. Captura cámara-nativa + EXIF | móvil: `CaptureService` solo `takePicture()` + EXIF, **sin `image_picker`/galería**: `mobile/test/capture_camera_test.dart`; backend exige `lat`/`lon`/`captured_at` | ✅ (build APK ✅; cámara real en hardware = Inc 5) |
-| 5. Obfuscación 1 km | `/public/*` obfusca server-side (`obfuscate_1km`, EPSG:6372); exactas solo `/restricted/*` (rol firmante): `test_obfuscation.py` + `test_roles.py` | ✅ |
+| 5. Obfuscación 1 km | `/public/*` obfusca server-side (`obfuscate_1km`, EPSG:6372); exactas solo `/restricted/*` (rol firmante): `test_obfuscation.py` + `test_roles.py`. **CR-001:** la imagen de revisión se sirve con **EXIF GPS saneado** salvo `aliado_firmante`: `backend/tests/test_review.py::test_ac4_image_gps_stripped_for_evaluador/analista` + `::test_ac4_image_keeps_gps_only_for_aliado_firmante` | ✅ |
 | 6. Paridad de entornos (conmutable sin nube) | `make_broker("memory")` + `StorageProvider` local↔s3 + `DATABASE_URL`: `test_storage_provider.py`; compose dev sin nube (storage local, redis/postgis local) | ✅ |
-| 7. Trazabilidad | este documento | ✅ (vivo) |
-| 8. Alcance validación (es-árbol + parásitos; rechaza especie/G4) | `contract/python/tests/test_schema.py`; backend nunca valida G4/especie (autodeclarados) | ✅ |
-| 9. Etiquetado válida/ruido autoritativo en backend | `backend/tests/test_worker_apply.py` (veredicto autoritativo recomputado + puntos diferidos solo si válida + idempotencia) | ✅ |
-| 10. Contrato §6 (mock↔real sin cambios; conmutable) | `backend/tests/test_worker_apply.py::test_process_once_consumes_results_stream` + E2E compose (api→mock→result-worker) + `make_broker` | ✅ |
+| 7. Trazabilidad | este documento + `human_review` (log append-only de veredictos) | ✅ (vivo) |
+| 8. ~~Alcance validación automática (es-árbol + parásitos)~~ | **Enmendado por CR-001** (bitácora): se elimina la validación automática; calidad por revisión humana. El backend sigue sin validar especie/G4 (autodeclarados) | ⏸️ enmendado |
+| 9. ~~Etiquetado válida/ruido autoritativo~~ | **Reemplazado por CR-001:** aceptación por defecto + veredicto humano autoritativo en backend; público = no-rechazadas. `backend/tests/test_review.py` (AC1/AC2) | ⏸️ enmendado |
+| 10. ~~Contrato §6 (mock↔real)~~ | **Inactivo por CR-001:** la frontera §6 no se borra pero el submit ya no encola: `backend/tests/test_yolo_disconnected.py` | ⏸️ inactivo |
+
+## CR-001 — Revisión humana en el backend (sin YOLO)
+
+> Decisión humana del 2026-06-15 (ver `docs/change-requests/CR-001-revision-humana.md` y el amendment
+> de Q5.A-D1 + gates #8/#9/#10 en la bitácora). Aceptación por defecto + veredicto humano; YOLO inactivo.
+
+| AC | Descripción | Prueba | Estado |
+|---|---|---|---|
+| **AC1** | Observación recién subida → `aceptada` y aparece en `/public/observations` | `backend/tests/test_review.py::test_ac1_new_observation_is_aceptada_and_public` | ✅ |
+| **AC2** | `verdict {rechazada}` la saca del público y escribe en `human_review` | `backend/tests/test_review.py::test_ac2_reject_removes_from_public_and_logs` | ✅ |
+| **AC3** | `analista` → 403 al emitir veredicto; `evaluador`/`administrador` → 200 | `backend/tests/test_review.py::test_ac3_analista_cannot_emit_verdict` / `::test_ac3_evaluador_and_admin_can_emit_verdict` | ✅ |
+| **AC4** (gate #5) | `/review/.../image` sin EXIF GPS para evaluador/analista; con GPS solo aliado_firmante | `backend/tests/test_review.py::test_ac4_image_gps_stripped_for_evaluador` / `::..._for_analista` / `::test_ac4_image_keeps_gps_only_for_aliado_firmante` (+ `test_original_image_actually_has_gps`) | ✅ |
+| **AC5** | Web-admin: cola + detalle con imagen + confirmar/rechazar; analista ve Monitor sin botones | `web-admin/test/widget_review_test.dart` + `review_api_test.dart` | ✅ |
+| **AC6** | App móvil muestra "registrada y aceptada"; sin estado individual | `mobile/test/no_validation_state_test.dart::AC6...` | ✅ |
+| **AC7** | El submit NO encola ningún job | `backend/tests/test_observation_create.py::test_submit_does_not_enqueue_any_job` + `test_yolo_disconnected.py` | ✅ |
+| **AC8** | Trazabilidad AC1–AC7 + suite global verde | este documento + corridas abajo | ✅ |
+
+**Pruebas verdes tras CR-001:** `backend`: **65** · `web-admin`: **37** · `mobile`: **31** (`contract`: 21 ·
+`mock-validator`: 9 sin cambios). Migración Alembic `0002_revision_humana` verificada (`upgrade`/`downgrade`
+en PostGIS). Gate #5 (EXIF GPS saneado) verificado con imágenes JPEG reales (Pillow). `flutter analyze`
+limpio en móvil y web-admin.
 
 ## Resumen del Incremento 1
 

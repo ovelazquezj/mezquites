@@ -48,7 +48,7 @@ void main() {
           handle: 'obs-VOL1', backupCode: 'MZQ-AAAA-BBBB');
       expect(ok, isFalse);
       expect(c.state.isAuthenticated, isFalse);
-      expect(c.state.error, contains('administración del consorcio'));
+      expect(c.state.error, contains('consola del consorcio'));
     });
 
     test('recover con rol aliado_firmante DENIEGA el acceso admin', () async {
@@ -88,6 +88,27 @@ void main() {
           c.loginWithToken(fakeJwt(handle: 'obs-V', role: 'voluntario')),
           isFalse);
       expect(c.state.isAuthenticated, isFalse);
+    });
+
+    test('evaluador entra a la consola y puede emitir veredicto (CR-001)', () {
+      final api = _clientReturning(status: 200, body: {});
+      final c = SessionController(api);
+      expect(
+          c.loginWithToken(fakeJwt(handle: 'obs-EV', role: 'evaluador')), isTrue);
+      expect(c.state.isAuthenticated, isTrue);
+      expect(c.state.canReview, isTrue);
+      expect(c.state.canEmitVerdict, isTrue);
+      expect(c.state.isAdmin, isFalse);
+    });
+
+    test('analista entra a la consola pero NO emite veredicto (solo lectura)',
+        () {
+      final api = _clientReturning(status: 200, body: {});
+      final c = SessionController(api);
+      expect(
+          c.loginWithToken(fakeJwt(handle: 'obs-AN', role: 'analista')), isTrue);
+      expect(c.state.canReview, isTrue);
+      expect(c.state.canEmitVerdict, isFalse);
     });
 
     test('canSeeRestricted es false para admin_consorcio puro', () {

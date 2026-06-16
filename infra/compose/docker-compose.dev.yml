@@ -1,15 +1,19 @@
 # Stack de desarrollo SIN NUBE (paridad de entornos, gate #6).
-# Incremento 2: broker (Redis) + mock-validator + DB (PostGIS) + API (FastAPI) + result-worker.
+# Núcleo (arranque por defecto): DB (PostGIS) + Redis + API (FastAPI).
 # Este archivo CRECE, no se reemplaza.
 #
 #   docker compose -f infra/compose/docker-compose.dev.yml up --build
 #
-# Topología (frontera §6 = la cola):
+# REVISIÓN HUMANA (CR-001, 2026-06-15): la validación automática (YOLO) quedó INACTIVA. El submit
+# ya no encola jobs; la calidad la decide una persona desde la web admin. Por eso `mock-validator` y
+# `result-worker` quedan tras el perfil `yolo` y NO arrancan por defecto (siguen en el repo para
+# reactivar la frontera §6 a futuro sin tocar cliente ni backend):
+#
+#   docker compose -f infra/compose/docker-compose.dev.yml --profile yolo up --build
+#
+# Topología de la frontera §6 (solo con el perfil `yolo`, hoy ociosa):
 #   api ──XADD──▶ [mezquite:validation_jobs] ──▶ mock-validator
 #   mock-validator ──XADD──▶ [mezquite:validation_results] ──▶ result-worker
-#
-# El paso mock → validador real = sustituir SOLO el servicio `mock-validator` por el worker
-# real (mismo Redis, mismos streams). Backend y clientes no cambian (gate #10).
 #
 # Sin nube (gate #6): storage = filesystem local (volumen), broker = Redis local, DB = contenedor.
 
@@ -64,7 +68,9 @@ services:
     # Aplica migraciones Alembic y arranca uvicorn (ver backend/Dockerfile CMD).
     restart: unless-stopped
 
+  # INACTIVO por CR-001: solo arranca con `--profile yolo` (frontera §6 reactivable).
   result-worker:
+    profiles: ["yolo"]
     build:
       context: ../..
       dockerfile: backend/Dockerfile
@@ -87,7 +93,9 @@ services:
         condition: service_started      # asegura que las migraciones ya corrieron
     restart: unless-stopped
 
+  # INACTIVO por CR-001: solo arranca con `--profile yolo` (frontera §6 reactivable).
   mock-validator:
+    profiles: ["yolo"]
     build:
       context: ../..
       dockerfile: mock-validator/Dockerfile

@@ -19,6 +19,7 @@ from .routers import (
     observations,
     public,
     restricted,
+    review,
 )
 
 API_PREFIX = "/api/v1"
@@ -47,6 +48,7 @@ def create_app() -> FastAPI:
         institutions.router,
         public.router,
         restricted.router,
+        review.router,
         admin.router,
     ):
         app.include_router(router, prefix=API_PREFIX)

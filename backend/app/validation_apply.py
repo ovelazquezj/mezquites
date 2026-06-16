@@ -1,5 +1,11 @@
 """Aplicación autoritativa e idempotente del resultado de validación (§6.3, §6.4, gate #9).
 
+INACTIVO desde CR-001 (2026-06-15): la validación automática (YOLO) se retiró en favor de la revisión
+humana (ver ``routers/review.py``). El submit ya no encola jobs, así que esta lógica **no se ejecuta**
+en el piloto. Se conserva para reactivar la frontera §6 a futuro. NOTA: referencia la columna histórica
+``validation_state``, que el modelo renombró a ``estado_revision``; reactivarla requeriría actualizar
+este SQL.
+
 Esta es la lógica que el ``result_worker`` ejecuta por cada mensaje de ``RESULTS_STREAM``:
 
 1. **Recompute autoritativo** del veredicto con ``compute_verdict`` (vía

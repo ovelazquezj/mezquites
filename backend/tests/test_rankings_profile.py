@@ -57,19 +57,16 @@ def test_profile_shows_identity_label_lifelist_badges(client, db_session):
 
 
 def test_feedback_is_aggregate_not_individual(client, db_session):
+    """Resumen agregado (CR-001): cuenta no-rechazadas, sin señalar observaciones individuales."""
     from sqlalchemy import text
 
     reg = register(client)
-    # Dos observaciones; marcamos una válida y una ruido.
+    # Dos observaciones (ambas nacen 'aceptada'); un veredicto humano rechaza una.
     r1 = submit_observation(client, reg["token"], lat=21.88, lon=-102.29)
-    r2 = submit_observation(client, reg["token"], lat=22.10, lon=-102.50)
+    submit_observation(client, reg["token"], lat=22.10, lon=-102.50)
     db_session.execute(
-        text("UPDATE observation SET validation_state='valida' WHERE id=:i"),
+        text("UPDATE observation SET estado_revision='rechazada' WHERE id=:i"),
         {"i": r1.json()["observation_id"]},
-    )
-    db_session.execute(
-        text("UPDATE observation SET validation_state='ruido' WHERE id=:i"),
-        {"i": r2.json()["observation_id"]},
     )
     db_session.commit()
 
@@ -77,9 +74,9 @@ def test_feedback_is_aggregate_not_individual(client, db_session):
     assert resp.status_code == 200
     fb = resp.json()
     assert fb["total_considered"] == 2
-    assert fb["validas"] == 1
-    # Mensaje agregado, sin señalar cuál observación falló.
-    assert "válidas" in fb["message"] or "validas" in fb["message"]
+    assert fb["validas"] == 1  # una no-rechazada
+    # Mensaje agregado, sin señalar cuál observación se rechazó.
+    assert "aceptadas" in fb["message"]
 
 
 def test_recover_with_backup_code(client, db_session):

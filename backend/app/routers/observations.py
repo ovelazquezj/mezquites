@@ -1,12 +1,14 @@
-"""Observaciones del voluntario (Q2, Q3, Q5.A — fire-and-forget; T6).
+"""Observaciones del voluntario (Q2, Q3, Q5.A — revisión humana, CR-001).
 
 ``POST /observations`` (multipart: 8 etiquetas JSON + imagen):
-  1. Persiste la observación en ``validation_state='pendiente'``.
+  1. Persiste la observación en ``estado_revision='aceptada'`` (aceptación por defecto, CR-001).
   2. Sube la imagen vía StorageProvider (la DB guarda solo la clave).
   3. Asigna ``tree_id`` (ST_DWithin 10 m, R3) y ``observation_seq`` (serie temporal).
   4. Deriva estado/municipio del EXIF (join admin_boundary, Q8).
-  5. Otorga recompensa **base** y **encola el job** de validación (productor §6).
-  6. Responde de inmediato (NO espera al validador; sin estado de validación individual).
+  5. Otorga recompensa **base y diferida al instante** (ya no hay validador asíncrono; un
+     rechazo humano posterior NO revierte puntos).
+  6. Responde de inmediato. **NO encola** ningún job (la frontera §6/YOLO quedó inactiva, gate #10
+     superado); sin estado de validación individual al voluntario (Q5.A-D1 intacto).
 """
 
 from __future__ import annotations
@@ -21,9 +23,9 @@ from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..db import get_db
 from ..deps import CurrentUser, require_role
+from ..gamification import refresh_identity_label
 from ..geo import assign_tree, compute_observation_seq, derive_estado_municipio
 from ..models import Observation, PointsLedger
-from ..queue import enqueue_validation_job
 from ..schemas import ObservationCreate, ObservationMine, ObservationSubmitResponse
 from ..storage import get_storage, new_image_key
 
@@ -70,7 +72,7 @@ async def submit_observation(
     storage = get_storage()
     storage.put(image_key, image_bytes, content_type=image.content_type or "image/jpeg")
 
-    # (1) persiste en estado 'pendiente'.
+    # (1) persiste en estado 'aceptada' (aceptación por defecto, CR-001).
     point_wkt = f"SRID=4326;POINT({data.lon} {data.lat})"
     obs = Observation(
         id=obs_id,
@@ -88,11 +90,12 @@ async def submit_observation(
         observation_seq=seq,
         estado=estado,
         municipio=municipio,
-        validation_state="pendiente",
+        estado_revision="aceptada",
     )
     db.add(obs)
 
-    # (5) recompensa BASE (inmediata, fire-and-forget).
+    # (5) recompensa al subir: BASE + DIFERIDA en el mismo submit (CR-001).
+    # Ya no hay validador asíncrono; un rechazo humano posterior NO revierte estos puntos.
     db.add(
         PointsLedger(
             account_id=user.account_id,
@@ -101,18 +104,19 @@ async def submit_observation(
             points=settings.points_base,
         )
     )
+    db.add(
+        PointsLedger(
+            account_id=user.account_id,
+            observation_id=obs_id,
+            kind="diferida",
+            points=settings.points_deferred,
+        )
+    )
+    # Etiqueta de identidad L3 según observaciones no-rechazadas (antes lo hacía el validador).
+    refresh_identity_label(db, user.account_id)
     db.commit()
 
-    # (5) encola el job de validación (productor §6). NO espera resultado (T6).
-    enqueue_validation_job(
-        observation_id=obs_id,
-        image_ref=image_key,
-        captured_at=data.captured_at,
-        lat=data.lat,
-        lon=data.lon,
-    )
-
-    # (6) responde de inmediato con recompensa base; sin estado de validación individual.
+    # (6) responde de inmediato. NO se encola ningún job (frontera §6 inactiva, gate #10 superado).
     return ObservationSubmitResponse(observation_id=obs_id, base_points=settings.points_base)
 
 

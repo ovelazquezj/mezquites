@@ -15,6 +15,29 @@ class Copy {
   static const navIndicators = 'Indicadores';
   static const navSnapshots = 'Cortes trimestrales';
   static const navRestricted = 'Panel con ubicación exacta';
+  // Revisión humana (CR-001).
+  static const navReview = 'Revisión de observaciones';
+  static const navMonitor = 'Monitor de revisión';
+
+  // --- Revisión humana (CR-001) ---
+  static const reviewIntro =
+      'Revisa las fotos que envían las personas voluntarias y decide si '
+      'quedan en el panel público. Por defecto toda observación queda aceptada '
+      'y visible; aquí puedes confirmarla o retirarla.';
+  static const reviewQueueEmpty = 'No hay observaciones para este filtro.';
+  static const reviewConfirm = 'Confirmar';
+  static const reviewReject = 'Retirar';
+  static const reviewNoteLabel = 'Nota (opcional)';
+  static const reviewHistoryTitle = 'Historial de revisión';
+  static const reviewNoHistory = 'Sin revisiones aún.';
+  static const reviewOpenDetail = 'Abrir';
+  static const reviewConfirmed = 'Observación confirmada.';
+  static const reviewRejected = 'Observación retirada del panel público.';
+  static const reviewLocationNote =
+      'Por privacidad de los árboles, aquí solo ves estado y municipio, '
+      'nunca la ubicación exacta.';
+  static const monitorIntro =
+      'Métricas de la revisión de observaciones. Solo consulta.';
 
   /// Etiqueta legible de las claves de indicadores que entrega el backend
   /// (`/public/indicators`). Si una clave no está mapeada, se humaniza el
@@ -54,13 +77,12 @@ class Copy {
       }[wire] ??
       wire;
 
-  /// Estado de validación (wire) → etiqueta legible. "ruido" se presenta como
-  /// "Descartada" para no acusar al usuario.
-  static String validationState(String wire) =>
+  /// Estado de revisión (wire del backend, CR-001) → etiqueta legible.
+  static String estadoRevision(String wire) =>
       const {
-        'pendiente': 'Pendiente',
-        'valida': 'Válida',
-        'ruido': 'Descartada',
+        'aceptada': 'Aceptada',
+        'confirmada': 'Confirmada',
+        'rechazada': 'Retirada',
       }[wire] ??
       wire;
 
