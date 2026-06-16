@@ -11,7 +11,7 @@ unidad construible** (Arquitecto, Dev backend, Dev web-admin, Dev móvil, Tester
 | CR | Título | Estado | Depende de |
 |---|---|---|---|
 | [CR-001](CR-001-revision-humana.md) | Revisión humana en el backend (sin YOLO) | ✅ **Integrado en `main`** (163 pruebas verdes) | — |
-| [CR-002](CR-002-auth-identidad-real.md) | Autenticación con identidad real (Google/Firebase + usuario/contraseña) | 🟢 **En curso** (agente, con `MockAuthProvider`) | CR-001 |
+| [CR-002](CR-002-auth-identidad-real.md) | Autenticación con identidad real (Google/Firebase + usuario/contraseña) | ✅ **Integrado en `main`** (con `MockAuthProvider`; Google real pendiente de Firebase) | CR-001 |
 | [CR-003](CR-003-branding-onboarding-app.md) | Branding, splash, ícono y onboarding (apps Flutter) | ✅ **Integrado en `main`** | — |
 
 **Secuencia acordada:** **CR-001** primero (funda los roles y enmienda gates); **CR-003** en paralelo
