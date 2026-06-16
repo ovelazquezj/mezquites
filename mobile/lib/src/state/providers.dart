@@ -21,6 +21,26 @@ final sessionStoreProvider = Provider<SessionStore>(
   (ref) => throw UnimplementedError('inyectar SessionStore en main()/pruebas'),
 );
 
+/// Estado del onboarding (CR-003): `true` = ya visto (no se vuelve a mostrar).
+/// Informativo, omitible y una sola vez (gate #3); el flag es booleano local
+/// sin PII (gate #2). Inicializa desde el [SessionStore] y persiste al marcarlo.
+class OnboardingController extends StateNotifier<bool> {
+  OnboardingController(this._store) : super(_store.onboardingSeen);
+
+  final SessionStore _store;
+
+  Future<void> markSeen() async {
+    if (state) return;
+    await _store.markOnboardingSeen();
+    state = true;
+  }
+}
+
+final onboardingSeenProvider =
+    StateNotifierProvider<OnboardingController, bool>((ref) {
+  return OnboardingController(ref.watch(sessionStoreProvider));
+});
+
 /// Cliente de la API REST.
 final apiClientProvider = Provider<ApiClient>((ref) {
   final config = ref.watch(appConfigProvider);

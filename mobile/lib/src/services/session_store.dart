@@ -16,6 +16,7 @@ class SessionStore {
   static const _kRole = 'session_role';
   static const _kToken = 'session_token';
   static const _kDisclaimerSeen = 'disclaimer_seen';
+  static const _kOnboardingSeen = 'onboarding_seen';
 
   static Future<SessionStore> create() async =>
       SessionStore(await SharedPreferences.getInstance());
@@ -47,9 +48,18 @@ class SessionStore {
   Future<void> markDisclaimerSeen() async =>
       _prefs.setBool(_kDisclaimerSeen, true);
 
+  // --- Onboarding CR-003: informativo, omitible, una sola vez (gate #3) ---
+  // El flag es un booleano local (sin PII, gate #2): solo marca "ya visto".
+
+  bool get onboardingSeen => _prefs.getBool(_kOnboardingSeen) ?? false;
+
+  Future<void> markOnboardingSeen() async =>
+      _prefs.setBool(_kOnboardingSeen, true);
+
   /// Serialización mínima para depuración (sin PII).
   String debugDump() => json.encode({
         'has_session': loadSession() != null,
         'disclaimer_seen': disclaimerSeen,
+        'onboarding_seen': onboardingSeen,
       });
 }

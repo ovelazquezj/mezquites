@@ -289,10 +289,17 @@ flutter run
 La app usa por defecto `http://10.0.2.2:8000/api/v1`, que en el emulador Android **mapea a tu PC**
 (donde corre el backend). No necesitas configurar nada más.
 
-**✓ Verifica:** en el emulador aparece la pantalla de **Bienvenida** del mezquite (paleta Rotary).
+**✓ Verifica:** al instalar verás el **ícono** del Proyecto Mezquite (fondo navy `#1F3A6E`) y, en
+arranque en frío, el **splash** navy con el logo centrado (CR-003). En Android 12+ el splash usa la API
+nativa de splash. En el emulador aparece la pantalla de **Bienvenida** con el wordmark **"Mezquite"**
+en serif (Fraunces) y la **paleta oficial Mezquite** (navy/dorado/verde).
 
 ### 4.3 Recorre el flujo del voluntario
 
+0. **Onboarding (solo el primer arranque):** aparecen **3 páginas** —*Concientizar · Capacitar ·
+   Combatir*— con dots, "Saltar" y botón "Siguiente"/"Comenzar" (CR-003).
+   **✓ Verifica:** es **informativo y omitible** (gate #3); al "Comenzar"/"Saltar" no vuelve a
+   mostrarse (flag local sin PII). En arranques posteriores la app va directo a Bienvenida.
 1. **Registro:** elige una institución (o "Independiente") y crea la cuenta.
    **✓ Verifica:** te muestra el **Código de respaldo** (con QR) — es la recuperación sin PII.
 2. **Disclaimer:** aparece una vez; descártalo con un tap.

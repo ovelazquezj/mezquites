@@ -24,6 +24,8 @@ dependencies:
   shared_preferences: ^2.3.3
   # Generación de QR para el código de respaldo (recuperación sin PII).
   qr_flutter: ^4.1.0
+  # Wordmark "Mezquite" en serif de Google Fonts (CR-003): se usa Fraunces.
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:
@@ -32,8 +34,42 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  # Generación del ícono de launcher Android/iOS desde el master de marca (CR-003).
+  flutter_launcher_icons: ^0.14.1
+  # Generación del splash nativo (incl. Android 12) desde el logo de marca (CR-003).
+  flutter_native_splash: ^2.4.1
 
 flutter:
   uses-material-design: true
   assets:
     - assets/design-tokens.json
+    - assets/branding/
+
+# --- Ícono de app (CR-003) ---
+# Genera mipmaps Android (mdpi→xxxhdpi) desde el master de marca; adaptive icon
+# con fondo navy oficial. Comando: dart run flutter_launcher_icons
+# NOTA: este repo solo tiene scaffold Android (no existe mobile/ios/). La config
+# de iOS (ios: true, remove_alpha_ios: true) queda preparada para cuando se cree
+# el scaffold iOS; hoy ios: false para que el comando complete en CI/Windows.
+flutter_launcher_icons:
+  image_path: "assets/branding/icon_master_1024.png"
+  android: true
+  ios: false
+  remove_alpha_ios: true
+  adaptive_icon_background: "#1F3A6E"
+  adaptive_icon_foreground: "assets/branding/icon_master_1024.png"
+
+# --- Splash nativo (CR-003) ---
+# Fondo navy oficial + logo centrado; bloque android_12 para la nueva API de
+# splash de Android 12+. Comando: dart run flutter_native_splash:create
+# NOTA: solo Android (no existe mobile/ios/); el bloque ios queda en false hasta
+# que exista el scaffold iOS.
+flutter_native_splash:
+  color: "#1F3A6E"
+  image: "assets/branding/splash_logo_master.png"
+  android: true
+  ios: false
+  android_12:
+    color: "#1F3A6E"
+    image: "assets/branding/splash_logo_master.png"
+  fullscreen: true

@@ -80,6 +80,19 @@ class DesignTokens {
     return value.split(',').first.trim();
   }
 
+  /// Familia serif del wordmark "Mezquite" (CR-003). Es un nombre de familia de
+  /// Google Fonts (p. ej. "Fraunces"), servido vía `google_fonts`. SOLO se aplica
+  /// al wordmark, nunca al texto base (que sigue en [fontFamilyBase]).
+  String get fontFamilyWordmark {
+    final typo = _section('typography');
+    final node = typo['font_family_wordmark'];
+    if (node is Map && node['value'] is String) {
+      return (node['value'] as String).split(',').first.trim();
+    }
+    // Salvaguarda: si no hay token, no cambiamos la familia base.
+    return fontFamilyBase;
+  }
+
   TypeToken typeToken(String name) {
     final scale = (_section('typography')['scale'] as Map).cast<String, dynamic>();
     final t = (scale[name] as Map).cast<String, dynamic>();

@@ -5,6 +5,12 @@ class Copy {
   Copy._();
 
   static const appTitle = 'Mezquite — Ciencia ciudadana';
+  static const welcomeSubtitle = 'Ciencia ciudadana';
+
+  // --- Onboarding (CR-003; informativo, omitible, una sola vez · gate #3) ---
+  static const onboardingSkip = 'Saltar';
+  static const onboardingNext = 'Siguiente';
+  static const onboardingStart = 'Comenzar';
 
   // --- Disclaimer D1 (Q7-D1) ---
   // Texto-base = buenas prácticas de campo de la bitácora (§Q7-D1). El texto
@@ -117,6 +123,52 @@ class Copy {
     'quarter': 'Trimestre',
     'year': 'Año',
   };
+}
+
+/// Una página del onboarding (CR-003 §5.5). El acento se nombra por su token
+/// semántico (`blue`/`accent`/`secondary`) para resolverlo desde el design
+/// system (T7) y NO hardcodear colores en la UI (sin hex literal).
+class OnboardingPageData {
+  const OnboardingPageData({
+    required this.eyebrow,
+    required this.title,
+    required this.accentToken,
+    required this.body,
+  });
+
+  final String eyebrow;
+  final String title;
+  final String accentToken;
+  final String body;
+
+  /// Contenido EXACTO del CR-003 §5.5. El onboarding es informativo, omitible y
+  /// se muestra una sola vez (gate #3): no bloquea funcionalidad ni certifica.
+  static const pages = <OnboardingPageData>[
+    OnboardingPageData(
+      eyebrow: 'PASO 1 · MESES 1-6',
+      title: 'Concientizar',
+      accentToken: 'blue', // #2E6FB7
+      body:
+          'Registra mezquites de tu comunidad con la app y activa censos base '
+          'en preparatorias piloto.',
+    ),
+    OnboardingPageData(
+      eyebrow: 'PASO 2 · MESES 7-14',
+      title: 'Capacitar',
+      accentToken: 'accent', // green #5C9A3A
+      body:
+          'Toma microcursos y forma redes estudiantiles para validar daños por '
+          'paxtle con evidencia.',
+    ),
+    OnboardingPageData(
+      eyebrow: 'PASO 3 · MESES 15-24',
+      title: 'Combatir',
+      accentToken: 'secondary', // gold #E0A21A
+      body:
+          'Articula con autoridades el manejo fitosanitario coordinado en las '
+          'zonas críticas identificadas.',
+    ),
+  ];
 }
 
 /// Módulo de Aprendizaje (placeholder AU2). Mide engagement; SIN gating.
