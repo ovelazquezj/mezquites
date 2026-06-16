@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../copy.dart';
 import '../widgets/branded_app_bar.dart';
 import '../widgets/common.dart';
+import 'learning_detail_screen.dart';
 
 /// Aprendizaje (Q5.C). Contenidos AU2 (placeholders), mide engagement, SIN
 /// gating (gate #3): ningún módulo se bloquea por nivel/capacitación. Sin
@@ -37,9 +38,13 @@ class _LearningScreenState extends ConsumerState<LearningScreen> {
                 subtitle: Text(m.summary),
                 trailing: _opened.contains(m.id)
                     ? const Icon(Icons.check_circle_outline)
-                    : null,
-                // SIN bloqueo: cualquier módulo abre siempre (gate #3).
-                onTap: () => setState(() => _opened.add(m.id)),
+                    : const Icon(Icons.chevron_right),
+                // SIN bloqueo: cualquier módulo abre siempre (gate #3). Navega
+                // al detalle (CR-007) y registra el "abierto" (engagement Q6).
+                onTap: () {
+                  setState(() => _opened.add(m.id));
+                  LearningDetailScreen.open(context, m);
+                },
               ),
             ),
           ),
