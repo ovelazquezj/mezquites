@@ -9,10 +9,10 @@ import 'api_exception.dart';
 /// Cliente de la API REST `/api/v1` del backend del mezquite.
 ///
 /// Refleja `backend/app/routers/*` y `backend/app/schemas.py`: nombres de campo
-/// y rutas EXACTOS. Auth por bearer token (sin PII, gate #2).
+/// y rutas EXACTOS. Auth por bearer token (CR-002: identidad real, gate #2 acotado).
 ///
 /// Endpoints cubiertos:
-///   auth/register, auth/recover, observations (multipart), observations/mine,
+///   auth/google (login social), observations (multipart), observations/mine,
 ///   me/feedback, me/profile, gamification/rankings, public/observations,
 ///   public/indicators, admin/institutions (lista F3).
 class ApiClient {
@@ -57,33 +57,22 @@ class ApiClient {
     throw ApiException(r.statusCode, 'Error de la API', body: r.body);
   }
 
-  // --- Auth (sin PII, gate #2) ---
+  // --- Auth con identidad real (CR-002, gate #2 acotado) ---
 
-  /// Alta de cuenta seudonimizada por handle. SIN email/teléfono/nombre.
-  /// [institutionId] null => "Independiente".
-  Future<AuthSession> register({String? institutionId}) async {
-    final r = await _http.post(
-      _uri('/auth/register'),
-      headers: _headers(),
-      body: json.encode({
-        if (institutionId != null) 'institution_id': institutionId,
-        'role': 'voluntario',
-      }),
-    );
-    final session = AuthSession.fromRegister(_decode(r));
-    _token = session.token;
-    return session;
-  }
-
-  /// Recuperación por handle + código de respaldo (sin PII).
-  Future<AuthSession> recover({
-    required String handle,
-    required String backupCode,
+  /// Login social: envía el ID token de Google a `POST /auth/google`. El backend lo verifica y
+  /// devuelve nuestro JWT + el handle de presentación. La app NO manda email/nombre: solo el ID
+  /// token (el backend guarda únicamente el `sub` opaco). [institutionId] null => "Independiente".
+  Future<AuthSession> loginWithGoogle({
+    required String idToken,
+    String? institutionId,
   }) async {
     final r = await _http.post(
-      _uri('/auth/recover'),
+      _uri('/auth/google'),
       headers: _headers(),
-      body: json.encode({'handle': handle, 'backup_code': backupCode}),
+      body: json.encode({
+        'id_token': idToken,
+        if (institutionId != null) 'institution_id': institutionId,
+      }),
     );
     final session = AuthSession.fromToken(_decode(r));
     _token = session.token;

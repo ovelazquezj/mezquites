@@ -3,19 +3,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mezquite_web_admin/src/screens/login_screen.dart';
 
+/// CR-002 — AC7 (parte): el login de la consola usa **usuario + contraseña**.
 void main() {
-  testWidgets('Login admin no ofrece campos de PII (gate #2)', (tester) async {
+  testWidgets('Login de la consola ofrece usuario y contraseña (CR-002)',
+      (tester) async {
     await tester.pumpWidget(const ProviderScope(
       child: MaterialApp(home: LoginScreen()),
     ));
 
-    // Campos visibles por defecto: usuario y código de respaldo. NADA de
-    // email/pass.
-    expect(find.byKey(const Key('login-handle')), findsOneWidget);
-    expect(find.byKey(const Key('login-backup-code')), findsOneWidget);
+    // Campos visibles por defecto: usuario y contraseña.
+    expect(find.byKey(const Key('login-username')), findsOneWidget);
+    expect(find.byKey(const Key('login-password')), findsOneWidget);
+    // Ya NO hay campo de código de respaldo.
+    expect(find.byKey(const Key('login-backup-code')), findsNothing);
 
-    // El acceso por token está oculto tras "Opciones avanzadas" (no aparece de
-    // entrada para no confundir al usuario no experto).
+    // El acceso por token está oculto tras "Opciones avanzadas".
     expect(find.byKey(const Key('login-token')), findsNothing);
     final advanced = find.text('Opciones avanzadas');
     await tester.ensureVisible(advanced);
@@ -24,11 +26,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('login-token')), findsOneWidget);
 
-    // No debe existir ningún campo etiquetado como PII.
-    for (final pii in ['Email', 'Correo', 'Contraseña', 'Password', 'Teléfono',
-      'Nombre']) {
+    // No debe existir ningún campo etiquetado como PII de más (correo/teléfono/nombre).
+    for (final pii in ['Email', 'Correo', 'Teléfono', 'Nombre']) {
       expect(find.widgetWithText(TextField, pii), findsNothing,
-          reason: 'gate #2: sin PII en el login ($pii)');
+          reason: 'gate #2 acotado: sin PII de más en el login ($pii)');
     }
   });
 }

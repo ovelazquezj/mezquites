@@ -20,12 +20,18 @@ dependencies:
   geolocator: ^13.0.2
   # Escritura de EXIF lat/lon/timestamp en el JPEG capturado (gate #4).
   native_exif: ^0.6.2
-  # Persistencia local sin PII: token, handle, flag de disclaimer visto.
+  # Persistencia local sin PII: token, handle (de presentación), flag de disclaimer visto.
   shared_preferences: ^2.3.3
-  # Generación de QR para el código de respaldo (recuperación sin PII).
-  qr_flutter: ^4.1.0
   # Wordmark "Mezquite" en serif de Google Fonts (CR-003): se usa Fraunces.
   google_fonts: ^6.2.1
+  # --- Autenticación con identidad real (CR-002) ---
+  # Sign in with Google vía Firebase Auth. La app guarda SOLO el id opaco (provider+sub):
+  # nunca email/nombre (gate #2 acotado). Estas dependencias COMPILAN sin google-services.json;
+  # la inicialización real de Firebase es condicional (AUTH_MODE), de modo que `flutter build apk`
+  # y los tests funcionan en modo MOCK sin un proyecto Firebase real (ver docs/DESPLIEGUE.md).
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  google_sign_in: ^6.2.1
 
 dev_dependencies:
   flutter_test:

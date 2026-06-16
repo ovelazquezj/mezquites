@@ -165,6 +165,7 @@ def client(engine, tmp_path, monkeypatch):
     from sqlalchemy.orm import sessionmaker
     from mezquite_contract.broker import InMemoryBroker
 
+    from backend.app import auth_provider as auth_provider_module
     from backend.app import db as db_module
     from backend.app import queue as queue_module
     from backend.app import storage as storage_module
@@ -184,10 +185,13 @@ def client(engine, tmp_path, monkeypatch):
     broker = InMemoryBroker()
     queue_module.set_broker(broker)
 
-    # Asegura settings cacheados coherentes (local + memory).
+    # Asegura settings cacheados coherentes (local + memory + auth mock; gate #6).
     get_settings.cache_clear()
     monkeypatch.setenv("STORAGE_BACKEND", "local")
     monkeypatch.setenv("BROKER", "memory")
+    monkeypatch.setenv("AUTH_PROVIDER", "mock")
+    # Proveedor de auth mock reconstruido desde config (sin red ni Google; CR-002).
+    auth_provider_module.set_auth_provider(None)
 
     def _override_db():
         s = db_module._SessionLocal()
@@ -201,3 +205,4 @@ def client(engine, tmp_path, monkeypatch):
     test_client.broker = broker  # expuesto para aserciones de encolado
     yield test_client
     app.dependency_overrides.clear()
+    auth_provider_module.set_auth_provider(None)

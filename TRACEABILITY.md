@@ -57,7 +57,7 @@
 | Gate | Dónde / prueba | Estado |
 |---|---|---|
 | 1. Boundary Q1 (no control fitosanitario) | revisión de endpoints/copy + `backend/tests/test_openapi.py::test_boundary_q1_no_phytosanitary_promises_in_spec` (escaneo del OpenAPI) | ✅ (backend) |
-| 2. Sin PII | `account` sin email/teléfono; `/auth/register` y `/auth/recover` sin PII; token sin PII: `backend/tests/test_security_no_pii.py` (8 pruebas) | ✅ |
+| 2. ~~Sin PII~~ → **Acotado por CR-002** | Identidad real con mínima PII: voluntario guarda solo `provider_subject` (sin email/nombre); email SOLO para `administrador` (CHECK `ck_account_email_only_admin`); token sin PII. `backend/tests/test_security_no_pii.py` + `test_auth_google.py::test_ac4_*` + `test_auth_login_admin.py` | ✅ acotado |
 | 3. Sin gating | backend: sin checks de nivel/capacitación; móvil: Learning/HomeShell sin bloqueos, identidad no desbloquea: `mobile/test/no_gating_test.dart` | ✅ |
 | 4. Captura cámara-nativa + EXIF | móvil: `CaptureService` solo `takePicture()` + EXIF, **sin `image_picker`/galería**: `mobile/test/capture_camera_test.dart`; backend exige `lat`/`lon`/`captured_at` | ✅ (build APK ✅; cámara real en hardware = Inc 5) |
 | 5. Obfuscación 1 km | `/public/*` obfusca server-side (`obfuscate_1km`, EPSG:6372); exactas solo `/restricted/*` (rol firmante): `test_obfuscation.py` + `test_roles.py`. **CR-001:** la imagen de revisión se sirve con **EXIF GPS saneado** salvo `aliado_firmante`: `backend/tests/test_review.py::test_ac4_image_gps_stripped_for_evaluador/analista` + `::test_ac4_image_keeps_gps_only_for_aliado_firmante` | ✅ |
@@ -87,6 +87,33 @@
 `mock-validator`: 9 sin cambios). Migración Alembic `0002_revision_humana` verificada (`upgrade`/`downgrade`
 en PostGIS). Gate #5 (EXIF GPS saneado) verificado con imágenes JPEG reales (Pillow). `flutter analyze`
 limpio en móvil y web-admin.
+
+## CR-002 — Autenticación con identidad real (Google/Firebase + usuario/contraseña)
+
+> Decisión humana del 2026-06-15 (ver `docs/change-requests/CR-002-auth-identidad-real.md` y el
+> amendment de Q5.D-D1 + gate #2 acotado en la bitácora). App = Sign in with Google (solo `sub`
+> opaco); backend = usuario/contraseña (argon2). Proveedor de auth conmutable (`mock|firebase`).
+
+| AC | Descripción | Prueba | Estado |
+|---|---|---|---|
+| **AC1** | `POST /auth/google` (mock) crea `voluntario` (solo `provider_subject`, sin email/nombre) + JWT válido | `backend/tests/test_auth_google.py::test_ac1_google_login_creates_voluntario_and_returns_jwt` / `::test_ac1_google_login_persists_only_opaque_subject` / `::test_ac1_second_login_same_subject_reuses_account` | ✅ |
+| **AC2** | `POST /auth/login` valida usuario/contraseña (hash) y rechaza credenciales malas | `backend/tests/test_auth_login_admin.py::test_ac2_login_ok_with_valid_credentials` / `::test_ac2_login_rejects_bad_password` / `::test_ac2_login_rejects_unknown_user` | ✅ |
+| **AC3** | El administrador crea `evaluador` (sin email) y 2º `administrador` (con email); `register` ya no acepta `role` | `backend/tests/test_auth_login_admin.py::test_ac3_admin_creates_evaluador_without_email` / `::test_ac3_admin_creates_second_admin_with_email` / `::test_ac3_register_no_longer_accepts_role` / `::test_ac3_evaluador_with_email_is_rejected` | ✅ |
+| **AC4** | Sin PII de más: ninguna cuenta `voluntario` guarda email/nombre (CHECK lo blinda) | `backend/tests/test_auth_google.py::test_ac4_db_rejects_email_on_voluntario` / `::test_ac4_no_voluntario_account_carries_pii` + `test_security_no_pii.py::test_account_model_has_no_pii_columns` | ✅ |
+| **AC5** | `AUTH_PROVIDER=mock` corre la suite sin red (gate #6) | `backend/tests/test_auth_google.py::test_ac5_mock_provider_runs_offline_with_fixed_token` (+ `conftest` fija `AUTH_PROVIDER=mock`) | ✅ |
+| **AC6** | App: "Entrar con Google" completa login mockeado; sin código de respaldo/QR | `mobile/test/google_signin_test.dart` + `no_pii_test.dart` (payload solo `id_token`; sin `/auth/register`,`/auth/recover`); `flutter build apk --release` ✅ sin `google-services.json` | ✅ |
+| **AC7** | Web-admin entra con usuario/contraseña; el administrador ve gestión de usuarios | `web-admin/test/widget_login_test.dart` + `session_test.dart` + `widget_users_test.dart` | ✅ |
+| **AC8** | Trazabilidad AC1–AC7 + suite global verde | este documento + corridas abajo | ✅ |
+
+**Gate #2 (acotado):** ninguna cuenta `voluntario` guarda email/teléfono/nombre (solo `provider_subject`
+opaco); el `email` lo porta SOLO `administrador` (CHECK `ck_account_email_only_admin`); el JWT no lleva
+PII. Verificado por `test_auth_google.py::test_ac4_*` y `test_security_no_pii.py`.
+
+**Pruebas verdes tras CR-002:** `backend`: **86** · `web-admin`: **43** · `mobile`: **40** (`contract`: 21 ·
+`mock-validator`: 9 sin cambios) = **199 verdes**. Migración Alembic `0003_auth_identidad` verificada
+(`upgrade`/`downgrade`/`upgrade` en PostGIS efímero). `flutter analyze` limpio en móvil y web-admin;
+`flutter build apk --release` (móvil, sin `google-services.json`) y `flutter build web` (web-admin) ✅.
+Build sin Firebase real: la init de Firebase es condicional a `AUTH_MODE=firebase`.
 
 ## Resumen del Incremento 1
 

@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/session.dart';
 
-/// Login admin **sin PII** (gate #2): handle + código de respaldo (POST
-/// /auth/recover) o token Bearer pegado. NO hay campos de email/contraseña/
-/// nombre. Si el rol del token no es `admin_consorcio`, se deniega el acceso.
+/// Login de la consola del consorcio (CR-002): **usuario + contraseña** (POST /auth/login). Los
+/// usuarios los crea el administrador (no hay auto-registro). Acceso por token Bearer pegado tras
+/// "Opciones avanzadas" (uso técnico). Si el rol no entra a la consola, se deniega el acceso.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -14,24 +14,24 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _handleCtrl = TextEditingController();
-  final _codeCtrl = TextEditingController();
+  final _userCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
   final _tokenCtrl = TextEditingController();
   bool _busy = false;
 
   @override
   void dispose() {
-    _handleCtrl.dispose();
-    _codeCtrl.dispose();
+    _userCtrl.dispose();
+    _passCtrl.dispose();
     _tokenCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _loginWithCode() async {
+  Future<void> _loginWithPassword() async {
     setState(() => _busy = true);
-    await ref.read(sessionProvider.notifier).loginWithBackupCode(
-          handle: _handleCtrl.text,
-          backupCode: _codeCtrl.text,
+    await ref.read(sessionProvider.notifier).loginWithPassword(
+          username: _userCtrl.text,
+          password: _passCtrl.text,
         );
     if (mounted) setState(() => _busy = false);
   }
@@ -62,34 +62,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         style: theme.textTheme.displayLarge),
                     const SizedBox(height: 8),
                     Text(
-                      'Proyecto de ciencia ciudadana del mezquite. '
-                      'Acceso sin datos personales: tu usuario y tu código de '
-                      'respaldo.',
+                      'Proyecto de ciencia ciudadana del mezquite. Inicia sesión '
+                      'con tu usuario y contraseña. ¿No tienes cuenta? El '
+                      'administrador la crea por ti.',
                       style: theme.textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 24),
                     TextField(
-                      key: const Key('login-handle'),
-                      controller: _handleCtrl,
+                      key: const Key('login-username'),
+                      controller: _userCtrl,
                       decoration: const InputDecoration(
                         labelText: 'Usuario',
-                        hintText: 'p.ej. obs-7HQ4K2',
                       ),
                     ),
                     const SizedBox(height: 12),
                     TextField(
-                      key: const Key('login-backup-code'),
-                      controller: _codeCtrl,
+                      key: const Key('login-password'),
+                      controller: _passCtrl,
                       obscureText: true,
+                      onSubmitted: (_) => _busy ? null : _loginWithPassword(),
                       decoration: const InputDecoration(
-                        labelText: 'Código de respaldo',
-                        hintText: 'MZQ-XXXX-XXXX',
+                        labelText: 'Contraseña',
                       ),
                     ),
                     const SizedBox(height: 16),
                     FilledButton(
                       key: const Key('login-submit'),
-                      onPressed: _busy ? null : _loginWithCode,
+                      onPressed: _busy ? null : _loginWithPassword,
                       child: _busy
                           ? const SizedBox(
                               height: 18,
@@ -99,8 +98,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           : const Text('Entrar'),
                     ),
                     const SizedBox(height: 8),
-                    // Acceso por token: solo para uso técnico. Oculto por
-                    // defecto para no confundir al usuario no experto.
+                    // Acceso por token: solo para uso técnico. Oculto por defecto.
                     Theme(
                       data: theme.copyWith(dividerColor: Colors.transparent),
                       child: ExpansionTile(

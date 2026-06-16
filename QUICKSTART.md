@@ -140,26 +140,38 @@ docker compose -f infra/compose/docker-compose.dev.yml up -d mock-validator
 ```
 > Déjalo en `regla` si prefieres ver la mezcla realista válida/ruido.
 
-### 2.2 Crea la cuenta de administrador (bootstrap)
+### 2.2 Crea la cuenta de administrador (bootstrap, CR-002)
+
+El primer administrador se siembra por **CLI** (no por la API: `register` ya no concede roles).
+Dentro del contenedor `api`:
 
 ```powershell
-curl.exe -s -X POST http://localhost:8000/api/v1/auth/register `
-  -H "Content-Type: application/json" -d '{"role":"admin_consorcio"}'
+docker compose -f infra/compose/docker-compose.dev.yml exec api `
+  python -m backend.app.bootstrap --username admin --password "Adm1n-Pass" --email admin@org.mx
 ```
-**✓ Verifica:** responde un JSON como:
-```json
-{"handle":"colibri-azul-1234","role":"admin_consorcio","token":"eyJhbGciOi...","backup_code":"ABCD-EFGH-IJKL"}
-```
-**Apunta `handle` y `backup_code`** (los usarás para entrar al web admin) y `token` (alternativa).
-
-### 2.3 Crea un voluntario
+**✓ Verifica:** imprime `administrador creado: username=admin ...`. Ahora obtén un token con
+**usuario + contraseña**:
 
 ```powershell
-curl.exe -s -X POST http://localhost:8000/api/v1/auth/register `
-  -H "Content-Type: application/json" -d '{"role":"voluntario"}'
+curl.exe -s -X POST http://localhost:8000/api/v1/auth/login `
+  -H "Content-Type: application/json" -d '{"username":"admin","password":"Adm1n-Pass"}'
 ```
-**✓ Verifica:** otro JSON con `role":"voluntario"`. **Copia su `token`** para el siguiente paso
-(lo llamaremos `TOKEN_VOL`).
+Responde `{"handle":"...","role":"administrador","token":"eyJhbGciOi...","must_change_password":false}`.
+**Apunta el `token`** (lo usarás para el web admin y para crear evaluadores).
+
+> El `administrador` crea evaluador/analista desde el web admin (sección **Usuarios del equipo**) o
+> por `POST /admin/users` (con su token), que devuelve una **contraseña temporal**.
+
+### 2.3 Crea un voluntario (login social con el mock)
+
+En dev `AUTH_PROVIDER=mock`, así que el login con Google se simula con un token `mock:<sub>` (sin red):
+
+```powershell
+curl.exe -s -X POST http://localhost:8000/api/v1/auth/google `
+  -H "Content-Type: application/json" -d '{"id_token":"mock:demo"}'
+```
+**✓ Verifica:** JSON con `"role":"voluntario"` (solo se guarda el `sub` opaco; sin email/nombre).
+**Copia su `token`** para el siguiente paso (lo llamaremos `TOKEN_VOL`).
 
 ### 2.4 Sube varias observaciones
 
@@ -238,8 +250,8 @@ azul Rotary + dorado, minimalista).
 
 ### 3.3 Inicia sesión como administrador
 
-Usa el **handle** y el **código de respaldo** del admin (paso 2.2). (También hay opción de pegar el
-token.)
+Usa el **usuario y la contraseña** del admin (paso 2.2: `admin` / `Adm1n-Pass`). (También hay opción
+de pegar el token bajo "Opciones avanzadas".)
 
 **✓ Verifica:** entras a la consola con una barra de navegación lateral: **Instituciones**,
 **Aliados firmantes**, **Indicadores organizacionales**, **Snapshots**, **Dashboard público** y
@@ -481,10 +493,10 @@ Si levantaste el **despliegue por ngrok** (Parte 4-bis), detén también el tún
 
 Esta configuración es para **revisión local**, no para producción:
 
-- **Registro con rol (hueco gate #5):** hoy `POST /auth/register` acepta `role`, por lo que cualquiera
-  podría auto-asignarse `aliado_firmante` (coords exactas) o `admin_consorcio`. Aquí lo usamos como
-  bootstrap del admin, pero **debe cerrarse** antes de cualquier uso no-local (restringir el registro
-  a `voluntario` + sembrar el primer admin por configuración/CLI).
+- **Registro con rol (hueco gate #5): CERRADO por CR-002.** `POST /auth/register` ya **no** acepta
+  `role` (siempre `voluntario`); el primer administrador se siembra por CLI
+  (`python -m backend.app.bootstrap`) y el admin crea evaluador/analista. Auth de la app por Sign in
+  with Google (mock en dev), del backend por usuario/contraseña.
 - **CORS deshabilitado:** por eso el web admin se revisa con el flag de Chrome. La corrección limpia
   es habilitar `CORSMiddleware` en el backend (orígenes permitidos por entorno).
 - **Secretos dev:** `AUTH_SECRET=dev-insecure-secret-change-me` y credenciales `mezquite/mezquite`

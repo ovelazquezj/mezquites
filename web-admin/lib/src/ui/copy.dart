@@ -18,6 +18,8 @@ class Copy {
   // Revisión humana (CR-001).
   static const navReview = 'Revisión de observaciones';
   static const navMonitor = 'Monitor de revisión';
+  // Gestión de usuarios (CR-002, solo administrador).
+  static const navUsers = 'Usuarios del equipo';
 
   // --- Revisión humana (CR-001) ---
   static const reviewIntro =

@@ -11,6 +11,7 @@ import 'public_dashboard_screen.dart';
 import 'restricted_dashboard_screen.dart';
 import 'review_screen.dart';
 import 'snapshots_screen.dart';
+import 'users_screen.dart';
 
 /// Shell de la consola del consorcio. NavigationRail con los módulos, **gated por
 /// rol** (CR-001):
@@ -49,6 +50,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       if (session.canReview)
         _NavItem(Icons.insights_outlined, Copy.navMonitor,
             () => const MonitorScreen()),
+      // Gestión de usuarios del equipo: SOLO administrador (CR-002).
+      if (session.canManageUsers)
+        _NavItem(Icons.group_outlined, Copy.navUsers,
+            () => const UsersScreen()),
       // Módulos de administración: solo admin_consorcio/administrador.
       if (isAdmin) ...[
         _NavItem(Icons.account_balance_outlined, Copy.navInstitutions,
