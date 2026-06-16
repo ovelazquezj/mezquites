@@ -32,6 +32,10 @@ dependencies:
   firebase_core: ^3.6.0
   firebase_auth: ^5.3.1
   google_sign_in: ^6.2.1
+  # Captura por cámara en WEB (CR-005): image_picker(camera) -> bytes -> MultipartFile.fromBytes.
+  # En navegador de teléfono/tablet abre la cámara real (gate #4, W0=a). El móvil NATIVO sigue
+  # usando `camera`+`native_exif` (sin galería); image_picker solo se usa en la rama web.
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:

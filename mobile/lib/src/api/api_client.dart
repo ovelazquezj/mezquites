@@ -90,9 +90,18 @@ class ApiClient {
       request.headers['Authorization'] = 'Bearer $_token';
     }
     request.fields['payload'] = json.encode(draft.toPayloadJson());
-    request.files.add(
-      await http.MultipartFile.fromPath('image', draft.imagePath),
-    );
+    // Web: la cámara del navegador entrega bytes (no hay ruta de archivo).
+    // Móvil nativo: ruta del JPEG con EXIF. (CR-005)
+    if (draft.imageBytes != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes('image', draft.imageBytes!,
+            filename: 'observacion.jpg',),
+      );
+    } else {
+      request.files.add(
+        await http.MultipartFile.fromPath('image', draft.imagePath!),
+      );
+    }
     final streamed = await _http.send(request);
     final r = await http.Response.fromStream(streamed);
     final body = _decode(r);

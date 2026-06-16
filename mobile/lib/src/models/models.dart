@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'enums.dart';
 
 /// Sesión del voluntario (CR-002, gate #2 acotado). Identidad real por Google, pero la app guarda
@@ -32,8 +34,10 @@ class ObservationDraft {
     required this.flagDanio,
     required this.tamanio,
     required this.contexto,
-    required this.imagePath,
-  });
+    this.imagePath,
+    this.imageBytes,
+  }) : assert(imagePath != null || imageBytes != null,
+            'La observación necesita imagen por ruta (móvil) o bytes (web).',);
 
   final double lat;
   final double lon;
@@ -44,8 +48,9 @@ class ObservationDraft {
   final Tamanio tamanio;
   final Contexto contexto;
 
-  /// Ruta local del JPEG capturado con cámara nativa (con EXIF inyectado).
-  final String imagePath;
+  /// Imagen capturada: por **ruta** (móvil nativo, con EXIF) o por **bytes** (web).
+  final String? imagePath;
+  final Uint8List? imageBytes;
 
   /// Las 8 etiquetas serializadas para el campo `payload` (multipart).
   Map<String, dynamic> toPayloadJson() => {

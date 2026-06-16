@@ -12,7 +12,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:native_exif/native_exif.dart';
-import 'package:mezquite_app/src/services/capture_service.dart';
+import 'package:mezquite_app/src/services/capture_service_native.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -27,7 +27,7 @@ void main() {
       0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xD9,
     ]);
 
-    await CaptureService.injectExif(
+    await NativeCaptureService.injectExif(
       path,
       lat: 25.6866,
       lon: -100.3161,

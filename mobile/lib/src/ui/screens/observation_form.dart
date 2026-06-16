@@ -52,6 +52,7 @@ class _ObservationFormState extends State<ObservationForm> {
       tamanio: _tamanio!,
       contexto: _contexto!,
       imagePath: widget.capture.imagePath,
+      imageBytes: widget.capture.imageBytes,
     );
     widget.onSubmit(draft);
   }
