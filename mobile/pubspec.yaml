@@ -41,6 +41,13 @@ dependencies:
   flutter_markdown: ^0.7.4
   # Abrir los enlaces "Saber más" en el navegador EXTERNO (LaunchMode.externalApplication).
   url_launcher: ^6.3.0
+  # --- Mapa de calor público (CR-009) ---
+  # Mapa interactivo con tiles de OpenStreetMap + capa de celdas de calor (300 m).
+  # Compila en web y en móvil nativo; sin dependencia de Google Maps (sin API key).
+  # Versiones compatibles con Flutter 3.27 / Dart 3.6.
+  flutter_map: ^7.0.2
+  # Tipo LatLng para flutter_map (centro de celda obfuscado, gate #5).
+  latlong2: ^0.9.1
 
 dev_dependencies:
   flutter_test:

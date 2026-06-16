@@ -77,8 +77,10 @@ flutter test integration_test/capture_exif_test.dart -d <android_device>
   todos los destinos disponibles; etiqueta de identidad sin desbloquear funciones.
 - **#4 Cámara nativa + EXIF** — `CaptureScreen`/`CaptureService`: solo
   `takePicture()`; **no hay `image_picker` ni galería**; EXIF GPS/fecha inyectado.
-- **#5 Obfuscación 1 km** — `DashboardScreen` consume `/public/observations`
-  (obfuscadas server-side) y nunca pide coords exactas; aviso visible.
+- **#5 Obfuscación ~300 m (CR-009)** — `HeatMapScreen` (vista "Mapa") consume
+  `/public/grid` (celdas obfuscadas server-side) y nunca pide ni muestra coords
+  exactas; el popup habla de "celda aproximada" y el disclaimer (botón ⓘ) avisa
+  del radio aproximado. Entrada pública SIN login desde la Bienvenida.
 - **#8 Autodeclarado** — `G4Selector` y toggles: la UI no afirma validación.
 - **#9 Sin estado de validación individual** — el voluntario nunca ve veredicto
   por observación; solo feedback **agregado** vía `/me/feedback`.

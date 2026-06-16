@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'capture_screen.dart';
-import 'dashboard_screen.dart';
+import 'heat_map_screen.dart';
 import 'learning_screen.dart';
 import 'profile_screen.dart';
 
@@ -21,7 +21,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   static const _screens = <Widget>[
     CaptureScreen(),
     LearningScreen(),
-    DashboardScreen(),
+    // Pestaña "Mapa": la MISMA pantalla de calor que la entrada pública, ahora
+    // con sesión (los datos públicos son los mismos; CR-009).
+    HeatMapScreen(),
     ProfileScreen(),
   ];
 
