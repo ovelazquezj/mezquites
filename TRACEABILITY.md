@@ -183,3 +183,24 @@ por mí. Total del repo: **138 pruebas verdes** (`contract`: 21 · `mock-validat
 **no** ve coords exactas a menos que también sea `aliado_firmante` (la bitácora otorga coords
 exactas solo a "aliados firmantes"). El subagente respetó esto sin asumir herencia de acceso; si el
 consorcio espera ver exactas, es una decisión humana (relacionada con EA3/H3, fuera del software).
+
+## CR-009 — Mapa de calor público (celdas 300 m)
+
+Construido por dos subagentes (A backend ∥ B móvil) e integrado/verificado por el Orquestador.
+**Total del repo tras CR-009: 250 pruebas verdes** (`contract` 21 · `mock` 9 · `backend` 111 ·
+`mobile` 56 · `web-admin` 53). `flutter analyze` limpio + `flutter build web` ✅.
+
+| Criterio (CR-009 §6) | Prueba / verificación |
+|---|---|
+| AC1 vista Mapa = mapa de calor (móvil+web), sin indicadores/lista | `mobile/test/heat_map_test.dart` (render capa + leyenda + popup); `flutter build web` ✅ |
+| AC2 entrada pública sin login | `welcome_screen.dart` botón "Ver el mapa público" → `HeatMapScreen.openPublic`; endpoints `public/*` sin auth |
+| AC3 botón ⓘ con disclaimer + indicadores | `heat_map_test.dart` (bottom sheet ⓘ) |
+| AC4 gate #5 a 300 m (público nunca < celda) | `backend/tests/test_obfuscation.py` (umbral 300 m); `test_public_grid.py` (claves exactas de celda) |
+| AC5 `GET /public/grid` agrega no-rechazadas | `backend/tests/test_public_grid.py` (agregación, exclusión de rechazadas, filtro estado) |
+| AC6 siembra de Aguascalientes | `backend/tests/test_seed_demo.py` (idempotencia, sin PII); verificación CLI → 9 celdas, 11 obs |
+| AC7 `CAVEAT` sin "validación automática"; suites verdes; web-admin intacto | `indicators.py::CAVEAT`; `pytest` 111 + `flutter test` 56; `git diff` vacío fuera de `backend/`+`mobile/` |
+
+**Enmienda de gate:** gate #5 (1 km → 300 m) registrada en `bitacora_sdd_mezquite.md` (gate #5 y
+Q5.B-D1, 2026-06-16). Sigue ocultando el árbol exacto; coords exactas solo a `aliado_firmante`;
+conmutable por `obfuscation_grid_m` (gate #6). **Pendiente humano:** `admin_boundary` no cargado ⇒ la
+derivación de estado/municipio queda en `None` (el mapa no filtra por estado; muestra todas las celdas).

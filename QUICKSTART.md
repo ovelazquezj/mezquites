@@ -308,7 +308,12 @@ en serif (Fraunces) y la **paleta oficial Mezquite** (navy/dorado/verde).
    (nivel **G4**, toggles **cúscuta**/**daño**, dropdowns **tamaño**/**contexto**) y envía.
    **✓ Verifica:** el envío **no bloquea** la UI; queda **registrada y aceptada** (sin veredicto
    individual). En el backend aparece como observación nueva (`aceptada`).
-4. **Mapa:** muestra observaciones públicas (coords a 1 km).
+4. **Mapa (CR-009):** **mapa de calor** a pantalla completa (OSM, encuadre Aguascalientes) con celdas
+   coloreadas por severidad; **sin** indicadores ni lista en pantalla — el disclaimer + los números
+   viven tras el botón **ⓘ**. Las celdas son **~300 m** (gate #5 enmendado; nunca coord exacta).
+   **✓ Verifica:** desde la **Bienvenida** (sin iniciar sesión) el botón **"Ver el mapa público"** abre
+   ese mismo mapa → es la **vista pública** abrible desde internet. Para ver datos, siembra con
+   `docker exec compose-api-1 python -m backend.app.seed_demo` (10 obs de Aguascalientes → 9 celdas).
 5. **Perfil:** lifelist, etiqueta de identidad y **resumen agregado** de tus aportaciones.
    **✓ Verifica:** el resumen es agregado, nunca acusación individual.
 
