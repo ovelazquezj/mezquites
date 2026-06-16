@@ -2,10 +2,13 @@
 
 Mapeo 1:1 con el DDL de referencia. Gates relevantes:
 - Gate #2 (sin PII): `account` NO tiene email/teléfono/nombre; solo handle + recovery_hash.
-- Gate #8 (alcance de validación): `nivel_g4`, `flag_cuscuta`, `flag_danio` son AUTODECLARADOS;
-  el backend nunca los "valida". La validación automática solo escribe `validation_state`.
-- Gate #9 (idempotencia): `validation_event` tiene PK por `observation_id`; `points_ledger`
-  tiene UNIQUE(observation_id, kind) → la recompensa diferida se otorga una sola vez.
+- Revisión humana (CR-001, 2026-06-15): `nivel_g4`, `flag_cuscuta`, `flag_danio` son AUTODECLARADOS;
+  el backend nunca los "valida". La calidad la decide un humano y se refleja en `estado_revision`
+  (`aceptada` por defecto → `confirmada`/`rechazada`). La validación automática (YOLO) queda inactiva
+  (gates #8/#9/#10 superados en la bitácora).
+- Trazabilidad/auditoría (gate #7): `human_review` es un log append-only (varias filas por
+  observación); el estado actual vive en `observation.estado_revision`. `points_ledger` tiene
+  UNIQUE(observation_id, kind) → cada recompensa se otorga una sola vez.
 """
 
 from __future__ import annotations
@@ -31,7 +34,21 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
 
-ROLES = ("voluntario", "aliado_firmante", "admin_consorcio")
+ROLES = (
+    "voluntario",
+    "aliado_firmante",
+    "admin_consorcio",
+    "administrador",
+    "evaluador",
+    "analista",
+)
+# Roles con acceso a la cola de revisión humana (CR-001). `analista` es solo lectura.
+REVIEW_ROLES = ("evaluador", "analista", "administrador")
+REVIEW_VERDICT_ROLES = ("evaluador", "administrador")  # pueden emitir veredicto
+# Estado de revisión humana (CR-001): default 'aceptada'; un humano confirma/rechaza.
+ESTADOS_REVISION = ("aceptada", "confirmada", "rechazada")
+REVIEW_VERDICTS = ("confirmada", "rechazada")
+# Legado de la validación automática YOLO (conservado, inactivo — gate #10 superado).
 VALIDATION_STATES = ("pendiente", "valida", "ruido")
 NIVELES_G4 = ("sano", "leve", "moderado", "severo")
 TAMANIOS = ("pequeno", "mediano", "grande", "no_estimable")
@@ -85,7 +102,9 @@ class Account(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "role IN ('voluntario','aliado_firmante','admin_consorcio')", name="ck_account_role"
+            "role IN ('voluntario','aliado_firmante','admin_consorcio',"
+            "'administrador','evaluador','analista')",
+            name="ck_account_role",
         ),
     )
 
@@ -109,7 +128,7 @@ class Tree(Base):
 
 
 class Observation(Base):
-    """8 etiquetas de captura (Q2, Q3) + agrupamiento + dimensión geográfica + validación."""
+    """8 etiquetas de captura (Q2, Q3) + agrupamiento + dimensión geográfica + revisión humana."""
 
     __tablename__ = "observation"
 
@@ -139,9 +158,9 @@ class Observation(Base):
     # dimensión geográfica (Q8)
     estado: Mapped[str | None] = mapped_column(Text)
     municipio: Mapped[str | None] = mapped_column(Text)
-    # validación (§6) — la fija SOLO el consumidor de resultados
-    validation_state: Mapped[str] = mapped_column(Text, nullable=False, default="pendiente")
-    model_version: Mapped[str | None] = mapped_column(Text)
+    # revisión humana (CR-001) — 'aceptada' por defecto; un humano la confirma/rechaza.
+    estado_revision: Mapped[str] = mapped_column(Text, nullable=False, default="aceptada")
+    model_version: Mapped[str | None] = mapped_column(Text)  # legado YOLO (inactivo)
     validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -159,15 +178,52 @@ class Observation(Base):
             name="ck_obs_contexto",
         ),
         CheckConstraint(
-            "validation_state IN ('pendiente','valida','ruido')", name="ck_obs_validation_state"
+            "estado_revision IN ('aceptada','confirmada','rechazada')",
+            name="ck_obs_estado_revision",
         ),
         Index("observation_geom_gix", "geom", postgresql_using="gist"),
         Index("observation_tree_idx", "tree_id", "captured_at"),
+        Index("observation_estado_revision_idx", "estado_revision"),
+    )
+
+
+class HumanReview(Base):
+    """Log append-only de revisión humana (CR-001, gate #7).
+
+    Cada veredicto humano (confirmada/rechazada) inserta una fila; pueden existir varias por
+    observación (re-revisión). El estado ACTUAL vive en ``observation.estado_revision``; esta tabla
+    es la auditoría de **quién** decidió **qué** y **cuándo**.
+    """
+
+    __tablename__ = "human_review"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    observation_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("observation.id"), nullable=False
+    )
+    reviewer_account_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("account.id"), nullable=False
+    )
+    veredicto: Mapped[str] = mapped_column(Text, nullable=False)
+    nota: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "veredicto IN ('confirmada','rechazada')", name="ck_human_review_veredicto"
+        ),
+        Index("human_review_obs_idx", "observation_id", "created_at"),
     )
 
 
 class ValidationEvent(Base):
-    """Idempotencia y auditoría (§6.4). PK por observation_id ⇒ un resultado aplicado por obs."""
+    """Idempotencia y auditoría (§6.4). PK por observation_id ⇒ un resultado aplicado por obs.
+
+    LEGADO de la validación automática YOLO (CR-001): la tabla se **conserva** para auditoría
+    histórica pero ya **no se escribe** (la frontera §6 quedó inactiva).
+    """
 
     __tablename__ = "validation_event"
 
