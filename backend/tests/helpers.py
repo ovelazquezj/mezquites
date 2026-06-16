@@ -52,12 +52,47 @@ def submit_jpeg_with_gps(client, token: str, *, lat: float = 21.88, lon: float =
 
 
 def register(client, role: str = "voluntario", institution_id: str | None = None) -> dict:
-    body: dict = {"role": role}
-    if institution_id:
-        body["institution_id"] = institution_id
-    resp = client.post("/api/v1/auth/register", json=body)
-    assert resp.status_code == 201, resp.text
-    return resp.json()
+    """Alta de cuenta para pruebas.
+
+    CR-002: ``POST /auth/register`` ya NO acepta `role` (cierra el hueco del gate #5). Para
+    ``voluntario`` se usa el endpoint real; para roles de backend/consorcio (que la API ya no
+    concede) se siembra la cuenta directamente en la DB y se emite un token, igual que hace el
+    administrador/bootstrap por dentro.
+    """
+    if role == "voluntario":
+        body: dict = {}
+        if institution_id:
+            body["institution_id"] = institution_id
+        resp = client.post("/api/v1/auth/register", json=body)
+        assert resp.status_code == 201, resp.text
+        return resp.json()
+    return _seed_account_with_role(role, institution_id)
+
+
+def _seed_account_with_role(role: str, institution_id: str | None = None) -> dict:
+    """Crea una cuenta con un rol dado en la DB y devuelve {handle, role, token}."""
+    import uuid as _uuid
+
+    from backend.app import db as db_module
+    from backend.app.models import Account
+    from backend.app.security import create_token, generate_handle
+
+    session = db_module.get_sessionmaker()()
+    try:
+        account = Account(
+            handle=generate_handle(),
+            auth_provider="social_google",
+            provider_subject=f"seed-{_uuid.uuid4().hex}",
+            role=role,
+            institution_id=_uuid.UUID(institution_id) if institution_id else None,
+        )
+        session.add(account)
+        session.commit()
+        session.refresh(account)
+        token = create_token(account_id=account.id, handle=account.handle, role=account.role)
+        return {"handle": account.handle, "role": account.role, "token": token}
+    finally:
+        session.close()
 
 
 def auth_header(token: str) -> dict:

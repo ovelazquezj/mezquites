@@ -20,6 +20,7 @@ from .routers import (
     public,
     restricted,
     review,
+    users,
 )
 
 API_PREFIX = "/api/v1"
@@ -50,6 +51,7 @@ def create_app() -> FastAPI:
         restricted.router,
         review.router,
         admin.router,
+        users.router,
     ):
         app.include_router(router, prefix=API_PREFIX)
 

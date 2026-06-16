@@ -20,16 +20,9 @@ from pydantic import BaseModel, Field
 
 class RegisterRequest(BaseModel):
     institution_id: uuid.UUID | None = None  # F3; None ⇒ "Independiente"
-    # NOTA (CR-001): el registro aún admite asignar rol (los nuevos roles de revisión incluidos);
-    # la restricción del registro a `voluntario` + bootstrap de roles por CLI es alcance de CR-002.
-    role: Literal[
-        "voluntario",
-        "aliado_firmante",
-        "admin_consorcio",
-        "administrador",
-        "evaluador",
-        "analista",
-    ] = "voluntario"
+    # CR-002 (cierra el hueco del gate #5): el registro YA NO acepta `role`. Toda alta por este
+    # endpoint es `voluntario`; los roles de backend los crea el administrador (POST /admin/users) y
+    # el primer administrador se siembra por config/CLI (bootstrap).
 
 
 class RegisterResponse(BaseModel):
@@ -59,6 +52,72 @@ class TokenResponse(BaseModel):
     handle: str
     role: str
     token: str
+    must_change_password: bool = False
+
+
+class LoginRequest(BaseModel):
+    """Login de los roles de backend (CR-002). Usuario + contraseña (hash argon2)."""
+
+    username: str
+    password: str
+
+
+# --- Gestión de usuarios por el administrador (CR-002) ---
+
+# Roles que el administrador puede crear/gestionar. Excluye `voluntario` (alta por la app) y
+# `aliado_firmante`/`admin_consorcio` (promoción aparte por la web admin del consorcio).
+BACKEND_ROLES = ("administrador", "evaluador", "analista")
+
+
+class AdminCreateUserRequest(BaseModel):
+    """El administrador crea un usuario de backend (evaluador/analista/administrador).
+
+    Gate #2 acotado: `email` SOLO es válido (y opcional) cuando `role == 'administrador'`. Se valida
+    en el endpoint. La contraseña temporal la genera el backend (invitación).
+    """
+
+    username: str
+    role: Literal["administrador", "evaluador", "analista"]
+    email: str | None = None  # solo administrador
+
+
+class AdminUserResponse(BaseModel):
+    id: uuid.UUID
+    handle: str
+    username: str | None
+    role: str
+    has_email: bool  # NO exponemos el email; solo si lo tiene (gate #2 acotado)
+    must_change_password: bool
+
+
+class AdminCreateUserResponse(AdminUserResponse):
+    temp_password: str = Field(
+        description="Contraseña temporal de invitación. Mostrar UNA vez; el usuario la cambia."
+    )
+
+
+class AdminPatchUserRequest(BaseModel):
+    role: Literal["administrador", "evaluador", "analista"] | None = None
+    active: bool | None = None  # reservado; el modelo no tiene 'active' aún, se ignora si None
+
+
+class AdminResetResponse(BaseModel):
+    id: uuid.UUID
+    username: str | None
+    temp_password: str = Field(
+        description="Nueva contraseña temporal. Mostrar UNA vez; el usuario la cambia."
+    )
+
+
+class PasswordResetRequest(BaseModel):
+    """Reset por correo del administrador (CR-002). Requiere SMTP; degrada si no hay."""
+
+    username: str
+
+
+class PasswordResetResponse(BaseModel):
+    delivered: bool  # True si se envió correo; False ⇒ degradado a "reset por el administrador"
+    message: str
 
 
 # --- Observaciones ---
