@@ -5,10 +5,10 @@
 | **ID** | CR-005 |
 | **Título** | Versión web de la app del voluntario reutilizando el código Flutter actual |
 | **Fecha** | 2026-06-16 |
-| **Estado** | **Propuesto — pendiente de revisión del usuario** (no codificar) |
-| **Prioridad** | Media |
-| **Depende de** | CR-002 (auth) · CR-003 (branding) · **CR-004 W3 (CORS)**; auth real requiere CR-004 W1 |
-| **Alcance** | App Flutter del voluntario compilada a **web**. Sin cambios al backend salvo CORS (CR-004 W3). |
+| **Estado** | **W0 decidido (2026-06-16): web para teléfono/tablet (opción a).** Listo para ejecutar tras CR-004 W3 (CORS). |
+| **Prioridad** | **Alta** — ruta de lanzamiento (meta **2026-07-10**; evita la certificación de tiendas). |
+| **Depende de** | CR-002 (auth) · CR-003 (branding) · **CR-004 W3 (CORS)**; auth pública requiere CR-004 W1 + hosting (H6) |
+| **Alcance** | App Flutter del voluntario compilada a **web para teléfono/tablet** (no escritorio). Sin cambios al backend salvo CORS (CR-004 W3). |
 
 ---
 
@@ -23,6 +23,12 @@ cámara al navegador, se leen los bytes con `readAsBytes()` (sin rutas de archiv
 Hoy la capa de captura **no es portable**: usa `camera` + `native_exif` + `MultipartFile.fromPath`
 (ruta de archivo). Por eso este CR introduce una **capa de captura conmutable por plataforma**.
 
+**Contexto de lanzamiento (2026-06-16):** esta web es la **ruta para lanzar el 10 de julio** sin esperar
+la certificación de tiendas (~3 semanas). Es para **teléfono/tablet** (no escritorio); idealmente como
+**PWA instalable** ("añadir a pantalla de inicio"). El camino crítico **no** es la ingeniería sino las
+**dependencias externas**: hosting del backend+web con HTTPS (H6) y, para auth pública, proyecto
+Firebase + aviso de privacidad.
+
 ## 2. Gates — punto de decisión (W0, sellado)
 
 **Gate #4 (sellado):** *"solo cámara nativa con EXIF; galería deshabilitada"*. En web:
@@ -30,8 +36,10 @@ Hoy la capa de captura **no es portable**: usa `camera` + `native_exif` + `Multi
 - En **navegador de escritorio**, suele **degradar a selector de archivos** (≈ galería) → roza el gate #4.
 - **`native_exif` no corre en web** (la inyección de EXIF GPS/fecha es nativa).
 
-Por eso **W0 es una decisión humana** (puede o no enmendar el gate #4):
-- **(a) Web solo en navegador móvil** (cámara real) — **no** enmienda el gate #4.
+**DECISIÓN (2026-06-16): opción (a).** La web es para **teléfono/tablet**; en escritorio no es objetivo
+y se **bloquea/advierte** la captura. **No se enmienda el gate #4** (en móvil/tablet la cámara del
+navegador es real). Las opciones que se evaluaron:
+- **(a) Web solo en navegador móvil** (cámara real) — **no** enmienda el gate #4. ✅ **ELEGIDA**
 - **(b) Relajar gate #4 para web** (permitir `image_picker`, aceptando el fallback de escritorio) —
   **enmienda sellada** (requiere tu OK explícito, como CR-001/002).
 - **(c) Web "companion" sin captura** (solo mapa/perfil/rankings/onboarding) — **no** enmienda el gate #4.
@@ -65,7 +73,7 @@ Gates #2 (sin PII), #3 (sin gating), #5 (obfuscación), #6 (paridad), #7 (trazab
 
 | WS | Objetivo |
 |---|---|
-| **W0** | **Decisión gate #4** (a/b/c). Bloqueante para la captura. |
+| **W0** | ✅ **Decidido: web para teléfono/tablet (a).** En escritorio se restringe la captura; gate #4 intacto. |
 | **W1** | Capa de captura+subida conmutable (móvil `fromPath` / web `image_picker`+`fromBytes`). |
 | **W2** | Ubicación/EXIF en web (`geolocator` web; decidir embebido EXIF vs payload+server). |
 | **W3** | Habilitar target web del voluntario + Firebase/`google_sign_in` web. |
