@@ -6,7 +6,6 @@ import '../../state/providers.dart';
 import '../copy.dart';
 import '../widgets/common.dart';
 import '../widgets/disclaimer_dialog.dart';
-import '../widgets/wordmark.dart';
 import 'home_shell.dart';
 
 /// Pantalla de bienvenida + login (CR-002). Punto de entrada cuando no hay sesión.
@@ -90,7 +89,11 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Spacer(),
-              const Wordmark(),
+              Image.asset(
+                'assets/branding/logo_horizontal.png',
+                height: 84,
+                semanticLabel: 'Proyecto Mezquite',
+              ),
               const SizedBox(height: 8),
               Text(Copy.welcomeSubtitle, style: theme.textTheme.titleLarge),
               const SizedBox(height: 16),

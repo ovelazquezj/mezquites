@@ -1,11 +1,11 @@
 {
-    "name": "mezquite_app",
-    "short_name": "mezquite_app",
+    "name": "Mezquite",
+    "short_name": "Mezquite",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#1F3A6E",
+    "theme_color": "#1F3A6E",
+    "description": "App del voluntario para registrar mezquites y sus parásitos (ciencia ciudadana).",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
