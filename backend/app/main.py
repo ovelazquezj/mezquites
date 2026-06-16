@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from .config import get_settings
 from .routers import (
+    accounts,
     admin,
     auth,
     gamification,
@@ -58,6 +59,7 @@ def create_app() -> FastAPI:
         review.router,
         admin.router,
         users.router,
+        accounts.router,
     ):
         app.include_router(router, prefix=API_PREFIX)
 
