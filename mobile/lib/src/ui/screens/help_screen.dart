@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../copy.dart';
+import '../widgets/branded_app_bar.dart';
 import '../widgets/common.dart';
 import '../widgets/disclaimer_dialog.dart';
 
@@ -12,7 +13,7 @@ class HelpScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text(Copy.helpTitle)),
+      appBar: const BrandedAppBar(title: Copy.helpTitle),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: const [

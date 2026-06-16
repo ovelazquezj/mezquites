@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/providers.dart';
 import '../copy.dart';
+import '../widgets/branded_app_bar.dart';
 import '../widgets/common.dart';
 
 /// Rankings por periodo (Q4): individual + por institución. Filtro por periodo.
@@ -16,7 +17,7 @@ class RankingsScreen extends ConsumerWidget {
     final rankingsAsync = ref.watch(rankingsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text(Copy.rankingsTitle)),
+      appBar: const BrandedAppBar(title: Copy.rankingsTitle),
       body: Column(
         children: [
           Padding(

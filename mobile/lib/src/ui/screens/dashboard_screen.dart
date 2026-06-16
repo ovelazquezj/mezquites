@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/models.dart';
 import '../../state/providers.dart';
 import '../copy.dart';
+import '../widgets/branded_app_bar.dart';
 import '../widgets/common.dart';
 
 /// Dashboard cliente: observaciones públicas con coords OBFUSCADAS a 1 km
@@ -21,7 +22,7 @@ class DashboardScreen extends ConsumerWidget {
     final indAsync = ref.watch(publicIndicatorsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text(Copy.dashboardTitle)),
+      appBar: const BrandedAppBar(title: Copy.dashboardTitle),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(publicObservationsProvider);

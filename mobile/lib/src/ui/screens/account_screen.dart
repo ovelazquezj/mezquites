@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/providers.dart';
 import '../copy.dart';
+import '../widgets/branded_app_bar.dart';
 import '../widgets/common.dart';
 import 'welcome_screen.dart';
 
@@ -18,7 +19,7 @@ class AccountScreen extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text(Copy.accountTitle)),
+      appBar: const BrandedAppBar(title: Copy.accountTitle),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

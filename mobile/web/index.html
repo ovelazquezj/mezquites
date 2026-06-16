@@ -34,6 +34,19 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <!-- Splash de marca (CR-005): fondo navy + logo; se retira al primer frame de Flutter. -->
+  <style>
+    #splash{position:fixed;inset:0;background:#1F3A6E;display:flex;align-items:center;
+      justify-content:center;z-index:9999;transition:opacity .3s ease}
+    #splash img{width:55%;max-width:320px}
+  </style>
+  <div id="splash"><img src="splash.png" alt="Mezquite"></div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var s = document.getElementById('splash');
+      if (s) { s.style.opacity = '0'; setTimeout(function () { s.remove(); }, 320); }
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

@@ -5,6 +5,7 @@ import '../../models/models.dart';
 import '../../services/capture_service.dart';
 import '../../state/providers.dart';
 import '../copy.dart';
+import '../widgets/branded_app_bar.dart';
 import 'capture_pane.dart';
 import 'help_screen.dart';
 import 'observation_form.dart';
@@ -62,8 +63,8 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
   Widget build(BuildContext context) {
     final shot = _shot;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(Copy.captureTitle),
+      appBar: BrandedAppBar(
+        title: Copy.captureTitle,
         actions: [
           IconButton(
             key: const Key('help_button'),

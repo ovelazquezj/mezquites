@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/providers.dart';
 import '../copy.dart';
-import '../widgets/wordmark.dart';
 
 /// Onboarding del primer arranque (CR-003 §5.5).
 ///
@@ -147,8 +146,6 @@ class _OnboardingPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Center(child: Wordmark(fontSize: 22)),
-          const SizedBox(height: 32),
           _Illustration(accent: accent),
           const SizedBox(height: 40),
           Text(
@@ -195,7 +192,9 @@ class _Illustration extends StatelessWidget {
           color: accent.withValues(alpha: 0.12),
           shape: BoxShape.circle,
         ),
-        child: Icon(Icons.park_outlined, size: 84, color: accent),
+        child: Center(
+          child: Image.asset('assets/branding/emblema.png', width: 120),
+        ),
       ),
     );
   }

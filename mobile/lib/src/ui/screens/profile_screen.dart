@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/models.dart';
 import '../../state/providers.dart';
 import '../copy.dart';
+import '../widgets/branded_app_bar.dart';
 import '../widgets/common.dart';
 import 'account_screen.dart';
 import 'help_screen.dart';
@@ -21,8 +22,8 @@ class ProfileScreen extends ConsumerWidget {
     final feedbackAsync = ref.watch(feedbackProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(Copy.profileTitle),
+      appBar: BrandedAppBar(
+        title: Copy.profileTitle,
         actions: [
           IconButton(
             key: const Key('open_rankings'),

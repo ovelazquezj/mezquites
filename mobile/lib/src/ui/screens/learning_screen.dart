@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../copy.dart';
+import '../widgets/branded_app_bar.dart';
 import '../widgets/common.dart';
 
 /// Aprendizaje (Q5.C). Contenidos AU2 (placeholders), mide engagement, SIN
@@ -21,7 +22,7 @@ class _LearningScreenState extends ConsumerState<LearningScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text(Copy.learningTitle)),
+      appBar: const BrandedAppBar(title: Copy.learningTitle),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
