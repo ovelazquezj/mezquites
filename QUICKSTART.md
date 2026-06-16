@@ -10,7 +10,7 @@ las dos interfaces**: la **app móvil del voluntario** (Android) y el **web admi
 ## Arranque rápido (TL;DR)
 
 ```powershell
-# 1) Backend + cola + DB + mock (local, sin nube)
+# 1) Backend + cola + DB: 3 servicios (YOLO/mock inactivo) — local, sin nube
 docker compose -f infra/compose/docker-compose.dev.yml up --build -d
 curl.exe http://localhost:8000/healthz            # -> {"status":"ok"}
 
@@ -28,22 +28,23 @@ El resto de esta guía explica cada paso a detalle y **cómo verificar** que fun
 ## Qué vas a tener corriendo
 
 ```
-┌─ App móvil (Android, emulador)         ┐
-│                                        ├──HTTP──▶ API FastAPI (http://localhost:8000)
-└─ Web admin (Chrome)                    ┘                 │
-                                                           ├─ PostGIS (datos)
-   Cola Redis ──▶ mock-validator ──▶ result-worker ──▶ etiqueta válida/ruido + puntos
+┌─ App móvil (Android)   "Entrar con Google"  ┐
+│                                             ├──HTTP──▶ API FastAPI (http://localhost:8000)
+└─ Web admin (Chrome)    usuario/contraseña   ┘                 │
+                                                                ├─ PostGIS (datos)
+   Observación ──▶ aceptada por defecto ──▶ revisión humana (web admin) ──▶ confirmada / rechazada
 ```
 
-Todo se levanta **sin nube** con un solo `docker compose`.
+Todo se levanta **sin nube** con un solo `docker compose`. La validación automática (YOLO) quedó
+**inactiva** (CR-001): la calidad la decide un humano desde el web admin.
 
 ## Dos advertencias de entorno (dev) que verás en esta guía
 
 1. **CORS:** el backend aún no habilita CORS, así que el web-admin en el navegador necesita un
    pequeño workaround (Parte 3). Está documentado y **no requiere tocar código**.
-2. **Bootstrap de admin:** hoy la cuenta admin se crea con `role` en el registro (un hueco de
-   seguridad conocido, ver [Apéndice C](#apéndice-c--notas-de-seguridad-dev)). Sirve como bootstrap
-   temporal para esta revisión local.
+2. **Bootstrap de admin (CR-002):** el primer administrador se siembra por **CLI** (la API ya **no**
+   concede roles); el login del backend es por **usuario/contraseña** y el de la app por **Google**
+   (mock en dev). Ver Parte 2.2 y [Apéndice C](#apéndice-c--notas-de-seguridad-dev).
 
 ---
 
@@ -79,16 +80,17 @@ cd C:\dev\mezquites
 docker compose -f infra/compose/docker-compose.dev.yml up --build -d
 ```
 
-La primera vez construye imágenes (varios minutos). Levanta 5 servicios: `redis`, `postgres`
-(PostGIS), `api`, `result-worker`, `mock-validator`. El servicio `api` **aplica las migraciones
-Alembic y luego arranca**.
+La primera vez construye imágenes (varios minutos). Levanta el **núcleo de 3 servicios**: `postgres`
+(PostGIS), `redis`, `api`. El servicio `api` **aplica las migraciones Alembic (incl. `0002`/`0003`) y
+luego arranca**. La frontera §6/YOLO (`mock-validator` + `result-worker`) quedó **inactiva** (CR-001) y
+solo se levanta con `--profile yolo`.
 
-**✓ Verifica — todos los servicios arriba:**
+**✓ Verifica — servicios arriba:**
 ```powershell
 docker compose -f infra/compose/docker-compose.dev.yml ps
 ```
-Debes ver las 5 filas; `postgres` y `redis` en estado **healthy**, y `api`, `result-worker`,
-`mock-validator` en **running / Up**.
+Debes ver `postgres` y `redis` en estado **healthy** y `api` en **running / Up** (3 servicios por
+defecto; `result-worker`/`mock-validator` solo aparecen con `--profile yolo`).
 
 ### 1.2 Confirma que la API responde
 
@@ -101,7 +103,7 @@ Si tarda, las migraciones aún corren. Míralas:
 ```powershell
 docker compose -f infra/compose/docker-compose.dev.yml logs api | Select-Object -Last 20
 ```
-**✓ Verifica:** ves `alembic … running upgrade … 0001_initial` y luego
+**✓ Verifica:** ves `alembic … running upgrade … 0003_auth_identidad` (tras `0001`/`0002`) y luego
 `Uvicorn running on http://0.0.0.0:8000`.
 
 ### 1.3 Abre la documentación interactiva de la API (Swagger)
@@ -123,22 +125,11 @@ es visual y **evita problemas de comillas**) o los `curl.exe` de abajo.
 > comillas simples son literales, así que `curl.exe` recibe las comillas dobles intactas. **No** uses
 > `\"` (eso es de cmd/bash y aquí fallaría). El backtick `` ` `` al final de línea continúa el comando.
 
-### 2.1 (Opcional pero recomendado) Fuerza que todas las observaciones sean "válidas"
+### 2.1 Validación (ya no aplica con CR-001)
 
-Por defecto el mock está en modo `regla` (≈47% válidas, realista). Para que el **dashboard público
-seguro tenga datos** en la demo, ponlo en modo `fijo`:
-
-Edita `infra/compose/docker-compose.dev.yml`, en el servicio `mock-validator`, cambia/añade:
-```yaml
-      MOCK_MODE: fijo
-      MOCK_FIXED_ES_ARBOL: "true"
-      MOCK_FIXED_PARASITOS: "true"
-```
-y recarga solo ese servicio:
-```powershell
-docker compose -f infra/compose/docker-compose.dev.yml up -d mock-validator
-```
-> Déjalo en `regla` si prefieres ver la mezcla realista válida/ruido.
+Con **CR-001** ya **no** hay validación automática: cada observación se **acepta por defecto**
+(`estado_revision='aceptada'`) y aparece de inmediato en el dataset público. La calidad la decide un
+**humano** desde el web admin (sección **Revisión**, Parte 3). No hay que configurar ningún mock.
 
 ### 2.2 Crea la cuenta de administrador (bootstrap, CR-002)
 
@@ -184,14 +175,9 @@ curl.exe -s -X POST http://localhost:8000/api/v1/observations `
   -F 'payload={"lat":21.881,"lon":-102.291,"captured_at":"2026-05-30T12:00:00Z","nivel_g4":"moderado","flag_cuscuta":false,"flag_danio":true,"tamanio":"mediano","contexto":"campo_abierto"}' `
   -F 'image=@C:\ruta\a\cualquier.jpg'
 ```
-**✓ Verifica:** responde **HTTP 201** con el id de la observación y la **recompensa base** (5
-puntos). La validación ocurre en segundo plano (la imagen pasa por el mock en < 1 s).
-
-**✓ Verifica que el worker etiquetó:**
-```powershell
-docker compose -f infra/compose/docker-compose.dev.yml logs result-worker | Select-Object -Last 10
-```
-Debes ver líneas tipo `aplicado obs=… veredicto=valida` (o `ruido`).
+**✓ Verifica:** responde **HTTP 201** con el id de la observación y los **puntos** otorgados al subir.
+La observación queda `estado_revision='aceptada'` y **ya es visible** en el dataset público (sin
+validación automática; CR-001). Un evaluador puede luego confirmarla o rechazarla desde el web admin.
 
 ### 2.5 Genera el snapshot trimestral (sello "Qn")
 
@@ -208,13 +194,12 @@ curl.exe -s "http://localhost:8000/api/v1/public/observations"
 curl.exe -s "http://localhost:8000/api/v1/public/indicators"
 ```
 **✓ Verifica:**
-- `public/observations` devuelve un arreglo con tus observaciones **válidas**, con **coordenadas
-  redondeadas a celda de 1 km** (no las exactas que enviaste) y el `handle` por observación.
-- `public/indicators` devuelve conteos (registrados, observaciones, válidas, etc.) y el `caveat` de
-  origen ciudadano.
+- `public/observations` devuelve tus observaciones **no rechazadas** (todas las recién subidas son
+  `aceptada`), con **coordenadas redondeadas a 1 km** (no las exactas) y el `handle` por observación.
+- `public/indicators` devuelve conteos y el `caveat` de origen ciudadano.
 
-> Si `public/observations` sale `[]`: o ninguna observación resultó válida (modo `regla`) — sube más
-> o usa el modo `fijo` del paso 2.1 — o aún no terminó la validación (espera unos segundos).
+> Una observación solo **sale** del dataset público si un evaluador la marca **rechazada** desde el
+> web admin (Parte 3).
 
 ---
 
@@ -253,14 +238,16 @@ azul Rotary + dorado, minimalista).
 Usa el **usuario y la contraseña** del admin (paso 2.2: `admin` / `Adm1n-Pass`). (También hay opción
 de pegar el token bajo "Opciones avanzadas".)
 
-**✓ Verifica:** entras a la consola con una barra de navegación lateral: **Instituciones**,
-**Aliados firmantes**, **Indicadores organizacionales**, **Snapshots**, **Dashboard público** y
-(si tu rol lo permite) **Dashboard restringido**.
+**✓ Verifica:** entras a la consola con navegación lateral. Según tu rol verás **Revisión** y
+**Monitor** (evaluador/analista/administrador, CR-001), además de **Instituciones**, **Aliados
+firmantes**, **Indicadores**, **Snapshots**, **Dashboard público** y (si aplica) **Dashboard restringido**.
 
 ### 3.4 Recorre y verifica cada módulo
 
 | Módulo | Qué hacer | ✓ Verifica |
 |---|---|---|
+| **Revisión** (evaluador/admin) | Abrir una observación de la cola, ver la imagen, **Confirmar**/**Rechazar** + nota | El veredicto cambia `estado_revision`; rechazar la saca del público; la imagen **no** trae GPS salvo aliado firmante |
+| **Monitor** (analista, solo lectura) | Ver conteos por estado y throughput | No hay botones de veredicto (solo lectura) |
 | **Instituciones** | Crear una institución (nombre + estado) | Aparece en la lista como "aprobada" |
 | **Aliados firmantes** | Promover un `handle` de voluntario a aliado firmante | Confirma éxito; ese voluntario ahora puede ver coords exactas |
 | **Indicadores organizacionales** | Capturar uno (p.ej. "mesas formales" = 2) | Se registra; no hay lógica de aprobación/umbral (solo registro) |
@@ -312,18 +299,18 @@ en serif (Fraunces) y la **paleta oficial Mezquite** (navy/dorado/verde).
    Combatir*— con dots, "Saltar" y botón "Siguiente"/"Comenzar" (CR-003).
    **✓ Verifica:** es **informativo y omitible** (gate #3); al "Comenzar"/"Saltar" no vuelve a
    mostrarse (flag local sin PII). En arranques posteriores la app va directo a Bienvenida.
-1. **Registro:** elige una institución (o "Independiente") y crea la cuenta.
-   **✓ Verifica:** te muestra el **Código de respaldo** (con QR) — es la recuperación sin PII.
+1. **Entrar con Google (CR-002):** la pantalla de Bienvenida ofrece **"Entrar con Google"** (en dev,
+   con el mock; ya **no** hay registro por handle ni código de respaldo/QR).
+   **✓ Verifica:** entras sin capturar email/nombre (la app solo usa el `sub` opaco del proveedor).
 2. **Disclaimer:** aparece una vez; descártalo con un tap.
    **✓ Verifica:** no vuelve a aparecer; queda consultable desde **Ayuda**.
 3. **Observar (captura):** abre la cámara nativa, toma una foto y llena las 8 etiquetas
-   (nivel **G4** con 4 opciones y su rango %, toggles **cúscuta**/**daño**, dropdowns
-   **tamaño**/**contexto**) y envía.
-   **✓ Verifica:** el envío **no bloquea** la UI; la observación queda como "pendiente" localmente
-   (no se muestra veredicto individual). En el backend aparece como una observación nueva.
+   (nivel **G4**, toggles **cúscuta**/**daño**, dropdowns **tamaño**/**contexto**) y envía.
+   **✓ Verifica:** el envío **no bloquea** la UI; queda **registrada y aceptada** (sin veredicto
+   individual). En el backend aparece como observación nueva (`aceptada`).
 4. **Mapa:** muestra observaciones públicas (coords a 1 km).
-5. **Perfil:** lifelist, etiqueta de identidad, **feedback agregado** ("de tus últimas N, M válidas").
-   **✓ Verifica:** el feedback es agregado, nunca acusación individual.
+5. **Perfil:** lifelist, etiqueta de identidad y **resumen agregado** de tus aportaciones.
+   **✓ Verifica:** el resumen es agregado, nunca acusación individual.
 
 > **Tip:** si la cámara del emulador no enfoca, usa la "escena virtual" del emulador; para que el
 > EXIF lleve ubicación, fija una posición en **Extended controls → Location** del emulador.
@@ -387,7 +374,7 @@ Levanta el backend en Docker (`up --build -d`) y el túnel ngrok con tu dominio 
 .\scripts\demo.ps1 status
 ```
 **✓ Verifica:**
-- `healthz local -> {"status":"ok"}` y los 5 contenedores **Up** (postgres/redis **healthy**).
+- `healthz local -> {"status":"ok"}` y los servicios **Up** (postgres/redis **healthy** + api; YOLO inactivo).
 - `tunel: https://<Domain> -> http://localhost:8000`.
 - El `healthz` público puede mostrar el **aviso intersticial de ngrok** (`ERR_NGROK_6024`) cuando se
   consulta desde un navegador — es esperado; **la app lo evita** con su header. Para comprobarlo como
@@ -408,7 +395,7 @@ Abre **Mezquite** en el teléfono y sigue el mismo recorrido del voluntario de l
 | Comando | Qué hace |
 |---|---|
 | `.\scripts\demo.ps1 status` | Estatus de todo + URL pública + healthz |
-| `.\scripts\demo.ps1 logs api` | Logs en vivo de un servicio (`api`/`result-worker`/`mock-validator`/`postgres`/`redis`) |
+| `.\scripts\demo.ps1 logs api` | Logs en vivo de un servicio (`api`/`postgres`/`redis`; `result-worker`/`mock-validator` solo con perfil `yolo`) |
 | `.\scripts\demo.ps1 logs ngrok` | Logs del túnel |
 | `.\scripts\demo.ps1 restart backend` | Reinicia solo el backend (deja el túnel) |
 | `.\scripts\demo.ps1 stop` | Detiene túnel + backend (los datos persisten en los volúmenes) |
@@ -484,10 +471,10 @@ Si levantaste el **despliegue por ngrok** (Parte 4-bis), detén también el tún
 | `docker version` falla | Rancher Desktop no está corriendo | Ábrelo y espera a que el motor esté listo |
 | El web admin no carga datos / errores en consola del navegador | **CORS** | Usa el comando con `--disable-web-security` (3.2) o pide habilitar CORS en el backend |
 | `healthz` no responde al inicio | Migraciones aún corriendo | Espera ~30 s; revisa `logs api` |
-| `public/observations` sale `[]` | Ninguna observación válida o validación en curso | Sube más, usa modo `fijo` (2.1), o espera unos segundos |
+| `public/observations` sale `[]` | No has subido observaciones (o todas rechazadas) | Sube observaciones (2.4); las **aceptadas** aparecen de inmediato |
 | Puerto 8000/5432/6379 ocupado | Otro proceso usa el puerto | Detén ese proceso o cambia el mapeo de puertos en el compose |
 | La app móvil no conecta | Backend caído o IP equivocada | En emulador usa `10.0.2.2`; en teléfono físico usa la IP LAN de tu PC con `--dart-define=API_BASE_URL=...` |
-| `result-worker` no etiqueta | mock-validator o redis caídos | `docker compose ... ps`; revisa `logs mock-validator` |
+| No aparece **Revisión**/**Monitor** en el web admin | Tu rol no es evaluador/analista/administrador | Inicia sesión con un usuario de revisión (2.2 crea el admin; el admin crea evaluador/analista) |
 
 ## Apéndice C — Notas de seguridad (dev)
 
