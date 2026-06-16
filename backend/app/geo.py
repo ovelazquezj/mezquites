@@ -1,8 +1,9 @@
 """Lógica geoespacial (T3, gate #5, gate de escalamiento Q8).
 
-- ``obfuscate_1km`` — redondea (lat, lon) a una celda métrica de 1 km usando una proyección
-  métrica (EPSG:6372, México) y reproyecta el centro de la celda a WGS84. Las **vistas públicas
-  NUNCA exponen coords más finas que 1 km** (gate #5).
+- ``obfuscate_to_grid`` — redondea (lat, lon) al centro de la celda métrica configurable
+  (``settings.obfuscation_grid_m``; CR-009: 300 m) usando una proyección métrica (EPSG:6372,
+  México) y reproyecta el centro de la celda a WGS84. Las **vistas públicas NUNCA exponen coords
+  más finas que la celda** (gate #5). ``obfuscate_1km`` se conserva como alias por compatibilidad.
 - ``assign_tree`` — agrupa observaciones dentro de ``tree_radius_m`` (10 m, R3) vía ``ST_DWithin``
   sobre ``geography`` (metros reales); crea o reutiliza un ``tree`` (gate T3).
 - ``compute_observation_seq`` — posición en la serie temporal del árbol (gap > 30 días, R3).
@@ -33,10 +34,11 @@ def _transformers(metric_srid: int) -> tuple[Transformer, Transformer]:
     return fwd, inv
 
 
-def obfuscate_1km(lat: float, lon: float) -> tuple[float, float]:
-    """Redondea (lat, lon) al centro de una celda métrica de 1 km (gate #5).
+def obfuscate_to_grid(lat: float, lon: float) -> tuple[float, float]:
+    """Redondea (lat, lon) al centro de la celda métrica configurable (gate #5).
 
-    Proyecta a EPSG:6372 (metros, México), aplica ``floor`` a la celda de 1000 m, toma el centro
+    Proyecta a EPSG:6372 (metros, México), aplica ``floor`` a la celda de
+    ``settings.obfuscation_grid_m`` (CR-009: 300 m; conmutable por config, gate #6), toma el centro
     de celda y reproyecta a WGS84. Devuelve (lat_obf, lon_obf). Idéntico en intención a
     ``ST_SnapToGrid`` sobre proyección métrica, pero ejecutable sin DB (vistas públicas y pruebas).
     """
@@ -48,6 +50,11 @@ def obfuscate_1km(lat: float, lon: float) -> tuple[float, float]:
     cy = (y // grid) * grid + grid / 2.0
     lon_obf, lat_obf = inv.transform(cx, cy)
     return round(lat_obf, 6), round(lon_obf, 6)
+
+
+# Alias por compatibilidad: lo importan `routers/public.py` y `tests/test_obfuscation.py`.
+# La celda ya NO es de 1 km (CR-009), pero conservamos el nombre para no romper imports.
+obfuscate_1km = obfuscate_to_grid
 
 
 def assign_tree(

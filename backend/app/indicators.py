@@ -20,8 +20,8 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 CAVEAT = (
-    "Datos de origen ciudadano, sin validación por expertos. "
-    "La validación automática confirma únicamente es-árbol y presencia de parásitos."
+    "Datos de origen ciudadano, sin validación por expertos; "
+    "especie y nivel autodeclarados."
 )
 
 
