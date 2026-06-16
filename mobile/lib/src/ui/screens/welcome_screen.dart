@@ -7,6 +7,7 @@ import '../copy.dart';
 import '../widgets/common.dart';
 import '../widgets/disclaimer_dialog.dart';
 import 'home_shell.dart';
+import 'legal_screen.dart';
 
 /// Pantalla de bienvenida + login (CR-002). Punto de entrada cuando no hay sesión.
 ///
@@ -141,6 +142,20 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                         )
                       : const Icon(Icons.login),
                   label: const Text(Copy.signInWithGoogle),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Enlace discreto de consentimiento (CR-006 §4.3). Informativo:
+              // NO bloquea el inicio de sesión (gate #3).
+              Center(
+                child: TextButton(
+                  key: const Key('legal_consent_link'),
+                  onPressed: () => LegalScreen.open(context),
+                  child: Text(
+                    Copy.legalConsentNote,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodySmall,
+                  ),
                 ),
               ),
             ],
