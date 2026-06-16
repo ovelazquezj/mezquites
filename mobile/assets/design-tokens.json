@@ -1,20 +1,21 @@
 {
-  "$comment": "Design system compartido (movil Flutter + web admin). T7. Estetica minimalista tipo eBird. Los valores hex de marca Rotary son PROVISIONALES: token pendiente de la guia de marca oficial de Rotary. Cambiar aqui actualiza ambos clientes.",
+  "$comment": "Design system compartido (movil Flutter + web admin). T7. Estetica minimalista tipo eBird. Paleta oficial del Proyecto Mezquite (CR-003). Cambiar aqui actualiza ambos clientes; mantener sincronizadas las copias mobile/assets y web-admin/assets.",
   "meta": {
-    "version": "0.1.0",
-    "status": "provisional",
-    "pending": "Confirmar hex de marca con la guia oficial de Rotary (T7, dato por verificar)."
+    "version": "0.2.0",
+    "status": "oficial_mezquite",
+    "pending": "Ninguno: la paleta oficial Mezquite resuelve el pendiente de marca para ambas apps Flutter (CR-003)."
   },
   "color": {
     "brand": {
-      "rotary_royal_blue": { "value": "#17458F", "status": "PENDIENTE_marca_rotary" },
-      "rotary_gold":       { "value": "#F7A81B", "status": "PENDIENTE_marca_rotary" },
-      "rotary_azure":      { "value": "#0050A2", "status": "PENDIENTE_marca_rotary" }
+      "mezquite_navy":  { "value": "#1F3A6E", "status": "oficial_mezquite" },
+      "mezquite_blue":  { "value": "#2E6FB7", "status": "oficial_mezquite" },
+      "mezquite_gold":  { "value": "#E0A21A", "status": "oficial_mezquite" },
+      "mezquite_green": { "value": "#5C9A3A", "status": "oficial_mezquite" }
     },
     "eco": {
-      "green_700": { "value": "#2E6B3E", "status": "provisional" },
-      "green_500": { "value": "#4C9A5A", "status": "provisional" },
-      "green_300": { "value": "#A7D3AE", "status": "provisional" }
+      "green_700": { "value": "#3F7327", "status": "oficial_mezquite" },
+      "green_500": { "value": "#5C9A3A", "status": "oficial_mezquite" },
+      "green_300": { "value": "#A7D38B", "status": "oficial_mezquite" }
     },
     "neutral": {
       "ink_900":   { "value": "#1A1C1E" },
@@ -24,19 +25,21 @@
       "surface_2": { "value": "#F5F7FA" }
     },
     "semantic": {
-      "primary":      { "ref": "color.brand.rotary_royal_blue" },
-      "secondary":    { "ref": "color.brand.rotary_gold" },
-      "accent":       { "ref": "color.eco.green_500" },
+      "primary":      { "ref": "color.brand.mezquite_navy" },
+      "secondary":    { "ref": "color.brand.mezquite_gold" },
+      "accent":       { "ref": "color.brand.mezquite_green" },
+      "blue":         { "ref": "color.brand.mezquite_blue" },
       "background":   { "ref": "color.neutral.surface_2" },
       "on_primary":   { "ref": "color.neutral.surface" },
       "text":         { "ref": "color.neutral.ink_900" },
       "text_muted":   { "ref": "color.neutral.ink_600" },
       "success":      { "ref": "color.eco.green_700" },
-      "info":         { "ref": "color.brand.rotary_azure" }
+      "info":         { "ref": "color.brand.mezquite_blue" }
     }
   },
   "typography": {
     "font_family_base": { "value": "Inter, Roboto, system-ui, sans-serif" },
+    "font_family_wordmark": { "value": "Fraunces", "$comment": "Serif de Google Fonts SOLO para el wordmark 'Mezquite' (CR-003). El texto base sigue en la sans del design system." },
     "scale": {
       "display": { "size": 28, "weight": 700, "line": 34 },
       "title":   { "size": 20, "weight": 600, "line": 26 },

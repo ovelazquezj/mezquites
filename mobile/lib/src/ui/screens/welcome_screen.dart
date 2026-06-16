@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../copy.dart';
 import '../widgets/common.dart';
+import '../widgets/wordmark.dart';
 import 'register_screen.dart';
 import 'recover_screen.dart';
 
@@ -21,7 +22,9 @@ class WelcomeScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Spacer(),
-              Text(Copy.appTitle, style: theme.textTheme.displayLarge),
+              const Wordmark(),
+              const SizedBox(height: 8),
+              Text(Copy.welcomeSubtitle, style: theme.textTheme.titleLarge),
               const SizedBox(height: 16),
               const InfoNote(Copy.aboutBoundary),
               const SizedBox(height: 12),
