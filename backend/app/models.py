@@ -1,7 +1,12 @@
 """Modelo de datos PostGIS (materializa `docs/data-model/postgis-model.md`).
 
 Mapeo 1:1 con el DDL de referencia. Gates relevantes:
-- Gate #2 (sin PII): `account` NO tiene email/teléfono/nombre; solo handle + recovery_hash.
+- Gate #2 (ENMENDADO ACOTADO por CR-002, 2026-06-15): identidad real con mínima PII. `account` es
+  multi-método: los `voluntario` se autentican por `social_google` y guardan **solo** el id opaco del
+  proveedor (`provider_subject`), **nunca** email/teléfono/nombre; los roles de backend
+  (`administrador`/`evaluador`/`analista`) se autentican por `password` (usuario + hash argon2). Solo
+  `administrador` puede guardar `email` (reset por SMTP) — un CHECK lo impone. El `handle` se conserva
+  como identificador de presentación sin PII (atribución pública I2).
 - Revisión humana (CR-001, 2026-06-15): `nivel_g4`, `flag_cuscuta`, `flag_danio` son AUTODECLARADOS;
   el backend nunca los "valida". La calidad la decide un humano y se refleja en `estado_revision`
   (`aceptada` por defecto → `confirmada`/`rechazada`). La validación automática (YOLO) queda inactiva
@@ -48,6 +53,10 @@ REVIEW_VERDICT_ROLES = ("evaluador", "administrador")  # pueden emitir veredicto
 # Estado de revisión humana (CR-001): default 'aceptada'; un humano confirma/rechaza.
 ESTADOS_REVISION = ("aceptada", "confirmada", "rechazada")
 REVIEW_VERDICTS = ("confirmada", "rechazada")
+# Método de autenticación de la cuenta (CR-002, gate #2 acotado).
+AUTH_METHODS = ("social_google", "password")
+# Rol que puede portar email (CR-002): SOLO administrador (reset por SMTP). El resto NO guarda PII.
+EMAIL_ALLOWED_ROLES = ("administrador",)
 # Legado de la validación automática YOLO (conservado, inactivo — gate #10 superado).
 VALIDATION_STATES = ("pendiente", "valida", "ruido")
 NIVELES_G4 = ("sano", "leve", "moderado", "severo")
@@ -82,13 +91,33 @@ class Institution(Base):
 
 
 class Account(Base):
-    """Cuenta seudonimizada (Q5.D-D1). SIN PII (gate #2)."""
+    """Cuenta multi-método (Q5.D-D1, ENMENDADA por CR-002). Mínima PII (gate #2 acotado).
+
+    - ``auth_provider``: ``social_google`` (voluntarios, app) | ``password`` (roles de backend).
+    - ``provider_subject``: id opaco del proveedor (Google ``sub``). Único por proveedor. SIN PII.
+    - ``username`` / ``password_hash``: credenciales de los roles de backend (hash argon2).
+    - ``email``: SOLO ``administrador`` (reset por SMTP). Un CHECK impide email en cualquier otro rol.
+    - ``handle``: identificador de presentación sin PII (atribución pública I2).
+    - ``recovery_hash``: legado del flujo de código de respaldo (arranque limpio ⇒ nullable).
+    """
 
     __tablename__ = "account"
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     handle: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
-    recovery_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    # Auth multi-método (CR-002).
+    auth_provider: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default="social_google", default="social_google"
+    )
+    provider_subject: Mapped[str | None] = mapped_column(Text, unique=True)
+    username: Mapped[str | None] = mapped_column(Text, unique=True)
+    password_hash: Mapped[str | None] = mapped_column(Text)
+    email: Mapped[str | None] = mapped_column(Text)  # SOLO administrador (CR-002)
+    must_change_password: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false", default=False
+    )
+    # Legado de la recuperación por código de respaldo (sin PII); nullable tras CR-002.
+    recovery_hash: Mapped[str | None] = mapped_column(Text)
     role: Mapped[str] = mapped_column(Text, nullable=False, default="voluntario")
     institution_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("institution.id")
@@ -105,6 +134,13 @@ class Account(Base):
             "role IN ('voluntario','aliado_firmante','admin_consorcio',"
             "'administrador','evaluador','analista')",
             name="ck_account_role",
+        ),
+        CheckConstraint(
+            "auth_provider IN ('social_google','password')", name="ck_account_auth_provider"
+        ),
+        # Gate #2 acotado: SOLO administrador puede portar email (PII mínima para reset por SMTP).
+        CheckConstraint(
+            "email IS NULL OR role = 'administrador'", name="ck_account_email_only_admin"
         ),
     )
 

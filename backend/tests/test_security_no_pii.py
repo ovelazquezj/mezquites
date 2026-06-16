@@ -39,9 +39,17 @@ def test_token_payload_contains_no_pii():
 
 
 def test_account_model_has_no_pii_columns():
+    """Gate #2 ACOTADO (CR-002): la cuenta nunca guarda teléfono/nombre.
+
+    ``email`` se permite SOLO para ``administrador`` (reset por SMTP) y un CHECK lo impone; el resto
+    de roles —en especial ``voluntario``— jamás porta PII (solo ``provider_subject`` opaco).
+    """
     cols = set(Account.__table__.columns.keys())
-    for forbidden in ("email", "phone", "telefono", "name", "nombre", "correo"):
+    for forbidden in ("phone", "telefono", "name", "nombre", "correo"):
         assert forbidden not in cols
+    # El email existe como columna pero está acotado por un CHECK al rol administrador.
+    constraint_names = {c.name for c in Account.__table__.constraints}
+    assert "ck_account_email_only_admin" in constraint_names
 
 
 def test_register_schema_has_no_pii_fields():
