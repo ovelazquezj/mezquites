@@ -7,6 +7,24 @@ las dos interfaces**: la **app móvil del voluntario** (Android) y el **web admi
 > Plataforma de referencia: **Windows + PowerShell** (los comandos usan `curl.exe`, no el alias
 > `curl` de PowerShell). Si usas otra shell, adapta las comillas.
 
+## Arranque rápido (TL;DR)
+
+```powershell
+# 1) Backend + cola + DB + mock (local, sin nube)
+docker compose -f infra/compose/docker-compose.dev.yml up --build -d
+curl.exe http://localhost:8000/healthz            # -> {"status":"ok"}
+
+# 2) Web admin (Chrome) y app móvil (emulador), cada uno en su ventana
+.\scripts\start.ps1 web
+.\scripts\start.ps1 mobile
+.\scripts\status.ps1                              # ver que todo esté arriba
+```
+
+¿Probar en un **teléfono real** por HTTPS? → `.\scripts\demo.ps1 start` (túnel ngrok), **Parte 4-bis**.
+¿Levantarlo **en la nube** (Dev/QA/Prod)? → [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md).
+
+El resto de esta guía explica cada paso a detalle y **cómo verificar** que funcionó.
+
 ## Qué vas a tener corriendo
 
 ```
@@ -393,6 +411,35 @@ Con datos cargados (Parte 2), el "acceso abierto" está vivo y es verificable de
 
 Esto materializa el principio del proyecto: **dataset abierto, obfuscado para proteger el árbol, con
 la advertencia de origen ciudadano**; las coordenadas finas solo para aliados firmantes.
+
+---
+
+## Parte 6 — Cuando esté desplegado (apuntar las apps a Dev/QA/Prod)
+
+Toda la guía anterior corre contra `http://localhost:8000`. Cuando el backend viva en un entorno
+desplegado (ver [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md)), **lo único que cambia en los clientes es
+la URL base de la API** — se **hornea** en el build (no hay UI de configuración):
+
+```powershell
+# Web admin contra un entorno desplegado
+cd web-admin
+flutter run -d chrome --dart-define=API_BASE_URL=https://<host-del-entorno>/api/v1
+
+# App móvil (APK) contra un entorno desplegado
+cd mobile
+flutter build apk --release --dart-define=API_BASE_URL=https://<host-del-entorno>/api/v1
+```
+
+| Entorno | `API_BASE_URL` típico |
+|---|---|
+| Dev local (compose) | `http://localhost:8000/api/v1` (web) · `http://10.0.2.2:8000/api/v1` (emulador) |
+| Dev teléfono real (ngrok) | `https://<tu-dominio>.ngrok-free.dev/api/v1` |
+| QA (nube, overlay `stg`) | `https://<dominio-qa>/api/v1` |
+| Producción (overlay `prod`) | `https://<dominio-prod>/api/v1` |
+
+> **HTTPS en release:** Android (targetSdk 35) bloquea HTTP en claro en release. Cualquier entorno
+> desplegado **debe servir por HTTPS** (QA/Prod con TLS en el ingress; en local usa el túnel ngrok).
+> Para los pasos de provisión de cada entorno → [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md).
 
 ---
 
