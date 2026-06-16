@@ -56,6 +56,9 @@ services:
       BROKER: redis                     # broker local (conmutable; 'memory' también válido)
       REDIS_URL: redis://redis:6379/0
       AUTH_SECRET: dev-insecure-secret-change-me
+      # Auth identidad real (CR-002): mock en dev (sin red ni Google; gate #6). Para Google real,
+      # AUTH_PROVIDER=firebase + FIREBASE_PROJECT_ID. SMTP_* opcionales (reset por correo del admin).
+      AUTH_PROVIDER: mock
     ports:
       - "8000:8000"
     volumes:

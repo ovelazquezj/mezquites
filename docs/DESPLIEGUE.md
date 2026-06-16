@@ -49,9 +49,51 @@ Toda la diferencia entre entornos vive en estas variables (ver
 | `BROKER` | `memory` o `redis` | `redis` | cola §6 (transitoria) |
 | `REDIS_URL` | `redis://redis:6379/0` | `redis://redis-managed:6379/0` | broker gestionado |
 | `AUTH_SECRET` | placeholder inseguro | **secreto rotado** | firma de tokens JWT |
+| `AUTH_PROVIDER` | `mock` (sin red) | `firebase` | verificador del ID token de Google (CR-002, gate #6) |
+| `FIREBASE_PROJECT_ID` / `GOOGLE_OAUTH_AUDIENCE` | — | valores reales | `aud`/`iss` esperados al verificar el ID token (no secreto) |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM` | — | **secreto** | reset por correo del **administrador** (degrada si falta) |
+| `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD` / `BOOTSTRAP_ADMIN_EMAIL` | opcional | **secreto** | siembra del primer administrador por config/CLI |
 
 `api` y `result-worker` leen el **mismo** `ConfigMap` (`mezquite-config`, no secreto) y `Secret`
 (`mezquite-secret`) por `envFrom`.
+
+### 2.1 Autenticación (CR-002) — qué es secreto y qué no
+
+- **No secreto** (ConfigMap): `AUTH_PROVIDER`, `FIREBASE_PROJECT_ID`, `GOOGLE_OAUTH_AUDIENCE`, `SMTP_HOST`,
+  `SMTP_PORT`, `SMTP_FROM`.
+- **Secreto** (Secret): `AUTH_SECRET`, `SMTP_USER`, `SMTP_PASSWORD`, credenciales Firebase Admin (si se usan),
+  `BOOTSTRAP_ADMIN_PASSWORD`.
+- **Dev/QA-test:** `AUTH_PROVIDER=mock` → el backend acepta un token de prueba (`mock:<sub>` o
+  `MOCK_GOOGLE_TOKEN`) **sin red ni Google** (gate #6). La app móvil usa `--dart-define=AUTH_MODE=mock`
+  (por defecto) y **no necesita** `google-services.json`.
+
+### 2.2 Activar Google real en la app (prerrequisitos del usuario)
+
+El equipo implementó y probó todo con el **mock**. Para activar Sign in with Google real:
+
+1. Crear un **proyecto Firebase** (Google Cloud) con *Authentication → Google* habilitado.
+2. Registrar la app Android (`com.mezquite.app`) y añadir las **huellas SHA-1/SHA-256**
+   (`cd mobile/android && ./gradlew signingReport` para la de debug; la de release la provee el keystore).
+3. Colocar **`google-services.json`** en `mobile/android/app/` y aplicar el plugin Gradle de Google
+   Services (`com.google.gms.google-services`) en `mobile/android/app/build.gradle` (+ el classpath en el
+   `build.gradle` raíz). *Hoy NO está aplicado a propósito, para que `flutter build apk` funcione sin el
+   JSON.*
+4. Configurar la **pantalla de consentimiento OAuth** (scopes `openid email profile`).
+5. Compilar la app con `--dart-define=AUTH_MODE=firebase` y el backend con `AUTH_PROVIDER=firebase`
+   (+ `FIREBASE_PROJECT_ID`).
+6. Publicar **aviso de privacidad** + **borrado de datos** (Google/Play, LFPDPPP).
+
+### 2.3 Sembrar el primer administrador (bootstrap, CR-002)
+
+No hay auto-registro de roles. El primer administrador se crea por config/CLI (idempotente):
+
+```bash
+# Por CLI (con DATABASE_URL apuntando a la DB destino):
+python -m backend.app.bootstrap --username admin --password 'S3cr3t!' --email admin@org.mx
+# o por variables de entorno (BOOTSTRAP_ADMIN_USERNAME / _PASSWORD / _EMAIL).
+```
+
+Luego el administrador crea evaluador/analista desde la web admin (con contraseña temporal).
 
 ---
 
@@ -188,16 +230,15 @@ los pendientes de la §7.
   es humana desde la UI del backend. En consecuencia, `result-worker` y `mock-validator` quedan
   **inactivos**: en QA/Prod **no** se hace el swap a YOLO; se escalan a 0 o se quitan del overlay.
   El contrato §6 y el mock se conservan en el repo, dormidos, por si se reactiva ML a futuro.
-- **Auth con identidad real (gate #2 enmendado):**
-  - **App (voluntarios):** *Sign in with Google* vía **Firebase Auth**. Se requiere un **proyecto
-    Firebase** (Google Cloud — esto define H6 al menos para auth), su `google-services.json` en el
-    build móvil, y que el backend **verifique el ID token**. Nuevos parámetros de config/secreto para
-    la verificación (p. ej. `GOOGLE_OAUTH_AUDIENCE` / credenciales Firebase Admin).
-  - **Backend (administrador/evaluador/analista):** **usuario + contraseña** (hashing argon2/bcrypt).
-    Solo el **administrador** guarda email para **reset por correo** → en QA/Prod hace falta **SMTP**
-    (variables `SMTP_*` como secreto). El primer administrador se crea por **config/CLI** (bootstrap).
-  - **Proveedor de auth conmutable** (gate #6): un **mock** de auth en dev/QA-test para no depender de
-    Google offline; real en producción.
+- **Auth con identidad real (gate #2 acotado) — IMPLEMENTADO (CR-002):** ver §2.1–§2.3 para la
+  configuración. Resumen:
+  - **App (voluntarios):** *Sign in with Google* vía **Firebase Auth**, guardando solo el `sub` opaco.
+    En dev/QA-test corre con el **mock** (`AUTH_MODE=mock` / `AUTH_PROVIDER=mock`), sin
+    `google-services.json`. Para producción, completa los prerrequisitos de §2.2.
+  - **Backend (administrador/evaluador/analista):** **usuario + contraseña** (argon2). Solo el
+    **administrador** guarda email para **reset por correo** → en QA/Prod hace falta **SMTP** (`SMTP_*`,
+    secreto; si falta, el reset degrada a "reset por el administrador"). Primer admin por bootstrap (§2.3).
+  - **Proveedor de auth conmutable** (gate #6): `AUTH_PROVIDER=mock|firebase`.
   - **Legal/operativo (no software):** **aviso de privacidad** publicado + **borrado de datos**
     (exigidos por Google/Play y por la LFPDPPP). Sin esto la app no puede salir de modo desarrollo.
 
@@ -211,8 +252,12 @@ los pendientes de la §7.
 - [ ] **TLS/HTTPS** en el ingress + dominio.
 - [ ] **CORS habilitado** en el backend (hoy el web admin usa un workaround de Chrome — *arreglo
       diferido*).
-- [ ] **Registro restringido a `voluntario`** + bootstrap de admin por config/CLI (cierra el hueco del
-      gate #5 — *arreglo diferido*, parte del plan de auth).
+- [x] **Registro restringido a `voluntario`** + bootstrap de admin por config/CLI (cierra el hueco del
+      gate #5) — **hecho en CR-002** (`POST /auth/register` ya no acepta `role`; ver §2.3).
+- [ ] **Firebase real activado** para la app: proyecto + `google-services.json` + huellas SHA + plugin
+      Gradle + `AUTH_PROVIDER=firebase`/`AUTH_MODE=firebase` (ver §2.2). *Hoy se corre con el mock.*
+- [ ] **SMTP configurado** (`SMTP_*` como secreto) para el reset por correo del administrador.
+- [ ] **`AUTH_SECRET` rotado** y primer **administrador sembrado** (bootstrap) en el entorno destino.
 - [ ] **Aviso de privacidad + borrado de datos** publicados (requisito de la auth con identidad real).
 - [ ] **Backups** de la DB y plan de restauración probado.
 - [ ] **Smoke test** `register → submit → revisión humana → dashboard` en el entorno destino.
