@@ -21,7 +21,7 @@ class BrandedAppBar extends StatelessWidget implements PreferredSizeWidget {
         children: [
           Image.asset(
             'assets/branding/emblema.png',
-            height: 30,
+            height: 34,
             semanticLabel: 'Mezquite',
           ),
           const SizedBox(width: 8),

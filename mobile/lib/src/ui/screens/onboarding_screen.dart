@@ -193,7 +193,7 @@ class _Illustration extends StatelessWidget {
           shape: BoxShape.circle,
         ),
         child: Center(
-          child: Image.asset('assets/branding/emblema.png', width: 120),
+          child: Image.asset('assets/branding/emblema.png', width: 128),
         ),
       ),
     );
