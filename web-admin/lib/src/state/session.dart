@@ -33,27 +33,30 @@ class SessionState {
   bool get canReview => session?.canReview ?? false;
   bool get canEmitVerdict => session?.canEmitVerdict ?? false;
 
+  /// Gestión de usuarios de backend (CR-002): SOLO `administrador`.
+  bool get canManageUsers => session?.canManageUsers ?? false;
+
   SessionState copyWith({AuthSession? session, String? error}) =>
       SessionState(session: session, error: error);
 }
 
-/// Controlador de sesión. Login por handle+código (POST /auth/recover) o token
-/// pegado. Aplica el gate de rol: si el rol no es `admin_consorcio`, deniega.
+/// Controlador de sesión. Login por usuario + contraseña (POST /auth/login, CR-002) o token
+/// pegado. Aplica el gate de rol: si el rol no entra a la consola del consorcio, deniega.
 class SessionController extends StateNotifier<SessionState> {
   SessionController(this._api) : super(const SessionState());
 
   final ApiClient _api;
 
-  /// Login admin sin PII: handle + código de respaldo → token (Bearer).
-  /// Deniega si el rol del token no es `admin_consorcio` (gate de acceso admin).
-  Future<bool> loginWithBackupCode({
-    required String handle,
-    required String backupCode,
+  /// Login de la consola: usuario + contraseña → token (Bearer).
+  /// Deniega si el rol no entra a la consola del consorcio (gate de acceso).
+  Future<bool> loginWithPassword({
+    required String username,
+    required String password,
   }) async {
     try {
-      final session = await _api.recover(
-        handle: handle.trim(),
-        backupCode: backupCode.trim(),
+      final session = await _api.login(
+        username: username.trim(),
+        password: password,
       );
       if (!session.canEnterAdminConsole) {
         _api.setToken(null);
@@ -69,7 +72,7 @@ class SessionController extends StateNotifier<SessionState> {
       _api.setToken(null);
       state = SessionState(
         error: e.isAuthError
-            ? 'Usuario o código de respaldo inválido.'
+            ? 'Usuario o contraseña inválidos.'
             : 'No se pudo iniciar sesión. Inténtalo de nuevo.',
       );
       return false;

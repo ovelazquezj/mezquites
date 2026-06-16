@@ -20,6 +20,9 @@ class AuthSession {
 
   bool get isAdmin => role == 'admin_consorcio';
 
+  /// Rol `administrador` de backend (CR-001/CR-002): gestiona usuarios + emite veredicto.
+  bool get isAdministrador => role == 'administrador';
+
   /// Roles que pueden ver la cola de revisión (lectura). `analista` es solo lectura.
   bool get canReview =>
       role == 'evaluador' || role == 'analista' || role == 'administrador';
@@ -27,8 +30,64 @@ class AuthSession {
   /// Roles que pueden emitir veredicto (NO incluye `analista`).
   bool get canEmitVerdict => role == 'evaluador' || role == 'administrador';
 
+  /// Solo el `administrador` gestiona usuarios de backend (CR-002).
+  bool get canManageUsers => role == 'administrador';
+
   /// Roles con acceso a la consola del consorcio (CR-001 amplía los de revisión).
   bool get canEnterAdminConsole => isAdmin || canReview;
+}
+
+/// Usuario de backend (CR-002). Gate #2 acotado: NUNCA expone el email, solo `has_email`.
+class BackendUser {
+  BackendUser({
+    required this.id,
+    required this.handle,
+    required this.username,
+    required this.role,
+    required this.hasEmail,
+    required this.mustChangePassword,
+  });
+
+  final String id;
+  final String handle;
+  final String? username;
+  final String role;
+  final bool hasEmail;
+  final bool mustChangePassword;
+
+  factory BackendUser.fromJson(Map<String, dynamic> j) => BackendUser(
+        id: (j['id'] ?? '') as String,
+        handle: (j['handle'] ?? '') as String,
+        username: j['username'] as String?,
+        role: (j['role'] ?? '') as String,
+        hasEmail: (j['has_email'] ?? false) as bool,
+        mustChangePassword: (j['must_change_password'] ?? false) as bool,
+      );
+}
+
+/// Respuesta al crear un usuario: incluye la contraseña temporal (mostrar UNA vez).
+class BackendUserCreated extends BackendUser {
+  BackendUserCreated({
+    required super.id,
+    required super.handle,
+    required super.username,
+    required super.role,
+    required super.hasEmail,
+    required super.mustChangePassword,
+    required this.tempPassword,
+  });
+
+  final String tempPassword;
+
+  factory BackendUserCreated.fromJson(Map<String, dynamic> j) => BackendUserCreated(
+        id: (j['id'] ?? '') as String,
+        handle: (j['handle'] ?? '') as String,
+        username: j['username'] as String?,
+        role: (j['role'] ?? '') as String,
+        hasEmail: (j['has_email'] ?? false) as bool,
+        mustChangePassword: (j['must_change_password'] ?? false) as bool,
+        tempPassword: (j['temp_password'] ?? '') as String,
+      );
 }
 
 /// Institución de la lista F3 (Q4). `status`: "aprobada" | "solicitada".

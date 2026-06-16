@@ -58,21 +58,72 @@ class ApiClient {
     throw ApiException(r.statusCode, 'Error de la API', body: r.body);
   }
 
-  // --- Auth (sin PII, gate #2) ---
+  // --- Auth con identidad real (CR-002) ---
 
-  /// Login admin: handle + código de respaldo → token. SIN email/contraseña/PII.
-  Future<AuthSession> recover({
-    required String handle,
-    required String backupCode,
+  /// Login de los roles de backend: usuario + contraseña → token (POST /auth/login).
+  Future<AuthSession> login({
+    required String username,
+    required String password,
   }) async {
     final r = await _http.post(
-      _uri('/auth/recover'),
+      _uri('/auth/login'),
       headers: _headers(),
-      body: json.encode({'handle': handle, 'backup_code': backupCode}),
+      body: json.encode({'username': username, 'password': password}),
     );
     final session = AuthSession.fromToken(_decode(r));
     _token = session.token;
     return session;
+  }
+
+  // --- Gestión de usuarios por el administrador (CR-002) ---
+
+  /// Lista de usuarios de backend (sin exponer email; solo `has_email`).
+  Future<List<BackendUser>> listUsers() async {
+    final r = await _http.get(_uri('/admin/users'), headers: _headers(json: false));
+    return _decodeList(r)
+        .map((e) => BackendUser.fromJson((e as Map).cast()))
+        .toList();
+  }
+
+  /// Crea un usuario de backend (evaluador/analista/administrador) con contraseña temporal.
+  /// `email` SOLO es válido para `administrador` (gate #2 acotado; el backend lo valida).
+  Future<BackendUserCreated> createUser({
+    required String username,
+    required String role,
+    String? email,
+  }) async {
+    final r = await _http.post(
+      _uri('/admin/users'),
+      headers: _headers(),
+      body: json.encode({
+        'username': username,
+        'role': role,
+        if (email != null && email.isNotEmpty) 'email': email,
+      }),
+    );
+    return BackendUserCreated.fromJson(_decode(r));
+  }
+
+  /// Cambia el rol de un usuario de backend.
+  Future<BackendUser> patchUserRole({
+    required String userId,
+    required String role,
+  }) async {
+    final r = await _http.patch(
+      _uri('/admin/users/$userId'),
+      headers: _headers(),
+      body: json.encode({'role': role}),
+    );
+    return BackendUser.fromJson(_decode(r));
+  }
+
+  /// El administrador dispara un reset: nueva contraseña temporal.
+  Future<String> resetUser({required String userId}) async {
+    final r = await _http.post(
+      _uri('/admin/users/$userId/reset'),
+      headers: _headers(),
+    );
+    return _decode(r)['temp_password'] as String;
   }
 
   // --- Admin: instituciones (lista F3, Q4) ---
