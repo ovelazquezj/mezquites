@@ -41,10 +41,31 @@ class Settings(BaseSettings):
     broker: str = "memory"                   # memory | redis
     redis_url: str = "redis://localhost:6379/0"
 
-    # --- Auth sin PII (gate #2) ---
+    # --- Auth (gate #2 acotado por CR-002: identidad real con mínima PII) ---
     auth_secret: str = "dev-insecure-secret-change-me"
     auth_algorithm: str = "HS256"
     auth_token_ttl_seconds: int = 60 * 60 * 24 * 30  # 30 días
+
+    # Proveedor de auth conmutable (gate #6): mock en dev/QA/test (sin red), firebase en prod.
+    auth_provider: str = "mock"              # mock | firebase
+    # No secreto: identifican el proyecto/cliente OAuth de Google (verificación del ID token).
+    firebase_project_id: str | None = None   # aud/iss esperados al verificar el ID token
+    google_oauth_audience: str | None = None  # alias explícito del aud si difiere del project id
+    # Token que acepta el MockAuthProvider (sin red); el `sub` se deriva del propio token.
+    mock_google_token: str = "mock-google-id-token"
+
+    # Bootstrap del primer administrador (config/CLI). Cierra el hueco del gate #5.
+    bootstrap_admin_username: str | None = None
+    bootstrap_admin_password: str | None = None
+    bootstrap_admin_email: str | None = None
+
+    # SMTP para el reset por correo del administrador (secreto). Si falta, el reset degrada a
+    # "reset por el administrador" (riesgo §9 del CR).
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str = "no-reply@mezquite.local"
 
     # --- Reglas de dominio (refinables por AU2, H8 — no reabren decisiones) ---
     tree_radius_m: float = 10.0              # R3: radio de agrupamiento

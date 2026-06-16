@@ -44,6 +44,17 @@ class RecoverRequest(BaseModel):
     backup_code: str
 
 
+class GoogleLoginRequest(BaseModel):
+    """Login social de la app (CR-002). Recibe el ID token de Firebase/Google.
+
+    Gate #2 acotado: NO se aceptan email/nombre; el backend verifica el token y guarda solo el `sub`
+    opaco. ``institution_id`` es opcional (afiliación F3) y solo aplica al crear la cuenta.
+    """
+
+    id_token: str
+    institution_id: uuid.UUID | None = None
+
+
 class TokenResponse(BaseModel):
     handle: str
     role: str

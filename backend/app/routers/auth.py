@@ -1,8 +1,12 @@
-"""Auth sin PII (gate #2, Q5.D-D1).
+"""Auth (gate #2 acotado por CR-002).
 
-- ``POST /auth/register`` — crea un handle seudonimizado, devuelve token + código de respaldo.
-  NO pide ni almacena email/teléfono/nombre.
-- ``POST /auth/recover`` — recuperación por código de respaldo (hash). Sin PII.
+- ``POST /auth/register`` — alta de **voluntario** seudónimo legado (sin `role`; cierra el hueco del
+  gate #5). NO pide ni almacena email/teléfono/nombre.
+- ``POST /auth/google`` — login social de la app: verifica el ID token de Google (mock|firebase),
+  mapea ``social_google:sub`` → cuenta (la crea en el primer login con rol ``voluntario``) y emite
+  nuestro JWT. Guarda SOLO el `sub` opaco (gate #2 acotado).
+- ``POST /auth/login`` — usuario + contraseña (roles de backend, hash argon2) → JWT.
+- ``POST /auth/recover`` — recuperación legada por código de respaldo (hash). Sin PII.
 """
 
 from __future__ import annotations
@@ -11,15 +15,24 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from ..auth_provider import AuthVerificationError, get_auth_provider
 from ..db import get_db
 from ..models import Account
-from ..schemas import RecoverRequest, RegisterRequest, RegisterResponse, TokenResponse
+from ..schemas import (
+    GoogleLoginRequest,
+    RecoverRequest,
+    RegisterRequest,
+    RegisterResponse,
+    TokenResponse,
+)
 from ..security import (
     create_token,
     generate_backup_code,
     generate_handle,
+    handle_from_subject,
     hash_backup_code,
     verify_backup_code,
+    verify_password,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -52,6 +65,54 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)) -> RegisterRe
     return RegisterResponse(
         handle=account.handle, role=account.role, token=token, backup_code=backup_code
     )
+
+
+@router.post("/google", response_model=TokenResponse)
+def login_google(body: GoogleLoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
+    """Login social de la app (CR-002). Verifica el ID token y mapea ``social_google:sub`` → cuenta.
+
+    Gate #2 acotado: guarda SOLO el `sub` opaco (`provider_subject`); descarta email/nombre. En el
+    primer login crea la cuenta con rol ``voluntario`` y un handle derivado del `sub`.
+    """
+    provider = get_auth_provider()
+    try:
+        identity = provider.verify_id_token(body.id_token)
+    except AuthVerificationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="ID token de Google inválido",
+        ) from exc
+
+    account = (
+        db.query(Account)
+        .filter(Account.provider_subject == identity.subject)
+        .one_or_none()
+    )
+    if account is None:
+        # Primer login: crea la cuenta (voluntario) con solo el id opaco.
+        account = Account(
+            handle=handle_from_subject(identity.provider, identity.subject),
+            auth_provider="social_google",
+            provider_subject=identity.subject,
+            role="voluntario",
+            institution_id=body.institution_id,
+        )
+        db.add(account)
+        try:
+            db.commit()
+        except IntegrityError:
+            # Carrera improbable: otra petición creó la cuenta; recupérala.
+            db.rollback()
+            account = (
+                db.query(Account)
+                .filter(Account.provider_subject == identity.subject)
+                .one()
+            )
+        else:
+            db.refresh(account)
+
+    token = create_token(account_id=account.id, handle=account.handle, role=account.role)
+    return TokenResponse(handle=account.handle, role=account.role, token=token)
 
 
 @router.post("/recover", response_model=TokenResponse)
