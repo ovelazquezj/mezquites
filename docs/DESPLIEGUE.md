@@ -63,13 +63,21 @@ Dos formas; elige según lo que quieras probar.
 
 ```powershell
 docker compose -f infra/compose/docker-compose.dev.yml up --build -d
-docker compose -f infra/compose/docker-compose.dev.yml ps      # 5 servicios arriba
+docker compose -f infra/compose/docker-compose.dev.yml ps      # 3 servicios arriba
 curl.exe http://localhost:8000/healthz                          # -> {"status":"ok"}
 ```
 
-Levanta `redis`, `postgres` (PostGIS), `api`, `result-worker`, `mock-validator`. La API aplica las
-migraciones Alembic al arrancar. **Detalle completo (poblar datos, revisar UIs):**
-[`QUICKSTART.md`](../QUICKSTART.md).
+Levanta el **núcleo**: `postgres` (PostGIS), `redis`, `api`. La API aplica las migraciones Alembic al
+arrancar (incluida `0002_revision_humana`). **CR-001 (revisión humana):** `result-worker` y
+`mock-validator` ya **no arrancan por defecto** (la frontera §6/YOLO quedó inactiva); viven tras el
+perfil `yolo` por si se reactiva a futuro:
+
+```powershell
+# Solo si quieres levantar la frontera §6 (hoy ociosa):
+docker compose -f infra/compose/docker-compose.dev.yml --profile yolo up --build -d
+```
+
+**Detalle completo (poblar datos, revisar UIs):** [`QUICKSTART.md`](../QUICKSTART.md).
 
 > Para probar en un **teléfono real** por HTTPS, usa `scripts\demo.ps1` (túnel ngrok) — ver el
 > QUICKSTART, Parte 4-bis.

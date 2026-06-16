@@ -73,7 +73,10 @@ Detalle en [`docs/data-model/postgis-model.md`](docs/data-model/postgis-model.md
 
 - **`observation`** — 8 etiquetas de captura (Q2): foto (clave de storage), EXIF lat/lon/timestamp,
   nivel G4, flag cúscuta, flag daño, tamaño, contexto, handle; `tree_id`, `observation_seq`,
-  `estado`, `municipio`, estado de validación (`pendiente`|`valida`|`ruido`).
+  `estado`, `municipio`, **`estado_revision`** (`aceptada`|`confirmada`|`rechazada`; CR-001).
+- **`human_review`** (CR-001) — log append-only de veredictos humanos: `observation_id`,
+  `reviewer_account_id`, `veredicto`, `nota`, `created_at` (gate #7). El estado actual vive en
+  `observation.estado_revision`; `validation_event` se conserva pero ya no se escribe.
 - **`tree`** — identidad de árbol por **radio 10 m** (R3); serie temporal con **gap > 30 días**.
 - **Obfuscación** — vista pública a **grid 1 km** (`ST_SnapToGrid`); coords exactas solo a rol
   `aliado_firmante`.
@@ -90,9 +93,9 @@ Prefijo `/api/v1`. OpenAPI servido por FastAPI en `/api/v1/openapi.json`. **3 ro
 |---|---|---|---|
 | `POST` | `/auth/register` | público | Crea handle seudonimizado; devuelve token + código de respaldo. Sin PII. |
 | `POST` | `/auth/recover` | público | Recuperación por código de respaldo / QR. |
-| `POST` | `/observations` | voluntario | `submit_observation`: 8 etiquetas + imagen. Encola job, responde recompensa base (fire-and-forget). |
+| `POST` | `/observations` | voluntario | `submit_observation`: 8 etiquetas + imagen. **CR-001:** persiste `estado_revision='aceptada'`, otorga puntos base + diferida al subir; **ya no encola job**. |
 | `GET` | `/observations/mine` | voluntario | Historial propio (sin estado de validación individual en UI). |
-| `GET` | `/me/feedback` | voluntario | Feedback **agregado** de tasa de validación. |
+| `GET` | `/me/feedback` | voluntario | Resumen **agregado** de aportaciones (no-rechazadas). |
 | `GET` | `/me/profile` | voluntario | Lifelist, etiqueta de identidad L3, insignias. |
 | `GET` | `/gamification/rankings` | voluntario | Rankings por periodo (individual + institución). |
 | `GET` | `/learning/*` | voluntario | Contenidos AU2 (sin gating). |
@@ -103,17 +106,26 @@ Prefijo `/api/v1`. OpenAPI servido por FastAPI en `/api/v1/openapi.json`. **3 ro
 | `POST` | `/admin/allies` | admin_consorcio | Alta/gestión de aliados firmantes y permisos de coords exactas. |
 | `POST` | `/admin/snapshots` | admin_consorcio | Snapshot trimestral del dataset público. |
 | `*` | `/admin/institutions` | admin_consorcio | Lista F3 + "solicitar agregar" (ticket a EA3). |
+| `GET` | `/review/queue` | evaluador, analista, administrador | Cola de revisión (filtros + paginación; sin coord exacta). |
+| `GET` | `/review/observations/{id}` | evaluador, analista, administrador | Detalle + historial `human_review` (sin coord exacta). |
+| `GET` | `/review/observations/{id}/image` | evaluador, analista, administrador, aliado_firmante | Sirve la imagen; **EXIF GPS saneado** salvo `aliado_firmante` (gate #5). |
+| `POST` | `/review/observations/{id}/verdict` | evaluador, administrador | Veredicto humano (`confirmada`/`rechazada`); escribe `human_review` y `estado_revision`. |
+| `GET` | `/review/stats` | evaluador, analista, administrador | Conteos por `estado_revision` + throughput (Monitor). |
 
-**Nota interna:** el resultado de validación **no** entra por REST; llega por la cola (§6) y lo
-consume un worker del backend.
+## 6. Revisión humana (CR-001) y frontera de validación (inactiva)
 
-## 6. Frontera de validación (la cola)
+**Modelo vigente (CR-001, 2026-06-15):** la calidad se decide por **revisión humana** desde la web
+admin. Toda observación nace `aceptada` (visible + con puntos); un revisor (`evaluador`/
+`administrador`) la **confirma** o **rechaza** vía `/review/.../verdict`. El veredicto es
+**autoritativo en el backend** y queda en el log append-only `human_review` (gate #7). El dataset
+público = `estado_revision <> 'rechazada'`. Gate #5: la imagen de revisión se sirve con **EXIF GPS
+saneado** (`app/exif.py`) salvo `aliado_firmante`.
 
-Toda la integración con el validador es la cola + el contrato §6. Detalle y código:
-[`/contract`](contract/README.md). El backend es **productor** de `validation_jobs` y
-**consumidor** de `validation_results`; el **veredicto es autoritativo en el backend**
-(`valida ⟺ es_arbol ∧ parasitos_presentes`). El [`mock-validator`](mock-validator/README.md)
-cumple el mismo contrato hasta que exista el YOLO real.
+**Frontera §6 (inactiva, conservada).** La integración con el validador externo (cola + contrato §6 +
+[`mock-validator`](mock-validator/README.md)) **no se borra** pero queda **ociosa**: el submit ya no
+encola y `validation_apply`/`result_worker` no se ejecutan (compose los pone tras el perfil `yolo`).
+Si en el futuro se reactiva la validación automática, el paso mock→real sigue sin tocar cliente ni
+backend. Detalle del contrato: [`/contract`](contract/README.md).
 
 ## 7. `StorageProvider`
 
@@ -155,12 +167,12 @@ oficial de Rotary** (los actuales son provisionales y están marcados como tales
 | 2. Sin PII | `account` sin email/teléfono/nombre; `/auth/register` no pide PII |
 | 3. Sin gating | Ningún endpoint exige nivel/capacitación; gamificación sin multiplicadores |
 | 4. Captura cámara-nativa + EXIF | App fuerza cámara; galería deshabilitada; backend exige EXIF |
-| 5. Obfuscación 1 km | `/public/*` usa `ST_SnapToGrid`; exactas solo `/restricted/*` |
+| 5. Obfuscación 1 km | `/public/*` usa `ST_SnapToGrid`; exactas solo `/restricted/*`. **CR-001:** imagen de revisión con **EXIF GPS saneado** (`app/exif.py`) salvo `aliado_firmante` |
 | 6. Paridad de entornos | `StorageProvider`, `MessageBroker`, `DATABASE_URL` conmutables |
-| 7. Trazabilidad | [`TRACEABILITY.md`](TRACEABILITY.md): criterio → prueba |
-| 8. Alcance validación (es-árbol + parásitos) | Esquema §6.3 con `additionalProperties:false` (rechaza especie/G4) |
-| 9. Etiquetado válida/ruido | `compute_verdict` autoritativo en backend; puntos solo si válida |
-| 10. Contrato §6 (mock↔real sin cambios) | Toda integración por `/contract`; `make_broker` conmutable |
+| 7. Trazabilidad | [`TRACEABILITY.md`](TRACEABILITY.md): criterio → prueba; log `human_review` |
+| 8. ~~Alcance validación automática~~ | **Enmendado (CR-001):** sin validación automática; calidad por revisión humana. Backend sigue sin validar especie/G4 |
+| 9. ~~Etiquetado válida/ruido~~ | **Reemplazado (CR-001):** aceptación por defecto + veredicto humano autoritativo en backend (`/review/.../verdict`) |
+| 10. ~~Contrato §6 (mock↔real)~~ | **Inactivo (CR-001):** frontera §6 conservada pero ociosa; el submit ya no encola |
 
 ## 12. Roadmap de incrementos
 
