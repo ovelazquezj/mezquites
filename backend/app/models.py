@@ -57,6 +57,12 @@ REVIEW_VERDICTS = ("confirmada", "rechazada")
 AUTH_METHODS = ("social_google", "password")
 # Rol que puede portar email (CR-002): SOLO administrador (reset por SMTP). El resto NO guarda PII.
 EMAIL_ALLOWED_ROLES = ("administrador",)
+# Cuenta centinela "eliminada" (CR-006, ARCO Cancelación). Id y handle fijos, sin PII: al eliminar
+# una cuenta, sus observaciones/puntos/revisiones se repuntan a esta cuenta para conservar el dato
+# ecológico (geom/etiquetas/estado_revision) rompiendo el vínculo a la persona (gate #2).
+SENTINEL_ACCOUNT_ID = uuid.UUID("00000000-0000-0000-0000-0000000de1e7")  # "deleted"
+SENTINEL_HANDLE = "cuenta-eliminada"
+ANON_HANDLE = "anonimo"  # handle anónimo que sustituye al de la persona en sus observaciones
 # Legado de la validación automática YOLO (conservado, inactivo — gate #10 superado).
 VALIDATION_STATES = ("pendiente", "valida", "ruido")
 NIVELES_G4 = ("sano", "leve", "moderado", "severo")
@@ -348,4 +354,32 @@ class Snapshot(Base):
     observations_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class AccountDeletion(Base):
+    """Auditoría de la Cancelación ARCO (CR-006, gate #7) — append-only y **sin PII**.
+
+    Registra **que** una cuenta fue eliminada, **quién** la ejecutó y **cuándo**, nunca el
+    `email`/`provider_subject`/`username` de la persona (que ya no existen tras la eliminación). El
+    id de la cuenta eliminada se conserva como referencia opaca (no es PII; ya no resuelve a una
+    identidad). ``deleted_account_id`` NO es FK: la fila de `account` ya no existe al auditar.
+    """
+
+    __tablename__ = "account_deletion"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    deleted_account_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
+    executed_by_account_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("account.id"), nullable=False
+    )
+    deleted_role: Mapped[str | None] = mapped_column(Text)  # rol que tenía (no es PII)
+    reason: Mapped[str | None] = mapped_column(Text)  # motivo capturado por el administrador
+    observations_anonymized: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        Index("account_deletion_created_idx", "created_at"),
     )

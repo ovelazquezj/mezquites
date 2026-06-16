@@ -109,6 +109,35 @@ class AdminResetResponse(BaseModel):
     )
 
 
+# --- ARCO: Cancelación (eliminar cuenta, anonimizando) — CR-006 ---
+
+
+class AdminAccountSummary(BaseModel):
+    """Resumen de una cuenta para la pantalla ARCO (sin exponer PII: solo `has_email`)."""
+
+    id: uuid.UUID
+    handle: str
+    role: str
+    auth_provider: str
+    has_email: bool
+    observations: int
+
+
+class DeleteAccountRequest(BaseModel):
+    """Cancelación ARCO ejecutada por el administrador (CR-006). El motivo NO debe contener PII."""
+
+    reason: str | None = Field(
+        default=None,
+        description="Motivo de la cancelación (auditoría, gate #7). No incluir datos personales.",
+    )
+
+
+class DeleteAccountResponse(BaseModel):
+    deleted_account_id: uuid.UUID
+    observations_anonymized: int
+    message: str = "Cuenta eliminada y observaciones anonimizadas. El dato ecológico se conserva."
+
+
 class PasswordResetRequest(BaseModel):
     """Reset por correo del administrador (CR-002). Requiere SMTP; degrada si no hay."""
 
