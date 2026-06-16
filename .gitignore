@@ -38,3 +38,8 @@ node_modules/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Worktrees de agentes + overrides/insumos locales (no versionar)
+.claude/
+infra/compose/docker-compose.lan.yml
+resultados_paginas/
