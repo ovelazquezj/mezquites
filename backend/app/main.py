@@ -7,6 +7,7 @@ fitosanitario, reducción de infestación ni recomendaciones químicas/mecánica
 from __future__ import annotations
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from .config import get_settings
@@ -40,6 +41,11 @@ def create_app() -> FastAPI:
         docs_url=f"{API_PREFIX}/docs",
         redoc_url=f"{API_PREFIX}/redoc",
     )
+
+    # CORS (CR-004 W3): el navegador (web admin + FE web del voluntario, CR-005) habla con la API
+    # sin el workaround `--disable-web-security` de Chrome. Orígenes por entorno (gate #6: config),
+    # nunca `*` con credenciales en prod (ver Settings.cors_kwargs).
+    app.add_middleware(CORSMiddleware, **get_settings().cors_kwargs())
 
     for router in (
         auth.router,

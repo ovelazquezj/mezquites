@@ -41,6 +41,17 @@ class Settings(BaseSettings):
     broker: str = "memory"                   # memory | redis
     redis_url: str = "redis://localhost:6379/0"
 
+    # --- CORS (CR-004 W3) ---
+    # Orígenes permitidos para el navegador (web admin + FE web del voluntario, CR-005). Por
+    # entorno: en dev se permite cualquier `http://localhost:*` / `http://127.0.0.1:*` (regex);
+    # en QA/Prod se listan los dominios reales (coma-separados). NUNCA `*` con credenciales en prod.
+    # - cors_allow_origins: lista explícita coma-separada (p.ej. "https://app.mezquite.org").
+    # - cors_allow_origin_regex: regex de orígenes (p.ej. localhost en dev). Si está vacío en dev,
+    #   se usa el patrón de localhost por defecto.
+    cors_allow_origins: str = ""        # coma-separado; vacío = sin orígenes explícitos
+    cors_allow_origin_regex: str = ""   # regex; vacío en dev ⇒ patrón localhost por defecto
+    cors_env: str = "dev"               # dev | prod — en dev se relaja a localhost por regex
+
     # --- Auth (gate #2 acotado por CR-002: identidad real con mínima PII) ---
     auth_secret: str = "dev-insecure-secret-change-me"
     auth_algorithm: str = "HS256"
@@ -75,6 +86,30 @@ class Settings(BaseSettings):
     points_base: int = 5                     # recompensa base (fire-and-forget)
     points_deferred: int = 10                # recompensa diferida (solo si válida)
     feedback_window: int = 20                # "de tus últimas N observaciones"
+
+
+    def cors_kwargs(self) -> dict:
+        """Argumentos para ``CORSMiddleware`` derivados por entorno (CR-004 W3).
+
+        - **dev**: si no se dan orígenes/regex explícitos, se permite cualquier ``localhost``/
+          ``127.0.0.1`` en cualquier puerto vía regex (cubre el web admin y el FE web del
+          voluntario sin enumerar puertos). Nunca usa ``*``.
+        - **prod/QA**: solo los orígenes de ``cors_allow_origins`` (lista explícita) y/o el regex
+          de ``cors_allow_origin_regex``. Si no se configura ninguno, CORS queda cerrado (sin
+          orígenes), que es el comportamiento seguro por defecto.
+        """
+        origins = [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]
+        regex = self.cors_allow_origin_regex.strip() or None
+        if self.cors_env.lower() == "dev" and not origins and not regex:
+            # Dev sin nube: el navegador corre en localhost (puerto efímero de Flutter web).
+            regex = r"^http://(localhost|127\.0\.0\.1)(:\d+)?$"
+        return {
+            "allow_origins": origins,
+            "allow_origin_regex": regex,
+            "allow_credentials": True,
+            "allow_methods": ["*"],
+            "allow_headers": ["*"],
+        }
 
 
 @lru_cache
