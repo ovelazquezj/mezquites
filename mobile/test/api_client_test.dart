@@ -11,7 +11,7 @@ import 'package:mezquite_app/src/models/models.dart';
 /// Verifica que la capa de API consume el contrato REAL del backend
 /// (`/api/v1`, multipart en /observations, nombres de campo exactos).
 void main() {
-  test('register POSTea sin PII y guarda el token', () async {
+  test('loginWithGoogle POSTea solo el id_token (sin PII) y guarda el token', () async {
     late http.Request captured;
     final mock = MockClient((req) async {
       captured = req;
@@ -20,21 +20,22 @@ void main() {
           'handle': 'colibri-azul-42',
           'role': 'voluntario',
           'token': 'tok-123',
-          'backup_code': 'ABCD-1234',
         }),
-        201,
+        200,
       );
     });
     final api = ApiClient(baseUrl: 'http://x/api/v1', httpClient: mock);
 
-    final session = await api.register(institutionId: null);
-    expect(captured.url.path, '/api/v1/auth/register');
+    final session = await api.loginWithGoogle(idToken: 'mock:demo');
+    expect(captured.url.path, '/api/v1/auth/google');
     final body = json.decode(captured.body) as Map<String, dynamic>;
+    // Gate #2 acotado: solo id_token; nada de email/phone/nombre.
+    expect(body['id_token'], 'mock:demo');
     expect(body.containsKey('email'), isFalse);
     expect(body.containsKey('phone'), isFalse);
-    expect(body['role'], 'voluntario');
+    expect(body.containsKey('name'), isFalse);
     expect(session.token, 'tok-123');
-    expect(session.backupCode, 'ABCD-1234');
+    expect(session.handle, 'colibri-azul-42');
   });
 
   test('submitObservation envía multipart con payload (8 etiquetas) + image',

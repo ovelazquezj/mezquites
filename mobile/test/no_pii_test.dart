@@ -3,29 +3,27 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mezquite_app/src/models/models.dart';
 
-/// Gate #2 (sin PII): el alta es por handle; ningún modelo ni pantalla de
-/// registro/cuenta pide email/teléfono/nombre.
+/// Gate #2 ACOTADO (CR-002): identidad real con mínima PII. La app guarda SOLO el handle de
+/// presentación + JWT (nunca email/nombre); el login social manda únicamente el ID token.
 void main() {
-  test('AuthSession.fromRegister no contiene campos de PII', () {
-    final s = AuthSession.fromRegister({
+  test('AuthSession.fromToken no contiene campos de PII', () {
+    final s = AuthSession.fromToken({
       'handle': 'colibri-azul-42',
       'role': 'voluntario',
       'token': 'tok',
-      'backup_code': 'ABCD-1234',
     });
     expect(s.handle, 'colibri-azul-42');
-    // El modelo expone solo handle/role/token/backupCode; sin email/phone/name.
+    // El modelo expone solo handle/role/token; sin email/phone/name.
     final fields = s.toString();
     expect(fields.contains('@'), isFalse);
   });
 
-  test('ningún campo de entrada pide email/teléfono/nombre (gate #2)', () {
+  test('ninguna pantalla de auth/cuenta pide email/teléfono/nombre (gate #2)', () {
     // Escanea SOLO declaraciones de campos de entrada (labelText/hintText) y
     // TextField, ignorando comentarios (donde el gate aparece en negativo) y
-    // las cadenas de garantía de privacidad ("no pedimos correo...").
+    // las cadenas de garantía de privacidad.
     final files = [
-      'lib/src/ui/screens/register_screen.dart',
-      'lib/src/ui/screens/recover_screen.dart',
+      'lib/src/ui/screens/welcome_screen.dart',
       'lib/src/ui/screens/account_screen.dart',
     ];
     final banned = ['email', 'correo', 'teléfono', 'telefono', 'phone',
@@ -48,12 +46,16 @@ void main() {
     expect(offenders, isEmpty, reason: 'Campo de entrada pide PII: $offenders');
   });
 
-  test('el payload de registro solo lleva institution_id y role', () {
-    // El cuerpo del POST /auth/register no debe incluir PII.
+  test('el payload de /auth/google solo lleva id_token (+ institution_id), sin PII', () {
+    // El cuerpo del POST /auth/google no debe incluir email/phone/nombre.
     final src = File('lib/src/api/api_client.dart').readAsStringSync();
+    expect(src.contains("'id_token'"), isTrue);
     expect(src.contains("'institution_id'"), isTrue);
-    expect(src.contains("'role': 'voluntario'"), isTrue);
     expect(src.contains("'email'"), isFalse);
     expect(src.contains("'phone'"), isFalse);
+    expect(src.contains("'name'"), isFalse);
+    // El flujo viejo (register/recover/backup) quedó retirado.
+    expect(src.contains('/auth/register'), isFalse);
+    expect(src.contains('/auth/recover'), isFalse);
   });
 }

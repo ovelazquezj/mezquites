@@ -74,15 +74,17 @@ class Copy {
       'Las ubicaciones públicas se muestran aproximadas (celda de ~1 km) para '
       'proteger los árboles.';
 
-  // --- Cuenta (sin PII, gate #2) ---
+  // --- Cuenta + login (CR-002: identidad real con mínima PII, gate #2 acotado) ---
   static const accountTitle = 'Tu cuenta';
   static const noPiiNote =
-      'No pedimos correo, teléfono ni nombre. Te identificas con un nombre de '
-      'usuario.';
-  static const backupTitle = 'Guarda tu código de respaldo';
-  static const backupNote =
-      'Este código (y su QR) es la ÚNICA forma de recuperar tu cuenta. '
-      'Guárdalo en un lugar seguro. No lo volveremos a mostrar.';
+      'Tu cuenta se identifica con un usuario público. No guardamos tu correo '
+      'ni tu nombre: solo el identificador de tu cuenta de Google.';
+  static const signInWithGoogle = 'Entrar con Google';
+  static const googleSignInNote =
+      'Entras con tu cuenta de Google. No guardamos tu correo ni tu nombre: '
+      'solo un identificador para reconocerte la próxima vez.';
+  static const loginError =
+      'No pudimos iniciar sesión. Revisa tu conexión e inténtalo de nuevo.';
 
   // --- Ayuda ---
   static const helpTitle = 'Ayuda';

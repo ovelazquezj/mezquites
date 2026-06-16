@@ -1,28 +1,17 @@
 import 'enums.dart';
 
-/// Sesión seudonimizada (gate #2, Q5.D). SIN email/teléfono/nombre.
-/// El `backupCode` se muestra UNA sola vez (recuperación sin PII).
+/// Sesión del voluntario (CR-002, gate #2 acotado). Identidad real por Google, pero la app guarda
+/// SOLO el `handle` de presentación + `role` + JWT que devuelve el backend. NUNCA email/nombre.
 class AuthSession {
   const AuthSession({
     required this.handle,
     required this.role,
     required this.token,
-    this.backupCode,
   });
 
   final String handle;
   final String role;
   final String token;
-
-  /// Solo presente justo tras el registro; nunca se persiste en claro.
-  final String? backupCode;
-
-  factory AuthSession.fromRegister(Map<String, dynamic> j) => AuthSession(
-        handle: j['handle'] as String,
-        role: j['role'] as String,
-        token: j['token'] as String,
-        backupCode: j['backup_code'] as String?,
-      );
 
   factory AuthSession.fromToken(Map<String, dynamic> j) => AuthSession(
         handle: j['handle'] as String,

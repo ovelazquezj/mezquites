@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/api_client.dart';
 import '../models/models.dart';
+import '../services/google_auth_service.dart';
 import '../services/session_store.dart';
 import '../theme/design_tokens.dart';
 import 'app_config.dart';
@@ -49,35 +50,52 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   return client;
 });
 
-/// Estado de autenticación (sesión seudonimizada). Sin PII.
+/// Servicio de "Entrar con Google" (CR-002), conmutable por `AUTH_MODE` (gate #6).
+/// Por defecto MOCK (offline, sin google-services.json); override en pruebas.
+final googleAuthServiceProvider = Provider<GoogleAuthService>((ref) {
+  final config = ref.watch(appConfigProvider);
+  if (config.usesFirebase) {
+    return FirebaseGoogleAuthService();
+  }
+  return MockGoogleAuthService();
+});
+
+/// Resultado del intento de login social.
+enum GoogleSignInOutcome { success, cancelled, error }
+
+/// Estado de autenticación del voluntario (CR-002). Identidad real por Google; la app guarda solo
+/// el handle de presentación + JWT (gate #2 acotado, sin email/nombre).
 class AuthController extends StateNotifier<AuthSession?> {
-  AuthController(this._api, this._store) : super(_store.loadSession()) {
+  AuthController(this._api, this._google, this._store)
+      : super(_store.loadSession()) {
     if (state != null) _api.setToken(state!.token);
   }
 
   final ApiClient _api;
+  final GoogleAuthService _google;
   final SessionStore _store;
 
-  /// Alta por handle. Devuelve la sesión con el código de respaldo (una vez).
-  Future<AuthSession> register({String? institutionId}) async {
-    final session = await _api.register(institutionId: institutionId);
-    _api.setToken(session.token);
-    await _store.saveSession(session);
-    state = session;
-    return session;
-  }
-
-  Future<void> recover({
-    required String handle,
-    required String backupCode,
-  }) async {
-    final session = await _api.recover(handle: handle, backupCode: backupCode);
-    _api.setToken(session.token);
-    await _store.saveSession(session);
-    state = session;
+  /// "Entrar con Google": abre el flujo, manda el ID token al backend y guarda el JWT.
+  /// Devuelve [GoogleSignInOutcome.cancelled] si el usuario cerró el diálogo de Google.
+  Future<GoogleSignInOutcome> signInWithGoogle({String? institutionId}) async {
+    try {
+      final idToken = await _google.signIn();
+      if (idToken == null) return GoogleSignInOutcome.cancelled;
+      final session = await _api.loginWithGoogle(
+        idToken: idToken,
+        institutionId: institutionId,
+      );
+      _api.setToken(session.token);
+      await _store.saveSession(session);
+      state = session;
+      return GoogleSignInOutcome.success;
+    } catch (_) {
+      return GoogleSignInOutcome.error;
+    }
   }
 
   Future<void> logout() async {
+    await _google.signOut();
     await _store.clearSession();
     _api.setToken(null);
     state = null;
@@ -88,6 +106,7 @@ final authProvider =
     StateNotifierProvider<AuthController, AuthSession?>((ref) {
   return AuthController(
     ref.watch(apiClientProvider),
+    ref.watch(googleAuthServiceProvider),
     ref.watch(sessionStoreProvider),
   );
 });
