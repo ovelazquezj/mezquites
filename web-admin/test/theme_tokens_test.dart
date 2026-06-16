@@ -17,9 +17,9 @@ void main() {
 
     test('el asset de tokens existe y es el del design system compartido', () {
       expect(File('assets/design-tokens.json').existsSync(), isTrue);
-      // primary resuelve a Rotary royal blue (#17458F) vía ref semántica.
-      expect(tokens.color('primary'), 0xFF17458F);
-      expect(tokens.color('accent'), 0xFF4C9A5A); // verde ecológico
+      // CR-003: paleta oficial Mezquite. primary -> navy (#1F3A6E) vía ref.
+      expect(tokens.color('primary'), 0xFF1F3A6E);
+      expect(tokens.color('accent'), 0xFF5C9A3A); // verde Mezquite
     });
 
     test('AppTheme.build() usa los colores de los tokens (sin hex literal)', () {

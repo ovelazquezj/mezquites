@@ -9,25 +9,29 @@ import 'helpers.dart';
 /// T7: el tema se genera EXCLUSIVAMENTE desde design-tokens.json; ningún widget
 /// declara colores/medidas literales.
 void main() {
-  test('el tema deriva primary del token Rotary royal blue', () {
+  test('el tema deriva primary de la paleta oficial Mezquite (navy)', () {
     final tokens = loadTokensFromDisk();
     final theme = AppTheme(tokens).build();
-    // semantic.primary -> brand.rotary_royal_blue = #17458F
-    expect(theme.colorScheme.primary, const Color(0xFF17458F));
-    // semantic.secondary -> brand.rotary_gold = #F7A81B
-    expect(theme.colorScheme.secondary, const Color(0xFFF7A81B));
-    // semantic.accent -> eco.green_500 = #4C9A5A
-    expect(theme.colorScheme.tertiary, const Color(0xFF4C9A5A));
+    // semantic.primary -> brand.mezquite_navy = #1F3A6E
+    expect(theme.colorScheme.primary, const Color(0xFF1F3A6E));
+    // semantic.secondary -> brand.mezquite_gold = #E0A21A
+    expect(theme.colorScheme.secondary, const Color(0xFFE0A21A));
+    // semantic.accent -> brand.mezquite_green = #5C9A3A
+    expect(theme.colorScheme.tertiary, const Color(0xFF5C9A3A));
   });
 
   test('los tokens resuelven referencias semánticas y escalas', () {
     final tokens = loadTokensFromDisk();
-    expect(tokens.color('primary'), 0xFF17458F);
+    expect(tokens.color('primary'), 0xFF1F3A6E);
+    expect(tokens.color('blue'), 0xFF2E6FB7); // CR-003: azul Mezquite
     expect(tokens.radius('md'), 12);
     expect(tokens.spacing('lg'), 24);
     final body = tokens.typeToken('body');
     expect(body.size, 16);
     expect(body.weight, 400);
+    // Wordmark serif (CR-003): familia de Google Fonts, distinta de la sans base.
+    expect(tokens.fontFamilyWordmark, 'Fraunces');
+    expect(tokens.fontFamilyWordmark, isNot(tokens.fontFamilyBase));
   });
 
   test('el asset de tokens del móvil está sincronizado con docs/', () {
