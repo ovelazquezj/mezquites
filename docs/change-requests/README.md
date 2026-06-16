@@ -1,0 +1,41 @@
+# Change Requests — mezquite-software
+
+Solicitudes de cambio **formales** para los dos cambios mayores acordados con el usuario el
+**2026-06-15**. Cada CR contiene **toda la información** para ejecutarse con un **equipo de agentes
+Claude Code** bajo el modelo de orquestación de [`CLAUDE.md`](../../CLAUDE.md): un **subagente por
+unidad construible** (Arquitecto, Dev backend, Dev web-admin, Dev móvil, Tester/QA, Documentador); el
+**orquestador secuencia, verifica los gates y corre las pruebas** antes de declarar algo hecho.
+
+## Índice
+
+| CR | Título | Estado | Depende de |
+|---|---|---|---|
+| [CR-001](CR-001-revision-humana.md) | Revisión humana en el backend (sin YOLO) | Aprobado, **sin codificar** | — |
+| [CR-002](CR-002-auth-identidad-real.md) | Autenticación con identidad real (Google/Firebase + usuario/contraseña) | Aprobado, **sin codificar** | CR-001 |
+
+**Secuencia acordada:** primero **CR-001** (no depende de servicios externos), luego **CR-002**
+(requiere proyecto Firebase + huellas + aviso de privacidad del usuario).
+
+## Cómo ejecutar un CR con el equipo de agentes
+
+1. **Orquestador** lee el CR completo y abre la **fuente de verdad** (`bitacora_sdd_mezquite.md`) y
+   `TRACEABILITY.md`.
+2. Aplica la **enmienda de la bitácora** indicada en el CR (decisión humana ya autorizada) **antes**
+   de tocar código, para que la fuente de verdad no contradiga la implementación.
+3. Lanza **un subagente por unidad construible** en el orden de la sección *Desglose por agente* del
+   CR. Cada subagente recibe: objetivo, archivos, criterios de aceptación y pruebas de su unidad.
+4. Tras cada unidad, el orquestador **corre las pruebas** y **verifica los gates** listados; no avanza
+   si algo falla.
+5. **Documentador** actualiza `TRACEABILITY.md`, `ARCHITECTURE.md`, `QUICKSTART.md`/`docs/DESPLIEGUE.md`
+   y la bitácora.
+6. **Definition of Done** del CR: todas las pruebas verdes (números reales reportados), gates
+   verificados, trazabilidad actualizada, bitácora enmendada.
+
+## Convenciones (de CLAUDE.md)
+
+- **Idioma:** español (código, docs y commits).
+- **Commits:** `feat(...)`/`chore(...)`/`docs:`; terminar con
+  `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`. **No push** salvo que el usuario lo pida.
+- **Gates innegociables:** se respetan los que NO cambia el CR; los que el CR enmienda se documentan
+  explícitamente en la bitácora con fecha y motivo.
+- **Antes de "hecho":** correr pruebas y verificar gates; reportar números reales.
