@@ -1,5 +1,9 @@
 """Worker consumidor de resultados de validación (entrypoint separado).
 
+INACTIVO desde CR-001 (2026-06-15): se conserva en el repo pero no se arranca por defecto (compose lo
+puso tras el perfil `yolo`). El submit ya no encola jobs; la calidad la decide la revisión humana.
+Reactivar requiere reabrir la frontera §6 (y actualizar ``validation_apply`` al nuevo esquema).
+
     python -m backend.result_worker
 
 Consume ``channels.RESULTS_STREAM`` por el contrato §6, **recomputa el veredicto autoritativo**

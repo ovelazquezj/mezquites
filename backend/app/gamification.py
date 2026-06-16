@@ -25,7 +25,8 @@ _BADGE_THRESHOLDS = [
     (100, "centinela_del_mezquite"),
 ]
 
-# Etiqueta de identidad L3 por observaciones válidas (provisional; fórmula concreta = H7).
+# Etiqueta de identidad L3 por observaciones no-rechazadas (provisional; fórmula concreta = H7).
+# Revisión humana (CR-001): ya no hay "válidas" automáticas; se cuenta lo no-rechazado.
 _IDENTITY_LEVELS = [
     (0, "nuevo_observador"),
     (5, "observador"),
@@ -65,11 +66,12 @@ def account_observation_count(db: Session, account_id: uuid.UUID) -> int:
 
 
 def account_valid_count(db: Session, account_id: uuid.UUID) -> int:
+    """Observaciones NO-rechazadas de la cuenta (revisión humana, CR-001)."""
     return int(
         db.execute(
             text(
                 "SELECT count(*) FROM observation "
-                "WHERE account_id = :a AND validation_state = 'valida'"
+                "WHERE account_id = :a AND estado_revision <> 'rechazada'"
             ),
             {"a": account_id},
         ).scalar_one()

@@ -31,7 +31,7 @@ def restricted_observations(
             """
             SELECT handle, ST_Y(geom::geometry) AS lat, ST_X(geom::geometry) AS lon,
                    nivel_g4, flag_cuscuta, flag_danio, estado, municipio,
-                   captured_at, validation_state
+                   captured_at, estado_revision
             FROM observation
             WHERE (CAST(:estado AS text) IS NULL OR estado = :estado)
             ORDER BY captured_at DESC
@@ -52,7 +52,7 @@ def restricted_observations(
             estado=r["estado"],
             municipio=r["municipio"],
             captured_at=r["captured_at"],
-            validation_state=r["validation_state"],
+            estado_revision=r["estado_revision"],
         )
         for r in rows
     ]

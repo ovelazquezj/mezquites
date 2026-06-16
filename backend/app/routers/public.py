@@ -1,8 +1,9 @@
 """Vistas públicas (sin auth).
 
 - ``GET /public/observations`` — coords **obfuscadas a grid 1 km** (gate #5), handle por
-  observación (atribución I2), y ``snapshot_quarter`` ("Qn"). Solo observaciones **válidas**
-  entran al dataset público (gate #9).
+  observación (atribución I2), y ``snapshot_quarter`` ("Qn"). Entran al dataset público todas las
+  observaciones **no rechazadas** (``estado_revision <> 'rechazada'``): aceptadas + confirmadas
+  (revisión humana, CR-001).
 - ``GET /public/indicators`` — indicadores Q6 calculados automáticamente, **sin umbrales** (U1).
 """
 
@@ -27,7 +28,7 @@ def public_observations(
     limit: int = Query(500, le=5000),
     db: Session = Depends(get_db),
 ) -> list[PublicObservation]:
-    """Dataset público: coords NUNCA más finas que 1 km (gate #5). Solo válidas (gate #9).
+    """Dataset público: coords NUNCA más finas que 1 km (gate #5). No-rechazadas (CR-001).
 
     El backend extrae lat/lon exactas SOLO para obfuscarlas server-side; lo que sale por el wire
     ya es el centro de celda de 1 km. La query nunca devuelve coords exactas al público.
@@ -39,7 +40,7 @@ def public_observations(
             SELECT handle, ST_Y(geom::geometry) AS lat, ST_X(geom::geometry) AS lon,
                    nivel_g4, flag_cuscuta, flag_danio, estado, municipio, captured_at
             FROM observation
-            WHERE validation_state = 'valida'
+            WHERE estado_revision <> 'rechazada'
               AND (CAST(:estado AS text) IS NULL OR estado = :estado)
             ORDER BY captured_at DESC
             LIMIT :limit

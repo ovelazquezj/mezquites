@@ -1,7 +1,8 @@
 """Perfil y feedback del voluntario.
 
-- ``GET /me/feedback`` — feedback **agregado** de tasa de validación ("de tus últimas N, M
-  válidas"). NUNCA acusación individual (gate Q5.A-D1).
+- ``GET /me/feedback`` — resumen **agregado** de aportaciones ("de tus últimas N, M aceptadas").
+  Revisión humana (CR-001): toda observación se acepta al subir; un rechazo humano no se expone de
+  forma individual. NUNCA acusación individual (gate Q5.A-D1).
 - ``GET /me/profile`` — lifelist, etiqueta de identidad L3, insignias (sin desbloquear funciones).
 """
 
@@ -30,14 +31,17 @@ router = APIRouter(prefix="/me", tags=["me"])
 def feedback(
     user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> FeedbackAggregate:
-    """Tasa de validación AGREGADA sobre las últimas N observaciones (sin acusación individual)."""
+    """Resumen AGREGADO sobre las últimas N observaciones (sin acusación individual, CR-001).
+
+    Toda observación se acepta al subir; ``validas`` cuenta las **no-rechazadas** en la ventana.
+    """
     settings = get_settings()
     window = settings.feedback_window
     rows = db.execute(
         text(
             """
-            SELECT validation_state FROM observation
-            WHERE account_id = :a AND validation_state IN ('valida','ruido')
+            SELECT estado_revision FROM observation
+            WHERE account_id = :a
             ORDER BY captured_at DESC
             LIMIT :n
             """
@@ -45,11 +49,11 @@ def feedback(
         {"a": user.account_id, "n": window},
     ).all()
     total = len(rows)
-    validas = sum(1 for r in rows if r[0] == "valida")
+    validas = sum(1 for r in rows if r[0] != "rechazada")
     if total == 0:
-        message = "Aún no hay observaciones evaluadas para mostrar tu resumen."
+        message = "Aún no tienes observaciones para mostrar tu resumen."
     else:
-        message = f"De tus últimas {total} observaciones evaluadas, {validas} resultaron válidas."
+        message = f"De tus últimas {total} observaciones, {validas} siguen aceptadas."
     return FeedbackAggregate(
         window=window, total_considered=total, validas=validas, message=message
     )
