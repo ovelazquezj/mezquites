@@ -89,6 +89,76 @@ class Copy {
   // --- Ayuda ---
   static const helpTitle = 'Ayuda';
 
+  // --- Legal: Términos y Aviso de privacidad (CR-006 §4.3) ---
+  // BORRADOR sujeto a revisión legal del consorcio. Texto en español acorde a
+  // la LFPDPPP. La FUENTE canónica vive en docs/legal/ (web-admin); esta es la
+  // copia que la app muestra al voluntario. Gate #2 acotado (CR-002): la app
+  // guarda solo el id opaco del proveedor; sin email/nombre/teléfono.
+  static const legalTitle = 'Términos y privacidad';
+
+  /// Enlace discreto en la Bienvenida, cerca de "Entrar con Google".
+  static const legalConsentNote =
+      'Al continuar aceptas los Términos y el Aviso de privacidad.';
+
+  /// Aviso visible de que el texto es un borrador (no asesoría legal).
+  static const legalDraftBanner =
+      'BORRADOR sujeto a revisión legal del consorcio. Es un texto informativo, '
+      'no asesoría legal, y no condiciona el uso de la app.';
+
+  static const termsTitle = 'Términos y condiciones';
+  static const termsBody =
+      'Bienvenida o bienvenido al proyecto de ciencia ciudadana del mezquite '
+      '(Prosopis laevigata). Al usar esta app participas como observadora u '
+      'observador voluntario.\n\n'
+      '1. Qué es. La app sirve para registrar y compartir observaciones del '
+      'mezquite y del paxtle, con fines de conocimiento abierto. No ofrece '
+      'recomendaciones de manejo, control ni tratamientos.\n\n'
+      '2. Participación abierta. No hay niveles, certificaciones ni candados: '
+      'todas las funciones están disponibles desde el primer día.\n\n'
+      '3. Tu cuenta. Entras con tu cuenta de Google. No guardamos tu correo ni '
+      'tu nombre; solo conservamos un identificador opaco para reconocerte la '
+      'próxima vez.\n\n'
+      '4. Tus aportaciones. Las observaciones que registras (foto, ubicación '
+      'aproximada y tus estimaciones) se integran a un conjunto de datos de '
+      'ciencia ciudadana de uso público y abierto.\n\n'
+      '5. Buen uso. Registra observaciones reales y de buena fe; no entres a '
+      'propiedad privada sin permiso y cuida tu seguridad en campo.\n\n'
+      '6. Cambios. Estos términos pueden actualizarse; te avisaremos dentro de '
+      'la app cuando haya cambios relevantes.';
+
+  static const privacyTitle = 'Aviso de privacidad';
+  static const privacyBody =
+      'Este Aviso de privacidad describe, en términos de la Ley Federal de '
+      'Protección de Datos Personales en Posesión de los Particulares '
+      '(LFPDPPP), cómo se tratan tus datos en este proyecto.\n\n'
+      'Datos que se recaban. De la persona voluntaria solo se conserva un '
+      'identificador opaco entregado por tu proveedor de identidad (Google). '
+      'No guardamos tu correo, tu nombre, tu teléfono ni otros datos que te '
+      'identifiquen directamente.\n\n'
+      'Finalidad. Tus datos se usan únicamente para la ciencia ciudadana del '
+      'mezquite: registrar observaciones, atribuir tus aportaciones de forma '
+      'seudónima y generar conocimiento abierto sobre el estado del mezquite y '
+      'del paxtle.\n\n'
+      'No venta ni cesión indebida. No vendemos tus datos ni los cedemos para '
+      'fines ajenos al proyecto.\n\n'
+      'Ubicación aproximada. Las ubicaciones que se muestran públicamente se '
+      'difuminan a una celda de aproximadamente 1 km para proteger los árboles. '
+      'Las coordenadas exactas solo se comparten con el aliado firmante del '
+      'sitio correspondiente.\n\n'
+      'Conservación. El identificador de tu cuenta se conserva mientras tu '
+      'cuenta exista. Las observaciones (dato ecológico) se conservan de forma '
+      'seudónima incluso si tu cuenta se elimina.\n\n'
+      'Derechos ARCO. Tienes derecho a Acceder, Rectificar, Cancelar (eliminar) '
+      'y Oponerte al tratamiento de tus datos. Hoy, la eliminación de cuenta la '
+      'ejecuta el consorcio a petición tuya: al eliminar tu cuenta se borra tu '
+      'identificador y tus observaciones quedan anonimizadas, conservando solo '
+      'el dato ecológico.\n\n'
+      'Cómo ejercer tus derechos. Solicita el ejercicio de tus derechos ARCO a '
+      'través del consorcio, en el contacto indicado abajo.\n\n'
+      'Contacto. Para dudas sobre privacidad o para ejercer tus derechos, '
+      'escribe al consorcio del proyecto: privacidad@proyecto-mezquite.org '
+      '(contacto provisional, pendiente de confirmación del consorcio).';
+
   /// Etiqueta de identidad L3 → texto legible (Q4).
   static String identityLabel(String key) =>
       const {
