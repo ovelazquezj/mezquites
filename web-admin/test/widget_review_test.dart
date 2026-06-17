@@ -13,6 +13,10 @@ import 'package:mezquite_web_admin/src/ui/copy.dart';
 
 import 'helpers.dart';
 
+/// PNG transparente de 1x1 (bytes válidos) para el visor de imagen de revisión.
+final List<int> _kPng1x1 = base64Decode(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
+
 /// ApiClient mock que cubre las rutas de revisión + dashboards vacíos.
 ApiClient _api() {
   final mock = MockClient((req) async {
@@ -62,6 +66,12 @@ ApiClient _api() {
           ]),
           200,
           headers: {'content-type': 'application/json'});
+    }
+    // CR-010 #4: imagen de revisión servida como bytes (PNG 1x1) con el header
+    // Authorization. Image.network ignora headers en web, por eso se descarga.
+    if (path.endsWith('/image')) {
+      return http.Response.bytes(_kPng1x1, 200,
+          headers: {'content-type': 'image/png'});
     }
     if (path.contains('/review/observations/')) {
       return http.Response(
@@ -170,7 +180,8 @@ void main() {
     expect(find.text(Copy.navInstitutions), findsOneWidget);
   });
 
-  testWidgets('detalle: evaluador ve botones de veredicto', (tester) async {
+  testWidgets('detalle: evaluador ve los 3 botones de veredicto (CR-010 #4)',
+      (tester) async {
     tester.view.physicalSize = const Size(900, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -179,8 +190,31 @@ void main() {
     await tester.pump();
     await tester.pump();
 
+    // Confirmar / Retirar + el nuevo "Volver a aceptada".
     expect(find.byKey(const Key('review-confirm')), findsOneWidget);
     expect(find.byKey(const Key('review-reject')), findsOneWidget);
+    expect(find.byKey(const Key('review-reopen')), findsOneWidget);
+    expect(find.text(Copy.reviewReopen), findsOneWidget);
+  });
+
+  testWidgets(
+      'detalle: el visor descarga los bytes y pinta Image.memory (CR-010 #4)',
+      (tester) async {
+    tester.view.physicalSize = const Size(900, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(_detailAs('evaluador'));
+    // Resuelve el detalle y luego la descarga de bytes de la imagen.
+    await tester.pumpAndSettle();
+
+    final imgFinder = find.byKey(const Key('review-image'));
+    expect(imgFinder, findsOneWidget);
+    // Es Image.memory (no Image.network): los headers de auth sí viajan en web.
+    final img = tester.widget<Image>(imgFinder);
+    expect(img.image, isA<MemoryImage>());
+    // No cayó al estado de error.
+    expect(find.byKey(const Key('review-image-error')), findsNothing);
   });
 
   testWidgets('detalle: analista NO ve botones de veredicto (solo lectura)',

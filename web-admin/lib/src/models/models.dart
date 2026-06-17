@@ -36,6 +36,9 @@ class AuthSession {
   /// Solo el `administrador` ejecuta la cancelación ARCO de cuentas (CR-006).
   bool get canDeleteAccounts => role == 'administrador';
 
+  /// Datos y descargas (CR-010 #3): `analista` y `administrador`.
+  bool get canSeeData => role == 'analista' || role == 'administrador';
+
   /// Roles con acceso a la consola del consorcio (CR-001 amplía los de revisión).
   bool get canEnterAdminConsole => isAdmin || canReview;
 }
@@ -419,6 +422,122 @@ class ReviewStats {
         total: (j['total'] ?? 0) as int,
         pendientesDeRevision: (j['pendientes_de_revision'] ?? 0) as int,
         revisionesTotales: (j['revisiones_totales'] ?? 0) as int,
+      );
+}
+
+/// Celda del mapa de calor público (CR-009/CR-010 #2). El centro de la celda
+/// viene obfuscado a 300 m server-side (gate #5): NUNCA es un árbol exacto.
+class GridCell {
+  GridCell({
+    required this.lat,
+    required this.lon,
+    required this.n,
+    required this.nPaxtle,
+    required this.nCuscuta,
+    required this.g4Indice,
+    required this.snapshotQuarter,
+  });
+
+  /// Centro de celda de 300 m (obfuscado server-side, gate #5).
+  final double lat;
+  final double lon;
+
+  /// Nº de observaciones en la celda.
+  final int n;
+
+  /// Nº con paxtle (flag_danio) y con cúscuta (flag_cuscuta).
+  final int nPaxtle;
+  final int nCuscuta;
+
+  /// Promedio 0..3 (sano, leve, moderado, severo) → intensidad del calor.
+  final double g4Indice;
+  final String snapshotQuarter;
+
+  factory GridCell.fromJson(Map<String, dynamic> j) => GridCell(
+        lat: (j['lat'] as num).toDouble(),
+        lon: (j['lon'] as num).toDouble(),
+        n: (j['n'] as num).toInt(),
+        nPaxtle: (j['n_paxtle'] as num).toInt(),
+        nCuscuta: (j['n_cuscuta'] as num).toInt(),
+        g4Indice: (j['g4_indice'] as num).toDouble(),
+        snapshotQuarter: (j['snapshot_quarter'] ?? '') as String,
+      );
+}
+
+/// Tarjetas de resumen del analista (CR-010 #3, GET /admin/analytics/summary).
+/// Conteos agregados sin coords exactas (gate #5) y sin umbrales (U1).
+class AnalyticsSummary {
+  AnalyticsSummary({
+    required this.total,
+    required this.porEstadoRevision,
+    required this.porNivelG4,
+    required this.porMunicipio,
+    required this.snapshotQuarter,
+  });
+
+  /// Total de observaciones consideradas (tras los filtros aplicados).
+  final int total;
+
+  /// Conteo por estado de revisión (aceptada/confirmada/rechazada).
+  final Map<String, int> porEstadoRevision;
+
+  /// Conteo por nivel de paxtle autodeclarado (sano/leve/moderado/severo).
+  final Map<String, int> porNivelG4;
+
+  /// Conteo por municipio (sin coords; gate #5).
+  final Map<String, int> porMunicipio;
+
+  final String snapshotQuarter;
+
+  static Map<String, int> _intMap(dynamic v) => ((v ?? {}) as Map)
+      .map((k, val) => MapEntry('$k', (val as num).toInt()));
+
+  factory AnalyticsSummary.fromJson(Map<String, dynamic> j) => AnalyticsSummary(
+        total: (j['total'] ?? 0) as int,
+        porEstadoRevision: _intMap(j['por_estado_revision']),
+        porNivelG4: _intMap(j['por_nivel_g4']),
+        porMunicipio: _intMap(j['por_municipio']),
+        snapshotQuarter: (j['snapshot_quarter'] ?? '') as String,
+      );
+}
+
+/// Fila de la tabla de datos del analista (CR-010 #3). SIN coord exacta: solo
+/// estado/municipio agregables (gate #5). Refleja /admin/analytics/observations.
+class AnalyticsObservation {
+  AnalyticsObservation({
+    required this.observationId,
+    required this.handle,
+    required this.capturedAt,
+    required this.estadoRevision,
+    required this.nivelG4,
+    required this.flagCuscuta,
+    required this.flagDanio,
+    required this.estado,
+    required this.municipio,
+  });
+
+  final String observationId;
+  final String handle;
+  final DateTime capturedAt;
+  final String estadoRevision;
+  final String nivelG4;
+  final bool flagCuscuta;
+  final bool flagDanio;
+  final String? estado;
+  final String? municipio;
+
+  factory AnalyticsObservation.fromJson(Map<String, dynamic> j) =>
+      AnalyticsObservation(
+        observationId: (j['observation_id'] ?? '') as String,
+        handle: (j['handle'] ?? '') as String,
+        capturedAt: DateTime.tryParse((j['captured_at'] ?? '') as String) ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+        estadoRevision: (j['estado_revision'] ?? '') as String,
+        nivelG4: (j['nivel_g4'] ?? '') as String,
+        flagCuscuta: (j['flag_cuscuta'] ?? false) as bool,
+        flagDanio: (j['flag_danio'] ?? false) as bool,
+        estado: j['estado'] as String?,
+        municipio: j['municipio'] as String?,
       );
 }
 

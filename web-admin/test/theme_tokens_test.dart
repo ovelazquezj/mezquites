@@ -41,6 +41,11 @@ void main() {
       final hexLiteral = RegExp(r'Color\(0x[0-9A-Fa-f]{6,8}\)');
       final offenders = <String>[];
       for (final f in dartFiles) {
+        // Permitimos hex SOLO en app_theme.dart (error semántico de Material +
+        // rampa de calor del HeatRampTheme) y en design_tokens.dart, igual que
+        // el tema móvil. Los widgets piden el color al tema (T7).
+        final name = f.uri.pathSegments.last;
+        if (name == 'app_theme.dart' || name == 'design_tokens.dart') continue;
         for (final match in hexLiteral.allMatches(f.readAsStringSync())) {
           final lit = match.group(0)!;
           // 0xFFB3261E = error de Material, permitido (igual que el tema móvil).

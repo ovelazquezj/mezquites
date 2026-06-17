@@ -39,6 +39,9 @@ class SessionState {
   /// Cancelación ARCO de cuentas (CR-006): SOLO `administrador`.
   bool get canDeleteAccounts => session?.canDeleteAccounts ?? false;
 
+  /// Datos y descargas del analista (CR-010 #3): `analista`/`administrador`.
+  bool get canSeeData => session?.canSeeData ?? false;
+
   SessionState copyWith({AuthSession? session, String? error}) =>
       SessionState(session: session, error: error);
 }

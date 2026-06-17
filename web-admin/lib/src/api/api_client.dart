@@ -252,6 +252,22 @@ class ApiClient {
         .toList();
   }
 
+  /// Mapa de calor público (CR-009/CR-010 #2): celdas de 300 m con coords
+  /// obfuscadas server-side (gate #5). Agrega solo observaciones no-rechazadas.
+  /// Sin auth (endpoint `public/*`).
+  Future<List<GridCell>> publicGrid({String? estado, int limit = 2000}) async {
+    final r = await _http.get(
+      _uri('/public/grid', {
+        if (estado != null && estado.isNotEmpty) 'estado': estado,
+        'limit': '$limit',
+      }),
+      headers: _headers(json: false),
+    );
+    return _decodeList(r)
+        .map((e) => GridCell.fromJson((e as Map).cast()))
+        .toList();
+  }
+
   /// Indicadores Q6 públicos (con caveat de origen ciudadano). Sin auth.
   Future<Indicators> publicIndicators({String? estado}) async {
     final r = await _http.get(
@@ -349,6 +365,102 @@ class ApiClient {
   Future<ReviewStats> reviewStats() async {
     final r = await _http.get(_uri('/review/stats'), headers: _headers(json: false));
     return ReviewStats.fromJson(_decode(r));
+  }
+
+  // --- Analítica del analista (CR-010 #3): rol analista/administrador ---
+
+  Map<String, String> _analyticsQuery({
+    String? estadoRevision,
+    String? municipio,
+    String? nivelG4,
+    String? desde,
+    String? hasta,
+    int? limit,
+  }) =>
+      {
+        if (estadoRevision != null && estadoRevision.isNotEmpty)
+          'estado_revision': estadoRevision,
+        if (municipio != null && municipio.isNotEmpty) 'municipio': municipio,
+        if (nivelG4 != null && nivelG4.isNotEmpty) 'nivel_g4': nivelG4,
+        if (desde != null && desde.isNotEmpty) 'desde': desde,
+        if (hasta != null && hasta.isNotEmpty) 'hasta': hasta,
+        if (limit != null) 'limit': '$limit',
+      };
+
+  /// Tarjetas de resumen (GET /admin/analytics/summary). Conteos agregados sin
+  /// coords exactas (gate #5). Acepta los mismos filtros que la tabla.
+  Future<AnalyticsSummary> analyticsSummary({
+    String? estadoRevision,
+    String? municipio,
+    String? nivelG4,
+    String? desde,
+    String? hasta,
+  }) async {
+    final r = await _http.get(
+      _uri('/admin/analytics/summary',
+          _analyticsQuery(
+            estadoRevision: estadoRevision,
+            municipio: municipio,
+            nivelG4: nivelG4,
+            desde: desde,
+            hasta: hasta,
+          )),
+      headers: _headers(json: false),
+    );
+    return AnalyticsSummary.fromJson(_decode(r));
+  }
+
+  /// Tabla de observaciones del analista (GET /admin/analytics/observations).
+  /// SIN coord exacta: solo estado/municipio (gate #5).
+  Future<List<AnalyticsObservation>> analyticsObservations({
+    String? estadoRevision,
+    String? municipio,
+    String? nivelG4,
+    String? desde,
+    String? hasta,
+    int limit = 500,
+  }) async {
+    final r = await _http.get(
+      _uri('/admin/analytics/observations',
+          _analyticsQuery(
+            estadoRevision: estadoRevision,
+            municipio: municipio,
+            nivelG4: nivelG4,
+            desde: desde,
+            hasta: hasta,
+            limit: limit,
+          )),
+      headers: _headers(json: false),
+    );
+    return _decodeList(r)
+        .map((e) => AnalyticsObservation.fromJson((e as Map).cast()))
+        .toList();
+  }
+
+  /// Bytes del CSV de observaciones (GET /admin/analytics/observations.csv) con
+  /// el header Authorization (Flutter Web ignora headers en `<a download>`, así
+  /// que se baja por fetch autenticado y luego se entrega al navegador). El CSV
+  /// NO incluye coords exactas (gate #5): solo estado/municipio.
+  Future<List<int>> analyticsCsvBytes({
+    String? estadoRevision,
+    String? municipio,
+    String? nivelG4,
+    String? desde,
+    String? hasta,
+  }) async {
+    final r = await _http.get(
+      _uri('/admin/analytics/observations.csv',
+          _analyticsQuery(
+            estadoRevision: estadoRevision,
+            municipio: municipio,
+            nivelG4: nivelG4,
+            desde: desde,
+            hasta: hasta,
+          )),
+      headers: _headers(json: false),
+    );
+    if (r.statusCode >= 200 && r.statusCode < 300) return r.bodyBytes;
+    throw ApiException(r.statusCode, 'No se pudo descargar el CSV', body: r.body);
   }
 
   void close() => _http.close();

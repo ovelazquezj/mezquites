@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/session.dart';
+import '../ui/copy.dart';
 
 /// Login de la consola del consorcio (CR-002): **usuario + contraseña** (POST /auth/login). Los
 /// usuarios los crea el administrador (no hay auto-registro). Acceso por token Bearer pegado tras
@@ -58,6 +59,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Branding del Club Rotario (CR-010 #1): logo + nombre.
+                    Image.asset(
+                      'assets/branding/logo_horizontal.png',
+                      key: const Key('login-logo'),
+                      height: 56,
+                      fit: BoxFit.contain,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      Copy.orgName,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 16),
                     Text('Administración del consorcio',
                         style: theme.textTheme.displayLarge),
                     const SizedBox(height: 8),

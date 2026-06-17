@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../api/api_client.dart';
 import '../api/api_exception.dart';
 import '../models/models.dart';
 import '../state/session.dart';
@@ -190,13 +193,12 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
             nota: _notaCtrl.text.trim(),
           );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            veredicto == 'rechazada' ? Copy.reviewRejected : Copy.reviewConfirmed,
-          ),
-        ),
-      );
+      final msg = switch (veredicto) {
+        'rechazada' => Copy.reviewRejected,
+        'aceptada' => Copy.reviewReopened,
+        _ => Copy.reviewConfirmed,
+      };
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       Navigator.of(context).pop();
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -254,27 +256,13 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
                   ),
                   const SizedBox(height: 12),
                   // Visor de imagen (servida con EXIF GPS saneado, gate #5).
+                  // CR-010 #4: Flutter Web IGNORA los headers de Image.network,
+                  // así que la imagen da 401. Se descargan los bytes con el
+                  // header Authorization (http client autenticado) y se pintan
+                  // con Image.memory.
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      ref
-                          .read(apiClientProvider)
-                          .reviewImageUri(widget.observationId)
-                          .toString(),
-                      key: const Key('review-image'),
-                      headers: {
-                        'Authorization':
-                            'Bearer ${ref.read(apiClientProvider).token ?? ''}',
-                      },
-                      height: 280,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => Container(
-                        height: 280,
-                        alignment: Alignment.center,
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        child: const Text('No se pudo cargar la imagen.'),
-                      ),
-                    ),
+                    child: _ReviewImage(observationId: widget.observationId),
                   ),
                   const SizedBox(height: 12),
                   Wrap(spacing: 8, runSpacing: 8, children: [
@@ -311,7 +299,9 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
                           const InputDecoration(labelText: Copy.reviewNoteLabel),
                     ),
                     const SizedBox(height: 12),
-                    Row(
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
                       children: [
                         FilledButton.icon(
                           key: const Key('review-confirm'),
@@ -319,12 +309,19 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
                           icon: const Icon(Icons.check),
                           label: const Text(Copy.reviewConfirm),
                         ),
-                        const SizedBox(width: 12),
                         OutlinedButton.icon(
                           key: const Key('review-reject'),
                           onPressed: _busy ? null : () => _emit('rechazada'),
                           icon: const Icon(Icons.block),
                           label: const Text(Copy.reviewReject),
+                        ),
+                        // CR-010 #4: tercer veredicto que regresa al estado por
+                        // defecto (aceptada). El backend ya lo acepta.
+                        TextButton.icon(
+                          key: const Key('review-reopen'),
+                          onPressed: _busy ? null : () => _emit('aceptada'),
+                          icon: const Icon(Icons.undo),
+                          label: const Text(Copy.reviewReopen),
                         ),
                       ],
                     ),
@@ -335,6 +332,75 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
           },
         ),
       ),
+    );
+  }
+}
+
+/// Visor de imagen de revisión (CR-010 #4). Descarga los bytes con el header
+/// Authorization vía el [ApiClient] (Flutter Web ignora los headers de
+/// `Image.network`) y los pinta con `Image.memory`. El backend sirve la imagen
+/// con el GPS del EXIF saneado (gate #5).
+class _ReviewImage extends ConsumerStatefulWidget {
+  const _ReviewImage({required this.observationId});
+
+  final String observationId;
+
+  @override
+  ConsumerState<_ReviewImage> createState() => _ReviewImageState();
+}
+
+class _ReviewImageState extends ConsumerState<_ReviewImage> {
+  late Future<Uint8List> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  Future<Uint8List> _load() async {
+    final bytes = await ref
+        .read(apiClientProvider)
+        .reviewImageBytes(widget.observationId);
+    return Uint8List.fromList(bytes);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return FutureBuilder<Uint8List>(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return Container(
+            height: 280,
+            alignment: Alignment.center,
+            color: theme.colorScheme.surfaceContainerHighest,
+            child: const CircularProgressIndicator(),
+          );
+        }
+        if (snap.hasError || snap.data == null) {
+          return Container(
+            key: const Key('review-image-error'),
+            height: 280,
+            alignment: Alignment.center,
+            color: theme.colorScheme.surfaceContainerHighest,
+            child: const Text(Copy.reviewImageError),
+          );
+        }
+        return Image.memory(
+          snap.data!,
+          key: const Key('review-image'),
+          height: 280,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => Container(
+            height: 280,
+            alignment: Alignment.center,
+            color: theme.colorScheme.surfaceContainerHighest,
+            child: const Text(Copy.reviewImageError),
+          ),
+        );
+      },
     );
   }
 }
