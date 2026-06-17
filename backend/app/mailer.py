@@ -36,7 +36,7 @@ def send_password_reset(
     msg["To"] = to_email
     msg.set_content(
         "Hola,\n\n"
-        "Se restableció tu contraseña de la consola del consorcio Mezquite.\n"
+        "Se restableció tu contraseña de la consola de administración de Mezquite.\n"
         f"Contraseña temporal: {temp_password}\n\n"
         "Inicia sesión y cámbiala de inmediato.\n"
     )
