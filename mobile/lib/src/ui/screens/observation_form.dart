@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/enums.dart';
 import '../../models/models.dart';
+import '../../models/municipios.dart';
 import '../../services/capture_service.dart';
 import '../copy.dart';
 import '../widgets/common.dart';
@@ -37,6 +38,23 @@ class _ObservationFormState extends State<ObservationForm> {
   Tamanio? _tamanio;
   Contexto? _contexto;
 
+  // CR-010 #5: estado/municipio AUTODECLARADOS (gate #8). Estado por defecto =
+  // Aguascalientes; municipio AUTO-DETECTADO del GPS de la captura (lookup local
+  // por cercanía) y preseleccionado; editable por el usuario.
+  late String _estado;
+  String? _municipio;
+
+  @override
+  void initState() {
+    super.initState();
+    _estado = kEstadoDefault;
+    _municipio = municipioMasCercano(
+      lat: widget.capture.lat,
+      lon: widget.capture.lon,
+      estado: _estado,
+    );
+  }
+
   bool get _complete =>
       _nivel != null && _tamanio != null && _contexto != null;
 
@@ -51,6 +69,8 @@ class _ObservationFormState extends State<ObservationForm> {
       flagDanio: _danio,
       tamanio: _tamanio!,
       contexto: _contexto!,
+      estado: _estado,
+      municipio: _municipio,
       imagePath: widget.capture.imagePath,
       imageBytes: widget.capture.imageBytes,
     );
@@ -77,6 +97,64 @@ class _ObservationFormState extends State<ObservationForm> {
               ),
               Text(
                 widget.capture.capturedAt.toLocal().toString(),
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+
+        // Estado + municipio (CR-010 #5): autodeclarados (gate #8). El municipio
+        // viene PRESELECCIONADO por cercanía al GPS; el usuario puede corregirlo.
+        SectionCard(
+          title: 'Lugar',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DropdownButtonFormField<String>(
+                key: const Key('dropdown_estado'),
+                value: _estado,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: Copy.captureEstadoLabel,
+                ),
+                items: kEstados
+                    .map((e) => DropdownMenuItem<String>(
+                          value: e,
+                          child: Text(e),
+                        ),)
+                    .toList(),
+                onChanged: (v) {
+                  if (v == null) return;
+                  setState(() {
+                    _estado = v;
+                    // Al cambiar de estado, re-detecta el municipio del GPS.
+                    _municipio = municipioMasCercano(
+                      lat: widget.capture.lat,
+                      lon: widget.capture.lon,
+                      estado: v,
+                    );
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                key: const Key('dropdown_municipio'),
+                value: _municipio,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: Copy.captureMunicipioLabel,
+                ),
+                items: municipiosDe(_estado)
+                    .map((m) => DropdownMenuItem<String>(
+                          value: m,
+                          child: Text(m),
+                        ),)
+                    .toList(),
+                onChanged: (v) => setState(() => _municipio = v),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                Copy.captureMunicipioHint,
                 style: theme.textTheme.bodySmall,
               ),
             ],

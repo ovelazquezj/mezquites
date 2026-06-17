@@ -48,13 +48,20 @@ void main() {
 
   test('el payload de /auth/google solo lleva id_token (+ institution_id), sin PII', () {
     // El cuerpo del POST /auth/google no debe incluir email/phone/nombre.
+    // Se acota al método loginWithGoogle (CR-010 añade institutions/request, que
+    // sí lleva un campo `name` de INSTITUCIÓN — no es PII del voluntario).
     final src = File('lib/src/api/api_client.dart').readAsStringSync();
-    expect(src.contains("'id_token'"), isTrue);
-    expect(src.contains("'institution_id'"), isTrue);
-    expect(src.contains("'email'"), isFalse);
-    expect(src.contains("'phone'"), isFalse);
-    expect(src.contains("'name'"), isFalse);
-    // El flujo viejo (register/recover/backup) quedó retirado.
+    final start = src.indexOf('loginWithGoogle');
+    final end = src.indexOf('// --- Observaciones ---');
+    expect(start >= 0 && end > start, isTrue,
+        reason: 'no se localizó el bloque de loginWithGoogle',);
+    final loginBlock = src.substring(start, end);
+    expect(loginBlock.contains("'id_token'"), isTrue);
+    expect(loginBlock.contains("'institution_id'"), isTrue);
+    expect(loginBlock.contains("'email'"), isFalse);
+    expect(loginBlock.contains("'phone'"), isFalse);
+    expect(loginBlock.contains("'name'"), isFalse);
+    // El flujo viejo (register/recover/backup) quedó retirado (todo el archivo).
     expect(src.contains('/auth/register'), isFalse);
     expect(src.contains('/auth/recover'), isFalse);
   });
