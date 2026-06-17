@@ -8,7 +8,8 @@ import '../widgets/caveat_banner.dart';
 import '../widgets/estado_filter.dart';
 
 /// Dashboard PÚBLICO (Q5.B). Indicadores Q6 + observaciones con coords **ya
-/// obfuscadas a 1 km** (gate #5). Muestra el caveat de origen ciudadano y el
+/// obfuscadas a 300 m** (gate #5 enmendado por CR-009). Muestra el caveat de
+/// origen ciudadano y el
 /// sello "última actualización Qn". Filtro geográfico por estado (Q8).
 ///
 /// Boundary (Q5.B / gate #1): dashboards como pieza única. NO hay botón de
@@ -51,7 +52,7 @@ class _PublicDashboardScreenState
         Text(Copy.navPublic, style: theme.textTheme.displayLarge),
         const SizedBox(height: 8),
         Text(
-          'Datos abiertos con ubicaciones aproximadas (~1 km). Vista de solo '
+          'Datos abiertos con ubicaciones aproximadas (~300 m). Vista de solo '
           'consulta.',
           style: theme.textTheme.bodyMedium,
         ),
@@ -184,7 +185,7 @@ class _ObservationsTable extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Observaciones (ubicación aproximada ~1 km)',
+            Text('Observaciones (ubicación aproximada ~300 m)',
                 style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
             SingleChildScrollView(
@@ -192,8 +193,8 @@ class _ObservationsTable extends StatelessWidget {
               child: DataTable(
                 columns: const [
                   DataColumn(label: Text('Usuario')),
-                  DataColumn(label: Text('Latitud (~1 km)')),
-                  DataColumn(label: Text('Longitud (~1 km)')),
+                  DataColumn(label: Text('Latitud (~300 m)')),
+                  DataColumn(label: Text('Longitud (~300 m)')),
                   DataColumn(label: Text('Nivel de paxtle')),
                   DataColumn(label: Text('Cúscuta')),
                   DataColumn(label: Text('Daño')),

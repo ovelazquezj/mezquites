@@ -3,10 +3,16 @@
 /// mostrarían crudos (snake_case) al usuario.
 ///
 /// Gates: nada promete control fitosanitario/reducción de infestación (gate #1);
-/// la validación automática solo confirma es-árbol + presencia de parásitos
-/// (gate #8); las vistas públicas nunca prometen más fino que ~1 km (gate #5).
+/// la calidad la decide una persona en la web admin —sin validación automática—
+/// (gates #8/#9 enmendados por CR-001); las vistas públicas nunca prometen más
+/// fino que ~300 m (gate #5 enmendado por CR-009).
 class Copy {
   Copy._();
+
+  /// Organización responsable del proyecto (decisión del usuario, 2026-06-17).
+  /// Centralizado para no repetirlo y poder ajustarlo en un solo lugar. La
+  /// denominación legal exacta, domicilio y contacto oficiales siguen pendientes.
+  static const orgName = 'Club Rotario Bosques Aguascalientes';
 
   // --- Navegación / títulos generales ---
   static const navPublic = 'Panel público';
@@ -45,10 +51,10 @@ class Copy {
   // --- Legal: Términos y Aviso de privacidad (CR-006) ---
   static const legalIntro =
       'Términos y Condiciones y Aviso de privacidad del piloto. Son un BORRADOR '
-      'sujeto a revisión legal del consorcio; no constituyen asesoría legal.';
+      'sujeto a revisión legal del $orgName; no constituyen asesoría legal.';
   static const legalTermsTitle = 'Términos y Condiciones';
   static const legalPrivacyTitle = 'Aviso de privacidad';
-  static const legalDraftBadge = 'BORRADOR · sujeto a revisión legal del consorcio';
+  static const legalDraftBadge = 'BORRADOR · sujeto a revisión legal del $orgName';
 
   // --- Revisión humana (CR-001) ---
   static const reviewIntro =
@@ -81,11 +87,11 @@ class Copy {
     'registrados': 'Personas registradas',
     'activos_30d': 'Activos (últimos 30 días)',
     'observaciones_totales': 'Observaciones totales',
-    'observaciones_validadas': 'Observaciones válidas',
+    'observaciones_confirmadas': 'Observaciones confirmadas',
     'instituciones_activas': 'Instituciones activas',
     // educativo
     'distribucion_identidad_e3': 'Distribución por nivel de observador',
-    'tasa_validacion_promedio': 'Proporción de observaciones válidas',
+    'proporcion_no_rechazadas': 'Proporción de observaciones no retiradas',
     // ecológico
     'arboles_unicos': 'Árboles distintos',
     'arboles_serie_temporal': 'Árboles con seguimiento en el tiempo',
@@ -124,6 +130,22 @@ class Copy {
         'solicitada': 'Solicitada',
       }[wire] ??
       wire;
+
+  /// Rol (clave del backend) → etiqueta legible. **Cosmético:** unifica cómo se
+  /// muestran los roles en la consola; no cambia claves, poderes ni gating.
+  /// `administrador` y `admin_consorcio` siguen siendo roles distintos (de ahí
+  /// nombres distinguibles). Respaldo: humaniza el snake_case si falta la clave.
+  static String roleLabel(String wire) =>
+      _roleLabels[wire] ?? _humanizeKey(wire);
+
+  static const _roleLabels = <String, String>{
+    'voluntario': 'Voluntario',
+    'aliado_firmante': 'Aliado firmante',
+    'administrador': 'Administrador general',
+    'admin_consorcio': 'Administrador de la organización',
+    'evaluador': 'Evaluador',
+    'analista': 'Analista',
+  };
 
   /// Respaldo: convierte una clave snake_case en algo legible
   /// (`cobertura_municipios` → `Cobertura municipios`).

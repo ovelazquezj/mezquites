@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_exception.dart';
 import '../models/models.dart';
 import '../state/session.dart';
+import '../ui/copy.dart';
 
 /// Gestión de usuarios de backend (CR-002). SOLO el `administrador`: crea evaluador/analista/
 /// administrador con contraseña temporal, dispara reset y cambia rol. Gate #2 acotado: el email
@@ -138,14 +139,14 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                         value: _role,
                         isExpanded: true,
                         decoration: const InputDecoration(labelText: 'Rol'),
-                        items: const [
-                          DropdownMenuItem(
-                              value: 'evaluador', child: Text('Evaluador')),
-                          DropdownMenuItem(
-                              value: 'analista', child: Text('Analista')),
-                          DropdownMenuItem(
-                              value: 'administrador',
-                              child: Text('Administrador')),
+                        items: [
+                          for (final r in const [
+                            'evaluador',
+                            'analista',
+                            'administrador'
+                          ])
+                            DropdownMenuItem(
+                                value: r, child: Text(Copy.roleLabel(r))),
                         ],
                         onChanged: (v) => setState(() => _role = v ?? 'evaluador'),
                       ),
@@ -235,7 +236,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                       contentPadding: EdgeInsets.zero,
                       title: Text(u.username ?? u.handle),
                       subtitle: Text(
-                        '${u.role}${u.hasEmail ? ' · con correo' : ''}'
+                        '${Copy.roleLabel(u.role)}${u.hasEmail ? ' · con correo' : ''}'
                         '${u.mustChangePassword ? ' · contraseña temporal' : ''}',
                       ),
                       trailing: OutlinedButton(

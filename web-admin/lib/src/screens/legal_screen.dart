@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import '../ui/copy.dart';
 
 /// Legal (CR-006): Términos y Condiciones + Aviso de privacidad, accesibles desde
-/// la consola del consorcio. Es un **BORRADOR** (lo marca el badge) sujeto a
-/// revisión legal del consorcio; no es asesoría legal. La fuente completa vive en
+/// la consola de administración. Es un **BORRADOR** (lo marca el badge) sujeto a
+/// revisión legal de la organización responsable; no es asesoría legal. La fuente completa vive en
 /// `docs/legal/terminos.md` y `docs/legal/aviso-privacidad.md`; aquí se muestra un
 /// resumen accesible de las secciones clave (incluye derechos ARCO y obfuscación
-/// a 1 km del gate #5). No introduce PII (gate #2).
+/// a 300 m del gate #5, enmendado por CR-009). No introduce PII (gate #2).
 class LegalScreen extends StatelessWidget {
   const LegalScreen({super.key});
 
@@ -46,7 +46,7 @@ class LegalScreen extends StatelessWidget {
                     'especie y el nivel de afectación son autodeclarados. Un '
                     'evaluador humano puede confirmar o retirar una observación.'),
             _Section('Privacidad de la ubicación',
-                'La ubicación pública nunca es más precisa que ~1 km; las '
+                'La ubicación pública nunca es más precisa que ~300 m; las '
                     'coordenadas exactas solo las ven aliados firmantes autorizados.'),
             _Section('Tus derechos (ARCO)',
                 'Puedes solicitar la cancelación de tu cuenta: tu identidad se '
@@ -73,9 +73,9 @@ class LegalScreen extends StatelessWidget {
                     'educación y gestión ambiental. Sin mercadotecnia ni '
                     'perfilamiento comercial.'),
             _Section('No venta ni cesión indebida',
-                'El consorcio no vende tus datos ni los cede con fines '
+                'El ${Copy.orgName} no vende tus datos ni los cede con fines '
                     'comerciales. El dato abierto va agregado, seudonimizado y con '
-                    'la ubicación obfuscada a ~1 km.'),
+                    'la ubicación obfuscada a ~300 m.'),
             _Section('Conservación',
                 'La identidad se conserva mientras exista la cuenta; el dato '
                     'ecológico puede conservarse indefinidamente (anonimizado al '
@@ -85,11 +85,11 @@ class LegalScreen extends StatelessWidget {
                 'Acceso, Rectificación, Cancelación y Oposición. Hoy la '
                     'Cancelación (eliminar cuenta) la ejecuta el administrador desde '
                     'esta consola; el resto se atiende caso por caso. Para ejercerlos, '
-                    'contacta al consorcio a través del administrador de la plataforma.'),
+                    'contacta al ${Copy.orgName} a través del administrador de la plataforma.'),
             _Section('Contacto',
-                'Consorcio del mezquite, a través del administrador de la '
+                '${Copy.orgName}, a través del administrador de la '
                     'plataforma. El medio de contacto oficial queda pendiente de '
-                    'definición por el consorcio.'),
+                    'definición.'),
           ],
         ),
       ],

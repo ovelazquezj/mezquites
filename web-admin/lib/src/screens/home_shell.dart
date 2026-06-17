@@ -15,7 +15,7 @@ import 'review_screen.dart';
 import 'snapshots_screen.dart';
 import 'users_screen.dart';
 
-/// Shell de la consola del consorcio. NavigationRail con los módulos, **gated por
+/// Shell de la consola de administración. NavigationRail con los módulos, **gated por
 /// rol** (CR-001):
 /// - Módulos de administración (instituciones/aliados/indicadores/cortes): solo
 ///   `admin_consorcio`/`administrador`.
@@ -89,7 +89,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Administración del consorcio — Mezquite'),
+        title: Text('Administración — ${Copy.orgName}'),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),

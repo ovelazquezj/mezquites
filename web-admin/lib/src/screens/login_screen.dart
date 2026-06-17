@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/session.dart';
+import '../ui/copy.dart';
 
-/// Login de la consola del consorcio (CR-002): **usuario + contraseña** (POST /auth/login). Los
+/// Login de la consola de administración (CR-002): **usuario + contraseña** (POST /auth/login). Los
 /// usuarios los crea el administrador (no hay auto-registro). Acceso por token Bearer pegado tras
 /// "Opciones avanzadas" (uso técnico). Si el rol no entra a la consola, se deniega el acceso.
 class LoginScreen extends ConsumerStatefulWidget {
@@ -58,7 +59,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Administración del consorcio',
+                    Text('Administración — ${Copy.orgName}',
                         style: theme.textTheme.displayLarge),
                     const SizedBox(height: 8),
                     Text(

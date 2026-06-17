@@ -55,7 +55,7 @@ class _InstitutionsScreenState extends ConsumerState<InstitutionsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_requestOnly
-                ? 'Solicitud enviada al consorcio para su revisión.'
+                ? 'Solicitud enviada al ${Copy.orgName} para su revisión.'
                 : 'Institución aprobada y agregada.'),
           ),
         );
@@ -83,7 +83,7 @@ class _InstitutionsScreenState extends ConsumerState<InstitutionsScreen> {
         Text('Instituciones', style: theme.textTheme.displayLarge),
         const SizedBox(height: 8),
         Text(
-          'Las nuevas instituciones las revisa y aprueba el consorcio. Las '
+          'Las nuevas instituciones las revisa y aprueba el ${Copy.orgName}. Las '
           'marcadas como "Solicitada" quedan pendientes de esa revisión.',
           style: theme.textTheme.bodyMedium,
         ),
@@ -126,7 +126,7 @@ class _InstitutionsScreenState extends ConsumerState<InstitutionsScreen> {
                           value: _requestOnly,
                           onChanged: (v) => setState(() => _requestOnly = v),
                         ),
-                        const Text('Solo solicitar (revisión del consorcio)'),
+                        Text('Solo solicitar (revisión del ${Copy.orgName})'),
                       ],
                     ),
                     FilledButton(

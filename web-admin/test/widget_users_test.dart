@@ -149,7 +149,7 @@ void main() {
     // Cambiar a administrador → aparece el campo de correo.
     await tester.tap(find.byKey(const Key('user-role')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Administrador').last);
+    await tester.tap(find.text('Administrador general').last);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('user-email')), findsOneWidget);
   });

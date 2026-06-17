@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/api_exception.dart';
 import '../state/session.dart';
+import '../ui/copy.dart';
 
 /// Aliados firmantes (Q4/Q5.B). Promueve una cuenta existente a
 /// `aliado_firmante` (POST /admin/allies). La UI deja claro que esto habilita
@@ -76,9 +77,9 @@ class _AlliesScreenState extends ConsumerState<AlliesScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Un aliado firmante es la ÚNICA cuenta (además del consorcio) '
+                    'Un aliado firmante es la ÚNICA cuenta (además del ${Copy.orgName}) '
                     'que puede ver la ubicación EXACTA de los árboles. El resto '
-                    'del público solo ve ubicaciones aproximadas (~1 km). '
+                    'del público solo ve ubicaciones aproximadas (~300 m). '
                     'Autorizar a alguien le da ese acceso.',
                     key: const Key('allies-coords-explainer'),
                     style: theme.textTheme.bodyMedium,

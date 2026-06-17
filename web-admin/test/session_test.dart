@@ -48,7 +48,7 @@ void main() {
           username: 'vol1', password: 'x');
       expect(ok, isFalse);
       expect(c.state.isAuthenticated, isFalse);
-      expect(c.state.error, contains('consola del consorcio'));
+      expect(c.state.error, contains('consola de administración'));
     });
 
     test('login con rol aliado_firmante DENIEGA el acceso a la consola', () async {

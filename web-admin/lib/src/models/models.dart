@@ -36,7 +36,7 @@ class AuthSession {
   /// Solo el `administrador` ejecuta la cancelación ARCO de cuentas (CR-006).
   bool get canDeleteAccounts => role == 'administrador';
 
-  /// Roles con acceso a la consola del consorcio (CR-001 amplía los de revisión).
+  /// Roles con acceso a la consola de administración (CR-001 amplía los de revisión).
   bool get canEnterAdminConsole => isAdmin || canReview;
 }
 
@@ -191,7 +191,7 @@ class SnapshotResult {
       );
 }
 
-/// Observación pública: coords YA obfuscadas a 1 km server-side (gate #5).
+/// Observación pública: coords YA obfuscadas a 300 m server-side (gate #5, CR-009).
 class PublicObservation {
   PublicObservation({
     required this.handle,

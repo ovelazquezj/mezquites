@@ -234,7 +234,7 @@ class ApiClient {
 
   // --- Vistas de datos ---
 
-  /// Dashboard PÚBLICO: coords obfuscadas a 1 km server-side (gate #5).
+  /// Dashboard PÚBLICO: coords obfuscadas a 300 m server-side (gate #5, CR-009).
   /// Sin auth. Filtro geográfico por estado (Q8).
   Future<List<PublicObservation>> publicObservations({
     String? estado,

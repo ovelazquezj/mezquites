@@ -44,14 +44,14 @@ class SessionState {
 }
 
 /// Controlador de sesión. Login por usuario + contraseña (POST /auth/login, CR-002) o token
-/// pegado. Aplica el gate de rol: si el rol no entra a la consola del consorcio, deniega.
+/// pegado. Aplica el gate de rol: si el rol no entra a la consola de administración, deniega.
 class SessionController extends StateNotifier<SessionState> {
   SessionController(this._api) : super(const SessionState());
 
   final ApiClient _api;
 
   /// Login de la consola: usuario + contraseña → token (Bearer).
-  /// Deniega si el rol no entra a la consola del consorcio (gate de acceso).
+  /// Deniega si el rol no entra a la consola de administración (gate de acceso).
   Future<bool> loginWithPassword({
     required String username,
     required String password,
@@ -65,7 +65,7 @@ class SessionController extends StateNotifier<SessionState> {
         _api.setToken(null);
         state = const SessionState(
           error:
-              'Esta cuenta no tiene permisos para la consola del consorcio.',
+              'Esta cuenta no tiene permisos para la consola de administración.',
         );
         return false;
       }
@@ -102,7 +102,7 @@ class SessionController extends StateNotifier<SessionState> {
     if (!session.canEnterAdminConsole) {
       state = const SessionState(
         error:
-            'El token no corresponde a un rol de la consola del consorcio. Acceso denegado.',
+            'El token no corresponde a un rol de la consola de administración. Acceso denegado.',
       );
       return false;
     }
