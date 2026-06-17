@@ -1,11 +1,11 @@
 # Términos y Condiciones de uso
 
-> **BORRADOR — sujeto a revisión legal del consorcio.** Este documento es un borrador
-> de trabajo redactado por el equipo de desarrollo para cubrir el mínimo de cumplimiento
+> **BORRADOR — sujeto a revisión legal de la organización responsable.** Este documento es un
+> borrador de trabajo redactado por el equipo de desarrollo para cubrir el mínimo de cumplimiento
 > al lanzamiento. **No constituye asesoría legal.** El texto final debe ser revisado y
-> aprobado por el consorcio y, en su caso, por asesoría jurídica antes de publicarse.
-> Cierra el pendiente *"texto final del disclaimer/aviso"* de la bitácora únicamente
-> cuando el consorcio lo apruebe.
+> aprobado por el Club Rotario Bosques Aguascalientes y, en su caso, por asesoría jurídica antes
+> de publicarse. Cierra el pendiente *"texto final del disclaimer/aviso"* de la bitácora únicamente
+> cuando la organización responsable lo apruebe.
 
 Última actualización del borrador: 2026-06-16.
 
@@ -13,8 +13,8 @@
 
 Esta es la plataforma del piloto de **ciencia ciudadana del mezquite** (*Prosopis laevigata*)
 y sus parásitos (entre ellos el paxtle/muérdago). Permite a personas voluntarias documentar
-mezquites con fotografías geolocalizadas, y al consorcio organizar y publicar ese dato
-ecológico de forma agregada.
+mezquites con fotografías geolocalizadas, y al Club Rotario Bosques Aguascalientes organizar y
+publicar ese dato ecológico de forma agregada.
 
 La participación es **abierta**: no hay niveles obligatorios, certificaciones ni capacitación
 que bloqueen el uso. Cualquier persona registrada puede aportar observaciones.
@@ -33,7 +33,7 @@ Para evitar malentendidos sobre el alcance:
 - En la app del voluntario te identificas con **Iniciar sesión con Google**. La plataforma
   guarda únicamente un **identificador opaco** del proveedor (no tu nombre ni tu correo) y
   un **usuario** público (handle) para mostrar tu aporte de forma seudónima.
-- Las cuentas del equipo del consorcio (evaluador, analista, administrador) se crean por el
+- Las cuentas del equipo (evaluador, analista, administrador) se crean por el
   propio administrador con usuario y contraseña.
 - Eres responsable de mantener el acceso a tu cuenta. No compartas tus credenciales.
 
@@ -43,15 +43,16 @@ Para evitar malentendidos sobre el alcance:
   EXIF); la carga desde galería está deshabilitada para preservar la integridad del dato.
 - La **especie** y el **nivel de afectación** que declares son **autodeclarados**: la
   plataforma los registra como tu apreciación, no como un hecho validado.
-- Un evaluador humano del consorcio puede **confirmar o retirar** una observación del panel
+- Un evaluador humano del equipo puede **confirmar o retirar** una observación del panel
   público. Las observaciones se aceptan por defecto y quedan visibles hasta que, en su caso,
   un evaluador las retire.
 
 ## 5. Privacidad de la ubicación
 
 Para proteger los árboles frente a un uso indebido de su localización, la **ubicación que se
-muestra al público nunca es más precisa que una cuadrícula de ~1 km**. Las coordenadas
-exactas solo son accesibles para **aliados firmantes** autorizados por el consorcio. Esto se
+muestra al público nunca es más precisa que una cuadrícula de ~300 m**. Las coordenadas
+exactas solo son accesibles para **aliados firmantes** autorizados por el Club Rotario Bosques
+Aguascalientes. Esto se
 detalla en el [Aviso de privacidad](aviso-privacidad.md).
 
 ## 6. Uso aceptable
@@ -77,15 +78,15 @@ tu persona). Cómo ejercer este y los demás derechos ARCO se describe en el
 
 ## 9. Cambios a estos términos
 
-El consorcio puede actualizar estos términos. Los cambios relevantes se comunicarán por los
+El Club Rotario Bosques Aguascalientes puede actualizar estos términos. Los cambios relevantes se comunicarán por los
 canales de la plataforma. El uso continuado tras una actualización implica su aceptación.
 
 ## 10. Contacto
 
-Para dudas sobre estos términos o para ejercer tus derechos, contacta al **consorcio del
-mezquite** a través del administrador de la plataforma (ver el contacto del
+Para dudas sobre estos términos o para ejercer tus derechos, contacta al **Club Rotario Bosques
+Aguascalientes** a través del administrador de la plataforma (ver el contacto del
 [Aviso de privacidad](aviso-privacidad.md)).
 
 ---
 
-*Borrador del equipo de desarrollo (CR-006). Pendiente de revisión y aprobación del consorcio.*
+*Borrador del equipo de desarrollo (CR-006). Pendiente de revisión y aprobación del Club Rotario Bosques Aguascalientes.*
