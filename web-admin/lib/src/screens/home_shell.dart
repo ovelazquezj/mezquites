@@ -5,8 +5,10 @@ import '../state/session.dart';
 import '../ui/copy.dart';
 import 'accounts_screen.dart';
 import 'allies_screen.dart';
+import 'data_screen.dart';
 import 'institutions_screen.dart';
 import 'legal_screen.dart';
+import 'map_screen.dart';
 import 'monitor_screen.dart';
 import 'org_indicators_screen.dart';
 import 'public_dashboard_screen.dart';
@@ -44,6 +46,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     return [
       _NavItem(Icons.dashboard_outlined, Copy.navPublic,
           () => const PublicDashboardScreen()),
+      // Mapa de calor público (CR-010 #2): visible para TODOS los roles de consola.
+      _NavItem(Icons.map_outlined, Copy.navMap, () => const MapScreen()),
+      // Datos y descargas (CR-010 #3): analista/administrador.
+      if (session.canSeeData)
+        _NavItem(Icons.table_chart_outlined, Copy.navData,
+            () => const DataScreen()),
       // Revisión de observaciones: evaluador/administrador (emiten veredicto).
       if (session.canEmitVerdict)
         _NavItem(Icons.rate_review_outlined, Copy.navReview,
@@ -89,7 +97,25 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Administración — ${Copy.orgName}'),
+        // Branding del Club Rotario (CR-010 #1): logo + nombre en el header.
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/branding/logo_horizontal.png',
+              key: const Key('appbar-logo'),
+              height: 32,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                Copy.orgName,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),

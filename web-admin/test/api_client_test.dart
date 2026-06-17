@@ -165,6 +165,118 @@ void main() {
     });
   });
 
+  group('CR-010 — mapa, analítica y CSV', () {
+    test('publicGrid hace GET /public/grid y parsea celdas (gate #5)', () async {
+      final rec = RequestRecorder();
+      final api = _client(rec, responder: (req) {
+        return http.Response(
+            json.encode([
+              {
+                'lat': 21.88,
+                'lon': -102.29,
+                'n': 4,
+                'n_paxtle': 3,
+                'n_cuscuta': 1,
+                'g4_indice': 2.0,
+                'snapshot_quarter': 'Q2-2026'
+              }
+            ]),
+            200,
+            headers: {'content-type': 'application/json'});
+      });
+      final cells = await api.publicGrid(estado: 'Aguascalientes');
+      final req = rec.requests.single;
+      expect(req.method, 'GET');
+      expect(req.url.path, '/api/v1/public/grid');
+      expect(req.url.queryParameters['estado'], 'Aguascalientes');
+      expect(cells.single.n, 4);
+      expect(cells.single.g4Indice, 2.0);
+    });
+
+    test('analyticsSummary hace GET /admin/analytics/summary con filtros', () async {
+      final rec = RequestRecorder();
+      final api = _client(rec, responder: (req) {
+        return http.Response(
+            json.encode({
+              'total': 9,
+              'por_estado_revision': {'aceptada': 9},
+              'por_nivel_g4': {'leve': 9},
+              'por_municipio': {'Centro': 9},
+              'snapshot_quarter': 'Q2-2026'
+            }),
+            200,
+            headers: {'content-type': 'application/json'});
+      });
+      final s = await api.analyticsSummary(
+          estadoRevision: 'aceptada', municipio: 'Centro', nivelG4: 'leve');
+      final req = rec.requests.single;
+      expect(req.url.path, '/api/v1/admin/analytics/summary');
+      expect(req.url.queryParameters['estado_revision'], 'aceptada');
+      expect(req.url.queryParameters['municipio'], 'Centro');
+      expect(req.url.queryParameters['nivel_g4'], 'leve');
+      expect(s.total, 9);
+    });
+
+    test('analyticsObservations hace GET /admin/analytics/observations', () async {
+      final rec = RequestRecorder();
+      final api = _client(rec, responder: (req) {
+        return http.Response(
+            json.encode([
+              {
+                'observation_id': 'o1',
+                'handle': 'obs-A',
+                'captured_at': '2026-06-15T12:00:00Z',
+                'estado_revision': 'aceptada',
+                'nivel_g4': 'leve',
+                'flag_cuscuta': false,
+                'flag_danio': true,
+                'estado': 'Ags',
+                'municipio': 'Centro'
+              }
+            ]),
+            200,
+            headers: {'content-type': 'application/json'});
+      });
+      final rows = await api.analyticsObservations(desde: '2026-01-01');
+      final req = rec.requests.single;
+      expect(req.url.path, '/api/v1/admin/analytics/observations');
+      expect(req.url.queryParameters['desde'], '2026-01-01');
+      expect(rows.single.municipio, 'Centro');
+    });
+
+    test('analyticsCsvBytes baja /admin/analytics/observations.csv como bytes',
+        () async {
+      final rec = RequestRecorder();
+      final api = _client(rec, responder: (req) {
+        return http.Response('a,b\n1,2\n', 200,
+            headers: {'content-type': 'text/csv'});
+      });
+      api.setToken('t');
+      final bytes = await api.analyticsCsvBytes(estadoRevision: 'confirmada');
+      final req = rec.requests.single;
+      expect(req.url.path, '/api/v1/admin/analytics/observations.csv');
+      // El header Authorization viaja en el GET (fetch autenticado).
+      expect(req.headers['Authorization'], 'Bearer t');
+      expect(bytes, isNotEmpty);
+    });
+
+    test('reviewImageBytes baja la imagen con el header Authorization (CR-010 #4)',
+        () async {
+      final rec = RequestRecorder();
+      final api = _client(rec, responder: (req) {
+        return http.Response.bytes([1, 2, 3], 200,
+            headers: {'content-type': 'image/png'});
+      });
+      api.setToken('tok');
+      final bytes = await api.reviewImageBytes('o1');
+      final req = rec.requests.single;
+      expect(req.method, 'GET');
+      expect(req.url.path, '/api/v1/review/observations/o1/image');
+      expect(req.headers['Authorization'], 'Bearer tok');
+      expect(bytes, [1, 2, 3]);
+    });
+  });
+
   group('ARCO — cancelación de cuenta (CR-006, solo administrador)', () {
     test('searchAccounts hace GET /admin/accounts con handle', () async {
       final rec = RequestRecorder();

@@ -16,6 +16,10 @@ class Copy {
 
   // --- Navegación / títulos generales ---
   static const navPublic = 'Panel público';
+  // Mapa de calor público en la consola (CR-010 #2).
+  static const navMap = 'Mapa';
+  // Datos y descarga del analista (CR-010 #3).
+  static const navData = 'Datos y descargas';
   static const navInstitutions = 'Instituciones';
   static const navAllies = 'Aliados firmantes';
   static const navIndicators = 'Indicadores';
@@ -64,6 +68,10 @@ class Copy {
   static const reviewQueueEmpty = 'No hay observaciones para este filtro.';
   static const reviewConfirm = 'Confirmar';
   static const reviewReject = 'Retirar';
+  // Tercer veredicto (CR-010 #4): regresa la observación al estado por defecto.
+  static const reviewReopen = 'Volver a aceptada';
+  static const reviewReopened = 'Observación de nuevo aceptada (visible en público).';
+  static const reviewImageError = 'No se pudo cargar la imagen.';
   static const reviewNoteLabel = 'Nota (opcional)';
   static const reviewHistoryTitle = 'Historial de revisión';
   static const reviewNoHistory = 'Sin revisiones aún.';
@@ -75,6 +83,41 @@ class Copy {
       'nunca la ubicación exacta.';
   static const monitorIntro =
       'Métricas de la revisión de observaciones. Solo consulta.';
+
+  // --- Mapa de calor público en la consola (CR-010 #2) ---
+  static const mapIntro =
+      'Mapa de calor de las observaciones públicas (celdas aproximadas de ~300 m, '
+      'nunca la ubicación exacta del árbol). Severidad autodeclarada por quien '
+      'observa; sin validación experta.';
+  static const mapError = 'No se pudo cargar el mapa. Inténtalo de nuevo.';
+  static const mapLegendTitle = 'Nivel de paxtle (autodeclarado)';
+  static const mapLegendLevels = ['Sano', 'Leve', 'Moderado', 'Severo'];
+  static const mapCellTitle = 'Celda aproximada (~300 m)';
+  static const mapCellObs = 'Observaciones';
+  static const mapCellPaxtle = 'Con paxtle';
+  static const mapCellCuscuta = 'Con cúscuta';
+  static const mapCellNivel = 'Nivel de paxtle (promedio)';
+
+  // --- Datos y descargas del analista (CR-010 #3) ---
+  static const dataIntro =
+      'Tabla de observaciones para análisis. Por privacidad de los árboles, solo '
+      'verás estado y municipio, nunca la ubicación exacta (gate #5). Severidad '
+      'autodeclarada; sin validación experta.';
+  static const dataFilterEstadoRevision = 'Estado de revisión';
+  static const dataFilterMunicipio = 'Municipio';
+  static const dataFilterNivel = 'Nivel de paxtle';
+  static const dataFilterDesde = 'Desde (AAAA-MM-DD)';
+  static const dataFilterHasta = 'Hasta (AAAA-MM-DD)';
+  static const dataApplyFilters = 'Aplicar filtros';
+  static const dataClearFilters = 'Limpiar';
+  static const dataDownloadCsv = 'Descargar CSV';
+  static const dataDownloadDone = 'CSV descargado.';
+  static const dataDownloadError = 'No se pudo descargar el CSV. Inténtalo de nuevo.';
+  static const dataEmpty = 'No hay observaciones para estos filtros.';
+  static const dataSummaryTotal = 'Total de observaciones';
+  static const dataSummaryByRevision = 'Por estado de revisión';
+  static const dataSummaryByNivel = 'Por nivel de paxtle';
+  static const dataSummaryByMunicipio = 'Por municipio';
 
   /// Etiqueta legible de las claves de indicadores que entrega el backend
   /// (`/public/indicators`). Si una clave no está mapeada, se humaniza el

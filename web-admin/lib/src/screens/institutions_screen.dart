@@ -155,26 +155,30 @@ class _InstitutionsScreenState extends ConsumerState<InstitutionsScreen> {
               return const Text('Sin instituciones registradas.');
             }
             return Card(
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text('Nombre')),
-                  DataColumn(label: Text('Estado')),
-                  DataColumn(label: Text('Situación')),
-                ],
-                rows: [
-                  for (final i in rows)
-                    DataRow(cells: [
-                      DataCell(Text(i.name)),
-                      DataCell(Text(i.estado ?? '—')),
-                      DataCell(Chip(
-                        label: Text(Copy.institutionStatus(i.status)),
-                        backgroundColor: i.isRequested
-                            ? theme.colorScheme.secondary.withValues(alpha: 0.2)
-                            : theme.colorScheme.tertiary
-                                .withValues(alpha: 0.15),
-                      )),
-                    ]),
-                ],
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  columns: const [
+                    DataColumn(label: Text('Nombre')),
+                    DataColumn(label: Text('Estado')),
+                    DataColumn(label: Text('Situación')),
+                  ],
+                  rows: [
+                    for (final i in rows)
+                      DataRow(cells: [
+                        DataCell(Text(i.name)),
+                        DataCell(Text(i.estado ?? '—')),
+                        DataCell(Chip(
+                          label: Text(Copy.institutionStatus(i.status)),
+                          backgroundColor: i.isRequested
+                              ? theme.colorScheme.secondary
+                                  .withValues(alpha: 0.2)
+                              : theme.colorScheme.tertiary
+                                  .withValues(alpha: 0.15),
+                        )),
+                      ]),
+                  ],
+                ),
               ),
             );
           },

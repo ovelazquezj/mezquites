@@ -59,7 +59,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Administración — ${Copy.orgName}',
+                    // Branding del Club Rotario (CR-010 #1): logo + nombre.
+                    Image.asset(
+                      'assets/branding/logo_horizontal.png',
+                      key: const Key('login-logo'),
+                      height: 56,
+                      fit: BoxFit.contain,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      Copy.orgName,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    Text('Administración',
                         style: theme.textTheme.displayLarge),
                     const SizedBox(height: 8),
                     Text(

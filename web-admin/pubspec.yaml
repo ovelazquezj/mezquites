@@ -17,6 +17,11 @@ dependencies:
   http: ^1.2.2
   # Persistencia local sin PII: solo el bearer token + handle del admin.
   shared_preferences: ^2.3.3
+  # Mapa de calor público (CR-010 #2): mismo stack que el móvil (CR-009).
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  # Descarga de CSV en el navegador (CR-010 #3): Blob + <a download> en web.
+  web: ^1.1.0
 
 dev_dependencies:
   flutter_test:
@@ -28,3 +33,5 @@ flutter:
   assets:
     # Fuente ÚNICA de estilo (T7). Copiado de docs/design-system/design-tokens.json.
     - assets/design-tokens.json
+    # Branding del Club Rotario (CR-010 #1). Copiado de mobile/assets/branding/.
+    - assets/branding/logo_horizontal.png
