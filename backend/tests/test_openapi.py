@@ -41,6 +41,12 @@ def test_openapi_served_at_versioned_path():
         "/api/v1/admin/allies",
         "/api/v1/admin/snapshots",
         "/api/v1/admin/institutions",
+        # CR-010
+        "/api/v1/institutions/request",
+        "/api/v1/admin/analytics/summary",
+        "/api/v1/admin/analytics/observations.csv",
+        "/api/v1/me/sessions",
+        "/api/v1/me/evidence",
     ):
         assert p in paths, f"falta endpoint {p}"
 

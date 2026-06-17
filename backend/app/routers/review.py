@@ -193,10 +193,11 @@ def review_verdict(
     user: CurrentUser = Depends(_verdict_role),
     db: Session = Depends(get_db),
 ) -> VerdictResponse:
-    """Emite un veredicto humano (confirmada|rechazada). Autoritativo en backend (CR-001).
+    """Emite un veredicto humano (aceptada|confirmada|rechazada). Autoritativo en backend (CR-001).
 
     Inserta una fila en ``human_review`` (log append-only, gate #7) y actualiza
-    ``observation.estado_revision``. Un rechazo NO revierte puntos ya otorgados.
+    ``observation.estado_revision``. Un rechazo NO revierte puntos ya otorgados. CR-010: ``aceptada``
+    revierte la observación a "pendiente de revisión" (deshace una confirmación/rechazo previo).
     """
     obs = db.get(Observation, observation_id)
     if obs is None:
@@ -215,6 +216,8 @@ def review_verdict(
 
     if body.veredicto == "rechazada":
         message = "Observación rechazada: deja de aparecer en el panel público."
+    elif body.veredicto == "aceptada":
+        message = "Observación devuelta a aceptada (pendiente de revisión)."
     else:
         message = "Observación confirmada."
     return VerdictResponse(

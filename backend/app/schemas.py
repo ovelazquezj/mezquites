@@ -167,6 +167,10 @@ class ObservationCreate(BaseModel):
     # 7-8: campos adicionales V3
     tamanio: Literal["pequeno", "mediano", "grande", "no_estimable"]
     contexto: Literal["campo_abierto", "borde_cultivo", "urbano", "ripario", "otro"]
+    # CR-010: estado/municipio AUTODECLARADOS (gate #8). El móvil los auto-detecta del GPS y los
+    # preselecciona (editable). Si no vienen, el backend los DERIVA del EXIF (respaldo, Q8).
+    estado: str | None = None
+    municipio: str | None = None
 
 
 class ObservationSubmitResponse(BaseModel):
@@ -371,8 +375,65 @@ class ReviewObservationDetail(BaseModel):
 
 
 class VerdictRequest(BaseModel):
-    veredicto: Literal["confirmada", "rechazada"]
+    # CR-010: además de confirmada/rechazada, se permite revertir a 'aceptada' (pendiente de
+    # revisión). El veredicto sigue siendo autoritativo en backend (CR-001, gate #9 enmendado).
+    veredicto: Literal["aceptada", "confirmada", "rechazada"]
     nota: str | None = None
+
+
+# --- Solicitud de institución (voluntario) — CR-010 ---
+
+
+class InstitutionRequestIn(BaseModel):
+    """Alta de institución solicitada por el voluntario desde la app (CR-010, gate #3 sin gating)."""
+
+    name: str
+    estado: str | None = None
+
+
+class InstitutionRequestResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    status: str
+
+
+# --- Analítica (analista) — CR-010 ---
+
+
+class AnalyticsSummary(BaseModel):
+    """Resúmenes agregados para el analista (CR-010). Sin coords; conteos descriptivos (gate #1)."""
+
+    por_estado_revision: dict[str, int]
+    por_municipio: dict[str, int]
+    por_nivel_g4: dict[str, int]
+    total: int
+
+
+# --- Sesiones de participación / evidencia (#7) — CR-010 ---
+
+
+class SessionCreate(BaseModel):
+    """Una sesión de participación medida por el cliente (lifecycle de la app). Sin PII (gate #2)."""
+
+    started_at: datetime
+    ended_at: datetime
+
+
+class SessionResponse(BaseModel):
+    id: uuid.UUID
+    started_at: datetime
+    ended_at: datetime
+    duration_seconds: int
+
+
+class EvidenceResponse(BaseModel):
+    """Evidencia de participación del voluntario (en pantalla). Descriptiva (gate #1), sin PII."""
+
+    capturas: int
+    horas_totales: float
+    sesiones: int
+    primera: datetime | None
+    ultima: datetime | None
 
 
 class VerdictResponse(BaseModel):

@@ -52,7 +52,9 @@ REVIEW_ROLES = ("evaluador", "analista", "administrador")
 REVIEW_VERDICT_ROLES = ("evaluador", "administrador")  # pueden emitir veredicto
 # Estado de revisión humana (CR-001): default 'aceptada'; un humano confirma/rechaza.
 ESTADOS_REVISION = ("aceptada", "confirmada", "rechazada")
-REVIEW_VERDICTS = ("confirmada", "rechazada")
+# CR-010: el veredicto humano admite revertir a 'aceptada' (pendiente de revisión) además de
+# confirmada/rechazada. Los tres son estados válidos de `estado_revision` (ya permitidos).
+REVIEW_VERDICTS = ("aceptada", "confirmada", "rechazada")
 # Método de autenticación de la cuenta (CR-002, gate #2 acotado).
 AUTH_METHODS = ("social_google", "password")
 # Rol que puede portar email (CR-002): SOLO administrador (reset por SMTP). El resto NO guarda PII.
@@ -253,8 +255,9 @@ class HumanReview(Base):
     )
 
     __table_args__ = (
+        # CR-010: además de confirmada/rechazada, se permite revertir a 'aceptada'.
         CheckConstraint(
-            "veredicto IN ('confirmada','rechazada')", name="ck_human_review_veredicto"
+            "veredicto IN ('aceptada','confirmada','rechazada')", name="ck_human_review_veredicto"
         ),
         Index("human_review_obs_idx", "observation_id", "created_at"),
     )
@@ -382,4 +385,31 @@ class AccountDeletion(Base):
 
     __table_args__ = (
         Index("account_deletion_created_idx", "created_at"),
+    )
+
+
+class ParticipationSession(Base):
+    """Sesión de participación del voluntario (CR-010, #7) — evidencia por tiempo de sesión.
+
+    El cliente mide el lifecycle de la app y reporta ``started_at``/``ended_at``; el backend calcula
+    ``duration_seconds`` y persiste para la pantalla de evidencia y la analítica. Gate #2 (sin PII):
+    guarda **solo** ``account_id`` (seudónimo) + tiempos, nunca datos personales. Gate #1: la
+    evidencia es descriptiva (no promete control fitosanitario). Gate #3: no gatea nada.
+    """
+
+    __tablename__ = "participation_session"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("account.id"), nullable=False
+    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    duration_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        Index("participation_session_account_idx", "account_id", "started_at"),
     )
