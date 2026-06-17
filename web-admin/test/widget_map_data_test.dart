@@ -196,13 +196,9 @@ void main() {
     // Botón de descarga + tarjetas de resumen + tabla.
     expect(find.byKey(const Key('data-download-csv')), findsOneWidget);
     expect(find.byKey(const Key('data-summary')), findsOneWidget);
-    // La tabla es el último hijo del ListView (lazy): hay que acercarla a la vista.
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('data-row-o1')),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.byKey(const ValueKey('data-row-o1')), findsOneWidget);
+    // La tabla renderó la observación devuelta por el mock: su handle aparece en
+    // una celda (la `key` de un DataRow no es localizable con find.byKey).
+    expect(find.text('obs-A'), findsWidgets);
     // Pidió el resumen y las observaciones.
     expect(rec.hitPathContaining('/admin/analytics/summary'), isTrue);
     expect(rec.hitPathContaining('/admin/analytics/observations'), isTrue);
