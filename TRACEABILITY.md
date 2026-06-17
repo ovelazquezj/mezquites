@@ -204,3 +204,24 @@ Construido por dos subagentes (A backend ∥ B móvil) e integrado/verificado po
 Q5.B-D1, 2026-06-16). Sigue ocultando el árbol exacto; coords exactas solo a `aliado_firmante`;
 conmutable por `obfuscation_grid_m` (gate #6). **Pendiente humano:** `admin_boundary` no cargado ⇒ la
 derivación de estado/municipio queda en `None` (el mapa no filtra por estado; muestra todas las celdas).
+
+## CR-010 — Lote de mejoras (branding, mapa consola, analista, evaluación, captura, instituciones, evidencia)
+
+Construido por 3 subagentes en paralelo (backend ∥ móvil ∥ web-admin) e integrado/verificado por el
+Orquestador. **Total del repo tras CR-010: 292 pruebas verdes** (`contract` 21 · `mock` 9 · `backend` 131 ·
+`mobile` 61 · `web-admin` 70). `flutter build web` ✅ (móvil + web-admin); migración 0005 en head.
+
+| Criterio (CR-010) | Prueba / verificación |
+|---|---|
+| #1 logo horizontal + Club en headers | `web-admin/test/widget_map_data_test.dart` ("el header muestra el logo"); keys `login-logo`/`appbar-logo` |
+| #2 mapa en consola para todos los roles | `widget_map_data_test.dart` ("Mapa visible para {evaluador,analista,administrador,admin_consorcio}") |
+| #3 analista: tabla/filtros/resúmenes/CSV (obfuscado 300 m) | `widget_map_data_test.dart` (datos + Descargar CSV); `backend/tests/test_cr010_analytics.py` (CSV celda 300 m, summary) |
+| #4 evaluador ve imagen y taggea (3 estados) | visor `Image.memory` (web); `backend/tests/test_cr010_verdict_aceptada.py` (veredicto `aceptada`) |
+| #5 estado/municipio en captura (auto-detecta, editable) | `mobile/test/observation_form_test.dart` (auto-detección + editable); `backend/tests/test_cr010_autodeclared_estado.py` |
+| #5 tablas con scroll horizontal | `DataTable` envueltas en `SingleChildScrollView` horizontal (public/restricted/review/datos) |
+| #6 registrar institución (móvil) + siembra | `mobile/test/cr010_movil_test.dart` (POST request); `backend/tests/test_cr010_institutions_request.py`; `seed_institutions.py` (8 universidades) |
+| #7 evidencia (capturas+horas) + sesiones en backend | `mobile/test/cr010_movil_test.dart` (evidencia + SessionTracker); `backend/tests/test_cr010_sessions_evidence.py` |
+
+**Gate #5:** el CSV y el mapa de la consola exponen solo celda 300 m. **Migración 0005**
+(`participation_session` + CHECK de veredicto con `aceptada`) validada upgrade/downgrade. **Decisiones del
+usuario** registradas en `docs/change-requests/CR-010-lote-mejoras.md`.

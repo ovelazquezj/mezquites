@@ -4,7 +4,7 @@
 |---|---|
 | **ID** | CR-010 |
 | **Fecha** | 2026-06-17 |
-| **Estado** | **Aprobado — en ejecución** (decisiones del usuario 2026-06-17) |
+| **Estado** | ✅ **Integrado en `main`** (2026-06-17; 292 pruebas verdes) |
 | **Alcance** | `backend/`, `mobile/`, `web-admin/` en **3 carriles paralelos** (rutas disjuntas) |
 | **Orquestación** | 3 subagentes (Backend ∥ Móvil ∥ Web-admin) que **desarrollan y prueban**; el orquestador integra, verifica gates y corre las suites completas |
 
@@ -59,3 +59,12 @@ Implementa **todo el contrato de arriba** + pruebas pytest (`PYTHONPATH=…/cont
 
 ## Integración (orquestador)
 Merge de los 3 carriles → correr migración 0005 → sembrar instituciones → suites completas (contract, mock, backend, móvil, web-admin) → verificar gates → refrescar demo (`appctl … -Build`) → actualizar `TRACEABILITY.md`, `CLAUDE.md`, este CR.
+
+## Resultado (2026-06-17)
+Integrado por merges 3-way en `main` (`merge(cr-010)` Carriles A/B/C). Los carriles se ramificaron de
+`52ba434` (sin la terminología de esta sesión); al integrar se reconciliaron los solapes en
+`copy.dart`/pantallas conservando **mi `roleLabel` aprobado** y la nueva terminología, y la **feature del
+agente** (logo, mapa, datos, fix de evaluación). Migración **0005 en head**; **8 instituciones** sembradas.
+**292 pruebas verdes** (21 contract · 9 mock · **131** backend · **61** móvil · **70** web-admin); demo
+refrescado por `appctl`. Un test del analista se reescribió (la `key` de un `DataRow` no es localizable;
+se afirma el contenido de celda). Tiles OSM en los widget tests del mapa generan ruido de red (no fallan).
