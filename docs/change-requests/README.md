@@ -13,7 +13,7 @@ unidad construible** (Arquitecto, Dev backend, Dev web-admin, Dev móvil, Tester
 | [CR-001](CR-001-revision-humana.md) | Revisión humana en el backend (sin YOLO) | ✅ **Integrado en `main`** (163 pruebas verdes) | — |
 | [CR-002](CR-002-auth-identidad-real.md) | Autenticación con identidad real (Google/Firebase + usuario/contraseña) | ✅ **Integrado en `main`** (con `MockAuthProvider`; Google real pendiente de Firebase) | CR-001 |
 | [CR-003](CR-003-branding-onboarding-app.md) | Branding, splash, ícono y onboarding (apps Flutter) | ✅ **Integrado en `main`** | — |
-| [CR-004](CR-004-firebase-ios-cors.md) | Cierres de producción: Google/Firebase real · iOS · CORS | **W3 (CORS) ✅ integrado**; W1 (Firebase) / W2 (iOS) **propuestos** | CR-002, CR-003 |
+| [CR-004](CR-004-firebase-ios-cors.md) | Cierres de producción: Google/Firebase real · iOS · CORS | **W3 (CORS) ✅ integrado** · **W1 (Firebase) pendiente** (bloquea auth pública) · **W2 (iOS) diferido/opcional** (la web cubre iPhone; falta smoke test en Safari) | CR-002, CR-003 |
 | [CR-005](CR-005-fe-web-voluntario.md) | FE web del voluntario (teléfono/tablet) | ✅ **Integrado en `main`** (web + branding completo; demo HTTPS por ngrok) | CR-002, CR-003, CR-004 W3 |
 | [CR-006](CR-006-arco-terminos-privacidad.md) | ARCO (eliminar cuenta) + Términos y Aviso de privacidad | ✅ **Integrado en `main`** (UI web-admin + legales; texto = BORRADOR del consorcio) | CR-002 |
 | [CR-007](CR-007-contenidos-aprender.md) | Contenidos de "Aprender" (texto propio + enlaces "Saber más" curados) | ✅ **Integrado en `main`** (7 módulos borrador; fuente única `docs/learning/`; 50 pruebas móviles verdes) | — |

@@ -5,7 +5,7 @@
 | **ID** | CR-004 |
 | **Título** | Activar Google/Firebase real, añadir plataforma iOS y habilitar CORS |
 | **Fecha** | 2026-06-16 |
-| **Estado** | **Propuesto — pendiente de revisión del usuario** (no codificar) |
+| **Estado** | **W3 (CORS) ✅ integrado** · **W1 (Firebase) pendiente** (bloquea auth pública) · **W2 (iOS) DIFERIDO/OPCIONAL** (2026-06-16: la web cubre iPhone vía Safari) |
 | **Prioridad** | Media (cierres para salir de "solo dev/mock") |
 | **Depende de** | CR-002 (auth) integrado · CR-003 (branding) integrado |
 | **Alcance** | App Flutter + backend (config/middleware). **Sin** cambios al modelo de revisión humana (CR-001). |
@@ -60,7 +60,19 @@ el APK de release real.
 
 ## 4. W2 — Plataforma iOS
 
-**Objetivo:** que la app compile y corra en iOS con el branding de CR-003.
+> **DIFERIDO / OPCIONAL (decisión del usuario, 2026-06-16).** El lanzamiento va **web-first**: la app
+> web de Flutter corre en **iPhone vía Safari** (sin App Store), y el código de captura ya detecta
+> iOS-web (`isMobileWebBrowser()` ⇒ cámara habilitada en Safari móvil, gate #4 intacto). Por eso **W2
+> NO es requerido para el lanzamiento**. Solo haría falta para una **app nativa en la App Store**,
+> **notificaciones push** (que iOS-web casi no soporta) u **offline-first**.
+>
+> **Pendiente para confirmar que la web cubre iOS:** un **smoke test en un iPhone/Safari real** — abrir
+> la URL → **cámara** → **geolocalización del navegador** (Safari borra el EXIF-GPS, por eso la
+> ubicación viene del API de geolocalización, no del EXIF) → **Entrar con Google** (flujo OAuth web).
+> Hasta ahora solo se validó en Android. Mientras eso no se pruebe, "la web cubre iPhone" es un
+> supuesto razonable pero **no verificado**.
+
+**Objetivo (si algún día se retoma):** que la app compile y corra en iOS con el branding de CR-003.
 
 **Tareas:**
 - `cd mobile && flutter create --platforms=ios .` para generar `mobile/ios/` (Runner).
