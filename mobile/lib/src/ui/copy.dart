@@ -4,6 +4,11 @@
 class Copy {
   Copy._();
 
+  /// Organización responsable del proyecto (decisión del usuario, 2026-06-17).
+  /// Centralizado para no repetirlo y poder ajustarlo en un solo lugar. La
+  /// denominación legal exacta, domicilio y contacto oficiales siguen pendientes.
+  static const orgName = 'Club Rotario Bosques Aguascalientes';
+
   static const appTitle = 'Mezquite — Ciencia ciudadana';
   static const welcomeSubtitle = 'Ciencia ciudadana';
 
@@ -15,7 +20,7 @@ class Copy {
   // --- Disclaimer D1 (Q7-D1) ---
   // Texto-base = buenas prácticas de campo de la bitácora (§Q7-D1). El texto
   // FINAL es el anexo del protocolo; este es el texto-base derivable.
-  // [PLACEHOLDER_TEXTO_FINAL]: el copy definitivo lo confirma el consorcio.
+  // [PLACEHOLDER_TEXTO_FINAL]: el copy definitivo lo confirma la organización responsable.
   static const disclaimerTitle = 'Antes de salir a campo';
   static const disclaimerBody =
       'Gracias por sumarte como observador voluntario. Unas buenas prácticas '
@@ -52,7 +57,7 @@ class Copy {
   // --- Resumen agregado de aportaciones (CR-001) ---
   static const feedbackTitle = 'Tu aporte';
   static const feedbackNote =
-      'Tus observaciones se aceptan al registrarlas. El equipo del consorcio '
+      'Tus observaciones se aceptan al registrarlas. El equipo del $orgName '
       'las revisa después; aquí ves un resumen de tus aportaciones, nunca el '
       'resultado de una foto en particular.';
 
@@ -65,7 +70,7 @@ class Copy {
   /// formativo es BORRADOR sujeto a revisión de expertos/universidad (AU2/H4);
   /// es informativo y NO es asesoría técnica (gate #1).
   static const learningDraftBanner =
-      'BORRADOR sujeto a revisión de expertos del consorcio (AU2). Es contenido '
+      'BORRADOR sujeto a revisión de expertos académicos (AU2). Es contenido '
       'informativo y educativo, no asesoría técnica ni recomendaciones de manejo.';
 
   /// Encabezado de la sección de enlaces externos en el detalle.
@@ -132,7 +137,7 @@ class Copy {
   static const helpTitle = 'Ayuda';
 
   // --- Legal: Términos y Aviso de privacidad (CR-006 §4.3) ---
-  // BORRADOR sujeto a revisión legal del consorcio. Texto en español acorde a
+  // BORRADOR sujeto a revisión legal de la organización responsable. Texto en español acorde a
   // la LFPDPPP. La FUENTE canónica vive en docs/legal/ (web-admin); esta es la
   // copia que la app muestra al voluntario. Gate #2 acotado (CR-002): la app
   // guarda solo el id opaco del proveedor; sin email/nombre/teléfono.
@@ -144,7 +149,7 @@ class Copy {
 
   /// Aviso visible de que el texto es un borrador (no asesoría legal).
   static const legalDraftBanner =
-      'BORRADOR sujeto a revisión legal del consorcio. Es un texto informativo, '
+      'BORRADOR sujeto a revisión legal del $orgName. Es un texto informativo, '
       'no asesoría legal, y no condiciona el uso de la app.';
 
   static const termsTitle = 'Términos y condiciones';
@@ -192,14 +197,14 @@ class Copy {
       'seudónima incluso si tu cuenta se elimina.\n\n'
       'Derechos ARCO. Tienes derecho a Acceder, Rectificar, Cancelar (eliminar) '
       'y Oponerte al tratamiento de tus datos. Hoy, la eliminación de cuenta la '
-      'ejecuta el consorcio a petición tuya: al eliminar tu cuenta se borra tu '
+      'ejecuta el $orgName a petición tuya: al eliminar tu cuenta se borra tu '
       'identificador y tus observaciones quedan anonimizadas, conservando solo '
       'el dato ecológico.\n\n'
       'Cómo ejercer tus derechos. Solicita el ejercicio de tus derechos ARCO a '
-      'través del consorcio, en el contacto indicado abajo.\n\n'
+      'través del $orgName, en el contacto indicado abajo.\n\n'
       'Contacto. Para dudas sobre privacidad o para ejercer tus derechos, '
-      'escribe al consorcio del proyecto: privacidad@proyecto-mezquite.org '
-      '(contacto provisional, pendiente de confirmación del consorcio).';
+      'escribe al $orgName: privacidad@proyecto-mezquite.org '
+      '(contacto provisional, pendiente de confirmación).';
 
   /// Etiqueta de identidad L3 → texto legible (Q4).
   static String identityLabel(String key) =>
@@ -279,8 +284,9 @@ class OnboardingPageData {
       title: 'Combatir',
       accentToken: 'secondary', // gold #E0A21A
       body:
-          'Articula con autoridades el manejo fitosanitario coordinado en las '
-          'zonas críticas identificadas.',
+          'Tu evidencia ciudadana llega a las mesas con autoridades y expertos, '
+          'que coordinan el manejo en las zonas más afectadas. La app documenta '
+          'e informa; no aplica tratamientos.',
     ),
   ];
 }
@@ -344,7 +350,7 @@ class LearningModule {
     LearningModule(
       id: 'mod_ciencia_ciudadana',
       title: '¿Por qué participar?',
-      summary: 'Tus observaciones forman un dataset abierto para el consorcio.',
+      summary: 'Tus observaciones forman un dataset abierto para el ${Copy.orgName}.',
       assetPath: 'assets/learning/mod_ciencia_ciudadana.md',
     ),
     LearningModule(

@@ -8,7 +8,7 @@ import '../widgets/common.dart';
 ///
 /// Es **informativa** (gate #3): no bloquea ninguna funcionalidad de la app y
 /// es consultable en todo momento desde Ayuda y desde la Bienvenida. El texto
-/// es un **BORRADOR sujeto a revisión legal del consorcio** (no asesoría legal);
+/// es un **BORRADOR sujeto a revisión legal de la organización responsable** (no asesoría legal);
 /// vive en `copy.dart` como copia que la app muestra al voluntario, mientras la
 /// fuente canónica se redacta en `docs/legal/`.
 class LegalScreen extends StatelessWidget {

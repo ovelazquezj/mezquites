@@ -49,7 +49,7 @@ class AccountScreen extends ConsumerWidget {
                     const SnackBar(
                       content: Text(
                         'Tu solicitud para agregar una institución será revisada '
-                        'por el consorcio.',
+                        'por el ${Copy.orgName}.',
                       ),
                     ),
                   ),

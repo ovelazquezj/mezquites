@@ -67,7 +67,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('PASO 3 · MESES 15-24'), findsOneWidget);
     expect(find.text('Combatir'), findsOneWidget);
-    expect(find.textContaining('Articula con autoridades'), findsOneWidget);
+    expect(find.textContaining('Tu evidencia ciudadana llega'), findsOneWidget);
     expect(find.text(Copy.onboardingStart), findsOneWidget);
     expect(find.text(Copy.onboardingNext), findsNothing);
   });
