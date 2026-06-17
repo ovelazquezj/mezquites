@@ -14,6 +14,7 @@ from .config import get_settings
 from .routers import (
     accounts,
     admin,
+    analytics,
     auth,
     gamification,
     institutions,
@@ -58,6 +59,7 @@ def create_app() -> FastAPI:
         restricted.router,
         review.router,
         admin.router,
+        analytics.router,
         users.router,
         accounts.router,
     ):

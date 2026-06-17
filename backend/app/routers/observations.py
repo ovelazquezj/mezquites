@@ -57,8 +57,13 @@ async def submit_observation(
 
     obs_id = uuid.uuid4()
 
-    # (4) dimensión geográfica desde EXIF (Q8) — antes del tree para propagar al árbol.
-    estado, municipio = derive_estado_municipio(db, lat=data.lat, lon=data.lon)
+    # (4) dimensión geográfica (Q8) — antes del tree para propagar al árbol.
+    # CR-010: si el cliente declara estado/municipio (auto-detectados del GPS y editables, gate #8),
+    # se usan; si no, se DERIVAN del EXIF por join espacial (respaldo, admin_boundary).
+    if data.estado or data.municipio:
+        estado, municipio = data.estado, data.municipio
+    else:
+        estado, municipio = derive_estado_municipio(db, lat=data.lat, lon=data.lon)
 
     # (3) tree_id (10 m) + observation_seq (serie temporal).
     tree_id = assign_tree(db, lat=data.lat, lon=data.lon, estado=estado, municipio=municipio)
