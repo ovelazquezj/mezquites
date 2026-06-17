@@ -4,6 +4,7 @@ import '../api/api_client.dart';
 import '../models/models.dart';
 import '../services/google_auth_service.dart';
 import '../services/session_store.dart';
+import '../services/session_tracker.dart';
 import '../theme/design_tokens.dart';
 import 'app_config.dart';
 
@@ -63,17 +64,28 @@ final googleAuthServiceProvider = Provider<GoogleAuthService>((ref) {
 /// Resultado del intento de login social.
 enum GoogleSignInOutcome { success, cancelled, error }
 
+/// Rastreador de tiempo de sesión (CR-010 #7). Se arranca al hacer login y se
+/// detiene (enviando el tramo en curso) al cerrar sesión.
+final sessionTrackerProvider = Provider<SessionTracker>((ref) {
+  return SessionTracker(ref.watch(apiClientProvider));
+});
+
 /// Estado de autenticación del voluntario (CR-002). Identidad real por Google; la app guarda solo
 /// el handle de presentación + JWT (gate #2 acotado, sin email/nombre).
 class AuthController extends StateNotifier<AuthSession?> {
-  AuthController(this._api, this._google, this._store)
+  AuthController(this._api, this._google, this._store, this._tracker)
       : super(_store.loadSession()) {
-    if (state != null) _api.setToken(state!.token);
+    if (state != null) {
+      _api.setToken(state!.token);
+      // Sesión restaurada al arranque: empieza a contar tiempo (CR-010 #7).
+      _tracker.start();
+    }
   }
 
   final ApiClient _api;
   final GoogleAuthService _google;
   final SessionStore _store;
+  final SessionTracker _tracker;
 
   /// "Entrar con Google": abre el flujo, manda el ID token al backend y guarda el JWT.
   /// Devuelve [GoogleSignInOutcome.cancelled] si el usuario cerró el diálogo de Google.
@@ -88,6 +100,8 @@ class AuthController extends StateNotifier<AuthSession?> {
       _api.setToken(session.token);
       await _store.saveSession(session);
       state = session;
+      // Arranca el conteo de tiempo de sesión (CR-010 #7).
+      _tracker.start();
       return GoogleSignInOutcome.success;
     } catch (_) {
       return GoogleSignInOutcome.error;
@@ -95,6 +109,8 @@ class AuthController extends StateNotifier<AuthSession?> {
   }
 
   Future<void> logout() async {
+    // Cierra y envía el tramo de sesión en curso antes de soltar el token.
+    await _tracker.stop();
     await _google.signOut();
     await _store.clearSession();
     _api.setToken(null);
@@ -108,6 +124,7 @@ final authProvider =
     ref.watch(apiClientProvider),
     ref.watch(googleAuthServiceProvider),
     ref.watch(sessionStoreProvider),
+    ref.watch(sessionTrackerProvider),
   );
 });
 
@@ -165,4 +182,10 @@ final publicIndicatorsProvider = FutureProvider.autoDispose<Indicators>(
 /// "Mapa" (con o sin sesión). Coords ya obfuscadas server-side (gate #5).
 final publicGridProvider = FutureProvider.autoDispose<List<GridCell>>(
   (ref) => ref.watch(apiClientProvider).publicGrid(),
+);
+
+/// Comprobante de participación AGREGADO (CR-010 #7): capturas, horas, sesiones
+/// y rango de fechas. Sin PII (gate #2); descriptivo (gate #1).
+final evidenceProvider = FutureProvider.autoDispose<Evidence>(
+  (ref) => ref.watch(apiClientProvider).evidence(),
 );

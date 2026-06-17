@@ -22,8 +22,10 @@ class AuthSession {
       );
 }
 
-/// Borrador de las 8 etiquetas de captura (Q2/Q3) listas para POST /observations.
+/// Borrador de las etiquetas de captura (Q2/Q3) listas para POST /observations.
 /// 1-3 EXIF (cámara nativa), 4 nivel G4, 5-6 flags, 7-8 dropdowns V3.
+/// CR-010 #5: + estado/municipio AUTODECLARADOS (auto-detectados del GPS,
+/// editables). Si llegan al backend se usan; si no, el backend los deriva.
 class ObservationDraft {
   const ObservationDraft({
     required this.lat,
@@ -34,6 +36,8 @@ class ObservationDraft {
     required this.flagDanio,
     required this.tamanio,
     required this.contexto,
+    this.estado,
+    this.municipio,
     this.imagePath,
     this.imageBytes,
   }) : assert(imagePath != null || imageBytes != null,
@@ -48,11 +52,17 @@ class ObservationDraft {
   final Tamanio tamanio;
   final Contexto contexto;
 
+  /// Estado/municipio autodeclarados (CR-010 #5, gate #8). Pueden ser null
+  /// (el backend los deriva como respaldo).
+  final String? estado;
+  final String? municipio;
+
   /// Imagen capturada: por **ruta** (móvil nativo, con EXIF) o por **bytes** (web).
   final String? imagePath;
   final Uint8List? imageBytes;
 
-  /// Las 8 etiquetas serializadas para el campo `payload` (multipart).
+  /// Las etiquetas serializadas para el campo `payload` (multipart). Incluye
+  /// estado/municipio solo cuando están presentes (autodeclarados, CR-010 #5).
   Map<String, dynamic> toPayloadJson() => {
         'lat': lat,
         'lon': lon,
@@ -62,6 +72,8 @@ class ObservationDraft {
         'flag_danio': flagDanio,
         'tamanio': tamanio.wire,
         'contexto': contexto.wire,
+        if (estado != null) 'estado': estado,
+        if (municipio != null) 'municipio': municipio,
       };
 }
 
@@ -341,6 +353,44 @@ class Indicators {
         educativo: (j['educativo'] as Map).cast<String, dynamic>(),
         ecologico: (j['ecologico'] as Map).cast<String, dynamic>(),
         organizacional: (j['organizacional'] as Map).cast<String, dynamic>(),
+      );
+}
+
+/// Comprobante de participación (CR-010 #7). Resumen AGREGADO de la actividad
+/// propia para mostrarlo como evidencia al alumno (en pantalla, sin PDF).
+/// Gate #2: solo conteos y rango de fechas; nada de PII. Gate #1: descriptivo.
+class Evidence {
+  const Evidence({
+    required this.capturas,
+    required this.horasTotales,
+    required this.sesiones,
+    this.primera,
+    this.ultima,
+  });
+
+  /// Nº de observaciones propias.
+  final int capturas;
+
+  /// Horas acumuladas de sesión (Σ duración / 3600).
+  final double horasTotales;
+
+  /// Nº de sesiones de participación registradas.
+  final int sesiones;
+
+  /// Rango de fechas de actividad (puede ser null si aún no hay nada).
+  final DateTime? primera;
+  final DateTime? ultima;
+
+  factory Evidence.fromJson(Map<String, dynamic> j) => Evidence(
+        capturas: (j['capturas'] as num).toInt(),
+        horasTotales: (j['horas_totales'] as num).toDouble(),
+        sesiones: (j['sesiones'] as num).toInt(),
+        primera: (j['primera'] as String?) != null
+            ? DateTime.parse(j['primera'] as String)
+            : null,
+        ultima: (j['ultima'] as String?) != null
+            ? DateTime.parse(j['ultima'] as String)
+            : null,
       );
 }
 

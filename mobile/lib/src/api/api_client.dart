@@ -14,7 +14,8 @@ import 'api_exception.dart';
 /// Endpoints cubiertos:
 ///   auth/google (login social), observations (multipart), observations/mine,
 ///   me/feedback, me/profile, gamification/rankings, public/observations,
-///   public/indicators, admin/institutions (lista F3).
+///   public/indicators, institutions (lista F3) + institutions/request (CR-010 #6),
+///   me/sessions + me/evidence (CR-010 #7).
 class ApiClient {
   ApiClient({
     required this.baseUrl,
@@ -202,6 +203,52 @@ class ApiClient {
     return _decodeList(r)
         .map((e) => Institution.fromJson((e as Map).cast()))
         .toList();
+  }
+
+  /// Registrar una nueva institución (CR-010 #6). El voluntario autenticado
+  /// la propone; queda `solicitada` hasta que el consorcio la apruebe (no entra
+  /// al catálogo público hasta entonces). Devuelve la institución creada.
+  Future<Institution> requestInstitution({
+    required String name,
+    String? estado,
+  }) async {
+    final r = await _http.post(
+      _uri('/institutions/request'),
+      headers: _headers(),
+      body: json.encode({
+        'name': name,
+        if (estado != null) 'estado': estado,
+      }),
+    );
+    return Institution.fromJson(_decode(r));
+  }
+
+  // --- Sesiones de participación + evidencia (CR-010 #7) ---
+
+  /// Registra una sesión de participación (tiempo en foreground entre
+  /// login/logout o resume/pause). Gate #2: solo tiempos, sin PII (el backend
+  /// asocia por la cuenta del token). Fire-and-forget: la UI no debe bloquear.
+  Future<void> postSession({
+    required DateTime startedAt,
+    required DateTime endedAt,
+  }) async {
+    final r = await _http.post(
+      _uri('/me/sessions'),
+      headers: _headers(),
+      body: json.encode({
+        'started_at': startedAt.toUtc().toIso8601String(),
+        'ended_at': endedAt.toUtc().toIso8601String(),
+      }),
+    );
+    // 201 esperado; _decode valida el rango 2xx y lanza si no.
+    _decode(r);
+  }
+
+  /// Comprobante de participación AGREGADO (CR-010 #7): capturas, horas
+  /// acumuladas, nº de sesiones y rango de fechas. Sin PII (gate #2).
+  Future<Evidence> evidence() async {
+    final r = await _http.get(_uri('/me/evidence'), headers: _headers());
+    return Evidence.fromJson(_decode(r));
   }
 
   void close() => _http.close();

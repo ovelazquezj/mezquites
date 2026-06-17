@@ -14,6 +14,15 @@ CaptureResult _fakeCapture() => CaptureResult(
       capturedAt: DateTime.utc(2026, 5, 30, 12, 0, 0),
     );
 
+/// Captura cerca del centroide de Calvillo (CR-010 #5: la auto-detección debe
+/// preseleccionar "Calvillo").
+CaptureResult _captureCalvillo() => CaptureResult(
+      imagePath: '/tmp/fake.jpg',
+      lat: 21.847,
+      lon: -102.719,
+      capturedAt: DateTime.utc(2026, 5, 30, 12, 0, 0),
+    );
+
 /// Q2/Q3: submit con 8 campos, dropdowns obligatorios, toggles independientes,
 /// y fire-and-forget (el callback recibe el draft completo).
 void main() {
@@ -75,17 +84,68 @@ void main() {
 
     expect(submitted, isNotNull);
     final payload = submitted!.toPayloadJson();
-    // Exactamente 8 campos en el payload.
-    expect(payload.keys.length, 8);
     expect(payload['nivel_g4'], 'severo');
     expect(payload['flag_cuscuta'], true);
     expect(payload['flag_danio'], false); // independiente del de cúscuta
     expect(payload['tamanio'], 'grande');
     expect(payload['contexto'], 'ripario');
+    // CR-010 #5: estado/municipio AUTODECLARADOS viajan en el payload.
+    expect(payload['estado'], 'Aguascalientes');
+    expect(payload.containsKey('municipio'), isTrue);
     // EXIF real propagado (gate #4).
     expect(payload['lat'], 25.6866);
     expect(payload['lon'], -100.3161);
     expect(payload['captured_at'], '2026-05-30T12:00:00.000Z');
+  });
+
+  testWidgets(
+      'CR-010 #5: auto-detecta y preselecciona el municipio desde el GPS, y es editable',
+      (tester) async {
+    ObservationDraft? submitted;
+    // GPS cerca de Calvillo → debe preseleccionarse "Calvillo".
+    await pumpForm(tester, (d) => submitted = d, _captureCalvillo());
+
+    // El estado por defecto y el municipio detectado se muestran seleccionados.
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('dropdown_estado')),
+        matching: find.text('Aguascalientes'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('dropdown_municipio')),
+        matching: find.text('Calvillo'),
+      ),
+      findsOneWidget,
+      reason: 'la auto-detección debe preseleccionar el municipio cercano',
+    );
+
+    // El usuario CORRIGE el municipio a otro (editable).
+    await tester.tap(find.byKey(const Key('dropdown_municipio')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Jesús María').last);
+    await tester.pumpAndSettle();
+
+    // Completa el resto y envía.
+    await tester.tap(find.byKey(const Key('g4_option_leve')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('dropdown_tamanio')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(Tamanio.mediano.label).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('dropdown_contexto')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(Contexto.urbano.label).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('submit_observation')));
+    await tester.pump();
+
+    expect(submitted, isNotNull);
+    expect(submitted!.estado, 'Aguascalientes');
+    expect(submitted!.municipio, 'Jesús María',
+        reason: 'el municipio corregido por el usuario debe prevalecer',);
   });
 
   testWidgets('toggles son independientes', (tester) async {

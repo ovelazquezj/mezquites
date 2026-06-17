@@ -44,6 +44,13 @@ class Copy {
   static const captureDanioLabel = '¿Signos de daño? (defoliación / ramas muertas)';
   static const captureTamanioLabel = 'Tamaño del árbol';
   static const captureContextoLabel = 'Contexto del sitio';
+
+  // --- Estado / municipio (CR-010 #5; autodeclarados, gate #8) ---
+  static const captureEstadoLabel = 'Estado';
+  static const captureMunicipioLabel = 'Municipio';
+  static const captureMunicipioHint =
+      'Lo detectamos por tu ubicación; corrígelo si hace falta.';
+
   static const captureSubmit = 'Registrar observación';
   // Revisión humana (CR-001): toda observación se acepta al instante.
   static const captureQueued =
@@ -127,6 +134,36 @@ class Copy {
       'solo un identificador para reconocerte la próxima vez.';
   static const loginError =
       'No pudimos iniciar sesión. Revisa tu conexión e inténtalo de nuevo.';
+
+  // --- Registrar nueva institución (CR-010 #6) ---
+  static const institutionSectionTitle = 'Institución';
+  static const institutionSectionNote =
+      'La afiliación se elige al crear la cuenta. Si tu institución no aparecía, '
+      'puedes registrarla; el consorcio la revisará antes de mostrarla a todos.';
+  static const institutionRequestButton = 'Registrar nueva institución';
+  static const institutionRequestTitle = 'Registrar institución';
+  static const institutionRequestNameLabel = 'Nombre de la institución';
+  static const institutionRequestEstadoLabel = 'Estado';
+  static const institutionRequestSubmit = 'Enviar solicitud';
+  static const institutionRequestCancel = 'Cancelar';
+  static const institutionRequestNameRequired = 'Escribe el nombre.';
+  static const institutionRequestOk =
+      'Solicitud enviada. El consorcio revisará tu institución.';
+  static const institutionRequestError =
+      'No se pudo enviar la solicitud. Intenta de nuevo.';
+
+  // --- Evidencia / comprobante de participación (CR-010 #7) ---
+  static const evidenceTitle = 'Mi participación';
+  static const evidenceNote =
+      'Este es un resumen de tu participación, útil como comprobante. Es '
+      'descriptivo: cuenta tus aportaciones y tu tiempo, sin acciones de manejo.';
+  static const evidenceCapturas = 'Observaciones registradas';
+  static const evidenceHoras = 'Horas de participación';
+  static const evidenceSesiones = 'Sesiones';
+  static const evidenceRango = 'Periodo de actividad';
+  static const evidenceSinRango = 'Aún sin actividad registrada.';
+  static const evidenceError = 'No se pudo cargar tu participación.';
+  static const evidenceOpen = 'Mi participación';
 
   // --- Ayuda ---
   static const helpTitle = 'Ayuda';

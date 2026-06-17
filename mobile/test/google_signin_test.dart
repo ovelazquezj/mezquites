@@ -6,6 +6,7 @@ import 'package:http/testing.dart';
 import 'package:mezquite_app/src/api/api_client.dart';
 import 'package:mezquite_app/src/services/google_auth_service.dart';
 import 'package:mezquite_app/src/services/session_store.dart';
+import 'package:mezquite_app/src/services/session_tracker.dart';
 import 'package:mezquite_app/src/state/providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -50,7 +51,7 @@ void main() {
       );
     });
     final api = ApiClient(baseUrl: 'http://x/api/v1', httpClient: mock);
-    final controller = AuthController(api, google, store);
+    final controller = AuthController(api, google, store, SessionTracker(api));
 
     final outcome = await controller.signInWithGoogle();
     expect(outcome, GoogleSignInOutcome.success);
@@ -71,7 +72,7 @@ void main() {
     final google = FakeGoogleAuthService(idToken: null); // canceló
     final mock = MockClient((req) async => http.Response('{}', 200));
     final api = ApiClient(baseUrl: 'http://x/api/v1', httpClient: mock);
-    final controller = AuthController(api, google, store);
+    final controller = AuthController(api, google, store, SessionTracker(api));
 
     final outcome = await controller.signInWithGoogle();
     expect(outcome, GoogleSignInOutcome.cancelled);
@@ -83,7 +84,7 @@ void main() {
     final google = FakeGoogleAuthService(idToken: 'mock:tester');
     final mock = MockClient((req) async => http.Response('boom', 500));
     final api = ApiClient(baseUrl: 'http://x/api/v1', httpClient: mock);
-    final controller = AuthController(api, google, store);
+    final controller = AuthController(api, google, store, SessionTracker(api));
 
     final outcome = await controller.signInWithGoogle();
     expect(outcome, GoogleSignInOutcome.error);
@@ -100,7 +101,7 @@ void main() {
       ),
     );
     final api = ApiClient(baseUrl: 'http://x/api/v1', httpClient: mock);
-    final controller = AuthController(api, google, store);
+    final controller = AuthController(api, google, store, SessionTracker(api));
 
     await controller.signInWithGoogle();
     await controller.logout();
