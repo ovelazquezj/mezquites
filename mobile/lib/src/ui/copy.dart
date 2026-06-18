@@ -12,6 +12,32 @@ class Copy {
   static const appTitle = 'Mezquite — Ciencia ciudadana';
   static const welcomeSubtitle = 'Ciencia ciudadana';
 
+  // --- Acerca de / licencia (CR-013) ---
+  /// Nombre del proyecto que muestra "Acerca de".
+  static const projectName = 'Mezquite — Ciencia ciudadana del mezquite';
+
+  /// Versión visible del piloto. Es la etiqueta de release que pidió el usuario;
+  /// el semver técnico del build vive en `pubspec.yaml`.
+  static const appVersion = 'beta-2606';
+
+  /// Titular del copyright: la organización responsable ($orgName). La autoría
+  /// (desarrollo) se acredita aparte a su autor, con su correo de contacto.
+  static const copyrightNotice = '© 2026 $orgName';
+  static const authorName = 'Omar Velázquez';
+  static const authorEmail = 'ovelazquezj@gmail.com';
+
+  /// Pantalla "Acerca de".
+  static const aboutTitle = 'Acerca de';
+  static const aboutVersionLabel = 'Versión';
+  static const aboutAuthorLabel = 'Desarrollo';
+  static const aboutLicenseLabel = 'Licencia';
+  static const aboutLicenseValue = 'MIT';
+  static const aboutLicenseNote =
+      'Software libre bajo licencia MIT. El código y esta documentación se '
+      'distribuyen tal cual, sin garantía. Consulta el archivo LICENSE del '
+      'proyecto para el texto completo.';
+  static const aboutLicensesButton = 'Ver licencias de terceros';
+
   // --- Onboarding (CR-003; informativo, omitible, una sola vez · gate #3) ---
   static const onboardingSkip = 'Saltar';
   static const onboardingNext = 'Siguiente';

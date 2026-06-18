@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/session.dart';
 import '../ui/copy.dart';
+import 'about_screen.dart';
 import 'accounts_screen.dart';
 import 'allies_screen.dart';
 import 'data_screen.dart';
@@ -85,6 +86,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             () => const RestrictedDashboardScreen()),
       // Legal (Términos + Aviso de privacidad): visible para toda la consola (CR-006).
       _NavItem(Icons.gavel_outlined, Copy.navLegal, () => const LegalScreen()),
+      // Acerca de (CR-013): nombre, versión y créditos. Visible para toda la consola.
+      _NavItem(Icons.info_outline, Copy.navAbout, () => const AboutScreen()),
     ];
   }
 

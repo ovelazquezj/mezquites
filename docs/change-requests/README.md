@@ -22,6 +22,7 @@ unidad construible** (Arquitecto, Dev backend, Dev web-admin, Dev móvil, Tester
 | [CR-010](CR-010-lote-mejoras.md) | Lote de mejoras (branding, mapa consola, analista CSV, evaluación, captura estado/municipio, instituciones, evidencia) | ✅ **Integrado en `main`** (292 pruebas verdes; migración 0005) | CR-001, CR-005, CR-009 |
 | [CR-011](CR-011-ajustes-post-cr010.md) | Ajustes post-CR-010 (scroll de tablas, evaluación, "Datos" 404, consola para administrador, aprobar/registrar instituciones, logo) | ✅ **Integrado en `main`** (299 pruebas verdes) | CR-010 |
 | [CR-012](CR-012-paginacion-header.md) | Paginación de tablas (`PagedTable`) + header (logo grande, Club como subtítulo) | ✅ **Integrado en `main`** (301 pruebas verdes) | CR-011 |
+| [CR-013](CR-013-licencia-acerca-de.md) | Licencia **MIT** (copyright del Club, autoría Omar Velázquez) + pantalla **"Acerca de"** (versión `beta-2606`) en ambas apps | ✅ **Integrado en `main`** | CR-012 |
 
 **Secuencia acordada:** **CR-001** primero (funda los roles y enmienda gates); **CR-003** en paralelo
 (independiente, branding); **CR-002** al final (depende de los roles de CR-001 + Firebase externo).

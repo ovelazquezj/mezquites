@@ -255,3 +255,17 @@ Directo sobre `main`. **Total tras CR-012: 301 pruebas verdes** (`contract` 21 �
 | #3 header pequeño | logo 44→56, AppBar 64→80, Club como subtítulo (el logo ya era correcto) | `widget_map_data_test` (`appbar-logo`); web-admin build |
 
 Detalle en `docs/change-requests/CR-012-paginacion-header.md`.
+
+## CR-013 — Licencia MIT + pantalla "Acerca de"
+
+Directo sobre `main`. **Total tras CR-013: 303 pruebas verdes** (`contract` 21 · `mock` 9 · `backend` 136 ·
+`mobile` **62** · `web-admin` **75**). Backend/contract/mock sin tocar (CR-013 no cambia backend).
+
+| Requisito (usuario) | Implementación | Prueba |
+|---|---|---|
+| Licencia tipo MIT | `LICENSE` (raíz): `Copyright (c) 2026 Club Rotario Bosques Aguascalientes` + `Autor: Omar Velázquez <ovelazquezj@gmail.com>` | — (archivo) |
+| "Acerca de" — voluntario | `mobile/.../about_screen.dart` desde **Perfil**; proyecto, `beta-2606`, copyright del Club, autoría + correo, MIT | `mobile/test/about_test.dart` |
+| "Acerca de" — web-admin | `web-admin/.../about_screen.dart`, entrada del NavigationRail (todos los roles) | `web-admin/test/widget_about_test.dart` |
+| Gate #2 (sin PII) | autoría/copyright = metadato del proyecto, no dato de usuario ni cambio al modelo | aserciones de copyright/autoría en ambos tests |
+
+Detalle en `docs/change-requests/CR-013-licencia-acerca-de.md`.

@@ -6,6 +6,7 @@ import '../../state/providers.dart';
 import '../copy.dart';
 import '../widgets/branded_app_bar.dart';
 import '../widgets/common.dart';
+import 'about_screen.dart';
 import 'account_screen.dart';
 import 'help_screen.dart';
 import 'rankings_screen.dart';
@@ -81,6 +82,18 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+            // Acerca de (CR-013): nombre, versión y créditos.
+            Card(
+              child: ListTile(
+                key: const Key('profile_about_link'),
+                leading: const Icon(Icons.info_outline),
+                title: const Text(Copy.aboutTitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const AboutScreen()),
+                ),
               ),
             ),
           ],
