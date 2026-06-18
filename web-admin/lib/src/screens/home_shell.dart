@@ -102,8 +102,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Variante de letras BLANCAS: el logo de letras navy es ilegible sobre el
+            // header navy (CR-012). El login (fondo blanco) usa el logo normal.
             Image.asset(
-              'assets/branding/logo_horizontal.png',
+              'assets/branding/logo_horizontal_white.png',
               key: const Key('appbar-logo'),
               height: 56,
               fit: BoxFit.contain,

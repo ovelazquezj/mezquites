@@ -18,12 +18,14 @@
 |---|---|---|---|
 | 1 | La barra de scroll horizontal queda hasta el final (hay que bajar al último registro) | la barra del `HScroll` se dibuja al borde inferior de una tabla **muy alta** (sin paginar) | paginación: páginas cortas ⇒ la barra queda bajo las filas visibles |
 | 2 | ¿Las tablas paginan? ¿cómo? | **no** paginaban (DataTable con todas las filas) | nuevo **`PagedTable<T>`**: paginación cliente, selector 10/25/50, Anterior/Siguiente, "X–Y de Z" |
-| 3 | Header se ve muy pequeño / "logo equivocado" | el logo **ya era el correcto** (mismo hash en `branding/`, `mobile/assets/`, `web-admin/assets/`); solo se renderizaba a 44 px | logo 44→**56**, AppBar 64→**80**, Club como subtítulo (15 px) |
+| 3 | Header se ve muy pequeño / "logo equivocado" | **(1)** se renderizaba a 44 px; **(2)** el logo tenía letras **azul marino**, **ilegibles** sobre el header navy (por eso parecía "el equivocado") | logo 44→**56**, AppBar 64→**80**, Club como subtítulo (15 px) **+ variante de letras blancas** (`logo_horizontal_white.png`, provista por el usuario) en el header; el login (fondo blanco) conserva el logo normal |
 
 ## Implementación
 - `web-admin/lib/src/widgets/paged_table.dart` — `PagedTable<T>` (envuelve `HScroll`+`DataTable` + controles).
 - 5 tablas migradas a `PagedTable`: `public_dashboard`, `restricted_dashboard`, `review`, `data`, `institutions`.
-- `home_shell.dart` — AppBar (logo 56, toolbarHeight 80, subtítulo del Club).
+- `home_shell.dart` — AppBar (logo 56, toolbarHeight 80, subtítulo del Club, **logo de letras blancas**).
+- `web-admin/assets/branding/logo_horizontal_white.png` (+ `pubspec.yaml`) — variante de letras blancas
+  para el header navy (provista por el usuario). El **login** (fondo blanco) sigue con `logo_horizontal.png`.
 
 ## Pruebas
 **301 verdes** — `contract` 21 · `mock` 9 · `backend` 136 · `móvil` 61 · **`web-admin` 74** (+2:

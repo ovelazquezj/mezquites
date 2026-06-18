@@ -35,3 +35,5 @@ flutter:
     - assets/design-tokens.json
     # Branding del Club Rotario (CR-010 #1). Copiado de mobile/assets/branding/.
     - assets/branding/logo_horizontal.png
+    # Variante de letras blancas para el header navy (CR-012). Copiada de branding/.
+    - assets/branding/logo_horizontal_white.png
