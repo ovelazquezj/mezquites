@@ -5,6 +5,7 @@ import '../api/api_exception.dart';
 import '../models/models.dart';
 import '../state/session.dart';
 import '../ui/copy.dart';
+import '../widgets/h_scroll.dart';
 import '../widgets/estado_filter.dart';
 
 /// Dashboard RESTRINGIDO (Q5.B): observaciones con coords **exactas**
@@ -89,8 +90,7 @@ class _RestrictedDashboardScreenState
             return Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
+                child: HScroll(
                   child: DataTable(
                     columns: const [
                       DataColumn(label: Text('Usuario')),

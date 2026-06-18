@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/models.dart';
 import '../state/session.dart';
 import '../ui/copy.dart';
+import '../widgets/h_scroll.dart';
 import '../widgets/caveat_banner.dart';
 import '../widgets/estado_filter.dart';
 
@@ -188,8 +189,7 @@ class _ObservationsTable extends StatelessWidget {
             Text('Observaciones (ubicación aproximada ~300 m)',
                 style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
+            HScroll(
               child: DataTable(
                 columns: const [
                   DataColumn(label: Text('Usuario')),

@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../services/download.dart';
 import '../state/session.dart';
 import '../ui/copy.dart';
+import '../widgets/h_scroll.dart';
 
 /// Pantalla **Datos y descargas** del analista (CR-010 #3). Visible para
 /// `analista` y `administrador`. Muestra:
@@ -432,8 +433,7 @@ class _ObservationsTable extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
+        child: HScroll(
           child: DataTable(
             columns: const [
               DataColumn(label: Text('Usuario')),

@@ -5,6 +5,7 @@ import '../api/api_exception.dart';
 import '../models/models.dart';
 import '../state/session.dart';
 import '../ui/copy.dart';
+import '../widgets/h_scroll.dart';
 
 /// Lista F3 / instituciones (Q4). Ver lista completa (aprobadas + solicitadas),
 /// crear/aprobar, y "solicitar agregar" (ticket a EA3, status=solicitada).
@@ -72,6 +73,21 @@ class _InstitutionsScreenState extends ConsumerState<InstitutionsScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  /// Aprueba una institución solicitada (CR-011): pasa a aprobada y al catálogo público.
+  Future<void> _approve(Institution inst) async {
+    try {
+      await ref.read(apiClientProvider).approveInstitution(inst.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('"${inst.name}" aprobada y publicada en el catálogo.')),
+        );
+        setState(_reload);
+      }
+    } on ApiException catch (_) {
+      _showError('No se pudo aprobar. Inténtalo de nuevo.');
+    }
   }
 
   @override
@@ -155,13 +171,13 @@ class _InstitutionsScreenState extends ConsumerState<InstitutionsScreen> {
               return const Text('Sin instituciones registradas.');
             }
             return Card(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
+              child: HScroll(
                 child: DataTable(
                   columns: const [
                     DataColumn(label: Text('Nombre')),
                     DataColumn(label: Text('Estado')),
                     DataColumn(label: Text('Situación')),
+                    DataColumn(label: Text('Acción')),
                   ],
                   rows: [
                     for (final i in rows)
@@ -176,6 +192,13 @@ class _InstitutionsScreenState extends ConsumerState<InstitutionsScreen> {
                               : theme.colorScheme.tertiary
                                   .withValues(alpha: 0.15),
                         )),
+                        DataCell(i.isRequested
+                            ? TextButton(
+                                key: Key('institution-approve-${i.id}'),
+                                onPressed: () => _approve(i),
+                                child: const Text('Aprobar'),
+                              )
+                            : const Text('—')),
                       ]),
                   ],
                 ),

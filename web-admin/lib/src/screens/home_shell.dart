@@ -42,7 +42,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
 
   List<_NavItem> _items(SessionState session) {
-    final isAdmin = session.isAdmin; // admin_consorcio o administrador
+    final isAdmin = session.isAdmin || session.isAdministrador; // admin_consorcio o administrador (CR-011)
     return [
       _NavItem(Icons.dashboard_outlined, Copy.navPublic,
           () => const PublicDashboardScreen()),
@@ -97,6 +97,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: 64,
         // Branding del Club Rotario (CR-010 #1): logo + nombre en el header.
         title: Row(
           mainAxisSize: MainAxisSize.min,
@@ -104,7 +105,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             Image.asset(
               'assets/branding/logo_horizontal.png',
               key: const Key('appbar-logo'),
-              height: 32,
+              height: 44,
               fit: BoxFit.contain,
             ),
             const SizedBox(width: 12),

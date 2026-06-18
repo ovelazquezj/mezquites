@@ -25,6 +25,10 @@ class SessionState {
   bool get isAuthenticated => session != null;
   bool get isAdmin => session?.isAdmin ?? false;
 
+  /// Rol `administrador` (CR-002). CR-011: también ve los módulos de consola
+  /// (Instituciones/Aliados/Indicadores/Cortes), antes solo `admin_consorcio`.
+  bool get isAdministrador => session?.isAdministrador ?? false;
+
   /// True si el token autenticado puede ver la vista restringida (coords
   /// exactas): rol `aliado_firmante` (la autorización real la impone el backend).
   bool get canSeeRestricted => session?.role == 'aliado_firmante';

@@ -192,6 +192,16 @@ class ApiClient {
     return Institution.fromJson(_decode(r));
   }
 
+  /// Aprueba una institución **solicitada** (CR-011): pasa a `aprobada` y entra al
+  /// catálogo público (`GET /institutions`).
+  Future<Institution> approveInstitution(String id) async {
+    final r = await _http.post(
+      _uri('/admin/institutions/$id/approve'),
+      headers: _headers(),
+    );
+    return Institution.fromJson(_decode(r));
+  }
+
   // --- Admin: aliados firmantes (Q4/Q5.B) ---
 
   /// Promueve una cuenta existente a `aliado_firmante` (habilita coords exactas).
