@@ -8,7 +8,7 @@
 ## 1. Alcance del software
 
 Tres clientes + backend compartido, integrados con un **sistema externo de validación de imágenes**
-únicamente por la cola y el **contrato §6** (ver [`/contract`](contract/README.md)):
+únicamente por la cola y el **contrato §6** (ver [`/contract`](../../contract/README.md)):
 
 - **App móvil del voluntario** (Flutter) — captura cámara-nativa + EXIF, aprendizaje, gamificación,
   comunidad, dashboards cliente.
@@ -61,7 +61,7 @@ Tres clientes + backend compartido, integrados con un **sistema externo de valid
 | Backend | Python + FastAPI, REST versionada (T2) | FastAPI; prefijo `/* /api/v1`; OpenAPI autogenerado | — |
 | Base de datos | PostgreSQL + PostGIS (T3) | PostgreSQL 16 + PostGIS 3; migraciones con **Alembic** | Alembic = default derivable |
 | Almacenamiento | `StorageProvider` conmutable (T4) | Interfaz con impl `LocalFS` (dev/QA) y `S3Compatible` (stg/prod) | DB guarda clave/URL, no binario |
-| Cola / integración | Redis + task queue, frontera = la cola (T6) | **Redis Streams + consumer groups** tras `MessageBroker` (impl `memory` para dev/QA) | Ver [ADR-0002](docs/adr/0002-transporte-redis-streams.md) |
+| Cola / integración | Redis + task queue, frontera = la cola (T6) | **Redis Streams + consumer groups** tras `MessageBroker` (impl `memory` para dev/QA) | Ver [ADR-0002](../adr/0002-transporte-redis-streams.md) |
 | Hosting | Contenedores + K8s, dev en minikube/Rancher (T5) | Manifiestos K8s base + overlays; dev en Rancher Desktop | minikube no instalado; Rancher Desktop provee el clúster |
 | Auth | Cuenta seudonimizada por handle, sin PII (Q5.D-D1) | Token opaco/JWT sobre `handle` + secreto; **sin** email/teléfono | Recuperación por código de respaldo / QR (hash) |
 | UI/UX | Minimalista tipo eBird; Rotary azul+dorado + verdes (T7) | Design system de tokens compartido | Hex exactos = **token pendiente** (guía de marca Rotary) |
@@ -69,7 +69,7 @@ Tres clientes + backend compartido, integrados con un **sistema externo de valid
 
 ## 4. Modelo de datos (PostGIS)
 
-Detalle en [`docs/data-model/postgis-model.md`](docs/data-model/postgis-model.md). Núcleo:
+Detalle en [`docs/data-model/postgis-model.md`](../data-model/postgis-model.md). Núcleo:
 
 - **`observation`** — 8 etiquetas de captura (Q2): foto (clave de storage), EXIF lat/lon/timestamp,
   nivel G4, flag cúscuta, flag daño, tamaño, contexto, handle; `tree_id`, `observation_seq`,
@@ -122,10 +122,10 @@ público = `estado_revision <> 'rechazada'`. Gate #5: la imagen de revisión se 
 saneado** (`app/exif.py`) salvo `aliado_firmante`.
 
 **Frontera §6 (inactiva, conservada).** La integración con el validador externo (cola + contrato §6 +
-[`mock-validator`](mock-validator/README.md)) **no se borra** pero queda **ociosa**: el submit ya no
+[`mock-validator`](../../mock-validator/README.md)) **no se borra** pero queda **ociosa**: el submit ya no
 encola y `validation_apply`/`result_worker` no se ejecutan (compose los pone tras el perfil `yolo`).
 Si en el futuro se reactiva la validación automática, el paso mock→real sigue sin tocar cliente ni
-backend. Detalle del contrato: [`/contract`](contract/README.md).
+backend. Detalle del contrato: [`/contract`](../../contract/README.md).
 
 ## 7. `StorageProvider`
 
@@ -154,7 +154,7 @@ los estados son filtros geográficos, no infraestructura nueva. *(Manifiestos = 
 
 ## 10. Design system
 
-Tokens compartidos móvil + web admin en [`docs/design-system/`](docs/design-system/design-tokens.md)
+Tokens compartidos móvil + web admin en [`docs/design-system/`](../design-system/design-tokens.md)
 (`design-tokens.json` legible por máquina). Estética minimalista tipo eBird; paleta Rotary
 (azul royal + dorado) + verdes ecológicos. **Valores hex finales = pendientes de la guía de marca
 oficial de Rotary** (los actuales son provisionales y están marcados como tales).
@@ -169,7 +169,7 @@ oficial de Rotary** (los actuales son provisionales y están marcados como tales
 | 4. Captura cámara-nativa + EXIF | App fuerza cámara; galería deshabilitada; backend exige EXIF |
 | 5. Obfuscación 1 km | `/public/*` usa `ST_SnapToGrid`; exactas solo `/restricted/*`. **CR-001:** imagen de revisión con **EXIF GPS saneado** (`app/exif.py`) salvo `aliado_firmante` |
 | 6. Paridad de entornos | `StorageProvider`, `MessageBroker`, `DATABASE_URL` conmutables |
-| 7. Trazabilidad | [`TRACEABILITY.md`](TRACEABILITY.md): criterio → prueba; log `human_review` |
+| 7. Trazabilidad | [`TRACEABILITY.md`](../cambios/TRACEABILITY.md): criterio → prueba; log `human_review` |
 | 8. ~~Alcance validación automática~~ | **Enmendado (CR-001):** sin validación automática; calidad por revisión humana. Backend sigue sin validar especie/G4 |
 | 9. ~~Etiquetado válida/ruido~~ | **Reemplazado (CR-001):** aceptación por defecto + veredicto humano autoritativo en backend (`/review/.../verdict`) |
 | 10. ~~Contrato §6 (mock↔real)~~ | **Inactivo (CR-001):** frontera §6 conservada pero ociosa; el submit ya no encola |

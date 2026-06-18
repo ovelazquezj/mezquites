@@ -4,8 +4,8 @@
 > **Propósito:** desplegar **todo** el software del mezquite en **un único servidor** (una VM de
 > cualquier cloud o un servidor propio/on-prem), listo para el **primer piloto a producción**.
 > **Agnóstico de proveedor:** sirve para AWS/GCP/Azure/DigitalOcean/Hetzner o hierro propio; solo
-> necesitas una máquina Linux con Docker y un dominio. Diseño y justificación: [`CR-014`](change-requests/CR-014-despliegue-servidor-unico.md).
-> **Alternativa gestionada (sin K8s):** ruta Azure en [`CR-008`](change-requests/CR-008-despliegue-azure.md) / [`DESPLIEGUE.md`](DESPLIEGUE.md) §5-bis.
+> necesitas una máquina Linux con Docker y un dominio. Diseño y justificación: [`CR-014`](../change-requests/CR-014-despliegue-servidor-unico.md).
+> **Alternativa gestionada (sin K8s):** ruta Azure en [`CR-008`](../change-requests/CR-008-despliegue-azure.md) / [`DESPLIEGUE.md`](DESPLIEGUE.md) §5-bis.
 
 Última actualización: 2026-06-18.
 
@@ -37,8 +37,8 @@
 - **Cola §6 (YOLO) inactiva** (CR-001): `BROKER=memory`, **sin Redis** ni workers.
 - La API aplica las **migraciones Alembic al arrancar** (`alembic upgrade head`).
 
-Archivos del paquete (en `infra/compose/`): [`docker-compose.prod.yml`](../infra/compose/docker-compose.prod.yml) ·
-[`Caddyfile`](../infra/compose/Caddyfile) · [`.env.prod.example`](../infra/compose/.env.prod.example).
+Archivos del paquete (en `infra/compose/`): [`docker-compose.prod.yml`](../../infra/compose/docker-compose.prod.yml) ·
+[`Caddyfile`](../../infra/compose/Caddyfile) · [`.env.prod.example`](../../infra/compose/.env.prod.example).
 
 ---
 
@@ -307,9 +307,9 @@ horizontal, RPO/RTO estrictos), migra a la ruta gestionada de **CR-008 (Azure)**
 
 ---
 
-*Referencias:* [`CR-014`](change-requests/CR-014-despliegue-servidor-unico.md) (diseño) ·
-[`infra/compose/docker-compose.prod.yml`](../infra/compose/docker-compose.prod.yml) ·
-[`infra/compose/Caddyfile`](../infra/compose/Caddyfile) ·
-[`infra/compose/.env.prod.example`](../infra/compose/.env.prod.example) ·
-[`backend/app/config.py`](../backend/app/config.py) (fuente de verdad de las variables) ·
+*Referencias:* [`CR-014`](../change-requests/CR-014-despliegue-servidor-unico.md) (diseño) ·
+[`infra/compose/docker-compose.prod.yml`](../../infra/compose/docker-compose.prod.yml) ·
+[`infra/compose/Caddyfile`](../../infra/compose/Caddyfile) ·
+[`infra/compose/.env.prod.example`](../../infra/compose/.env.prod.example) ·
+[`backend/app/config.py`](../../backend/app/config.py) (fuente de verdad de las variables) ·
 [`DESPLIEGUE.md`](DESPLIEGUE.md) (Dev/QA/Prod en K8s y Azure).

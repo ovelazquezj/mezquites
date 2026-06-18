@@ -26,7 +26,7 @@ web + un reverse proxy con TLS**. `STORAGE_BACKEND=local`, `BROKER=memory` (sin 
 ## Arquitectura
 Un host con Docker corre `caddy` + `api` + `postgres`. Caddy termina HTTPS (Let's Encrypt) y sirve cada
 bundle en su subdominio, proxyeando `/api`, `/files` y `/healthz` al backend en el **mismo origen** (CORS
-deja de ser un problema). Diagrama y detalle en [`docs/DESPLIEGUE-SERVIDOR-UNICO.md`](../DESPLIEGUE-SERVIDOR-UNICO.md).
+deja de ser un problema). Diagrama y detalle en [`docs/DESPLIEGUE-SERVIDOR-UNICO.md`](../despliegue/DESPLIEGUE-SERVIDOR-UNICO.md).
 
 ## Entregables (este CR)
 | Archivo | Qué es |

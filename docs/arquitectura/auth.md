@@ -2,7 +2,7 @@
 
 > Implementa el amendment Q5.D-D1 de la bitácora (gate #2 **acotado**). App = Sign in with Google;
 > backend = usuario/contraseña. Proveedor de auth **conmutable** (`mock|firebase`) por paridad
-> (gate #6). Para configurarlo por entorno, ver [`DESPLIEGUE.md`](DESPLIEGUE.md) §2.1–§2.3.
+> (gate #6). Para configurarlo por entorno, ver [`DESPLIEGUE.md`](../despliegue/DESPLIEGUE.md) §2.1–§2.3.
 
 ## Modelo de cuenta (`account`, multi-método)
 
@@ -54,4 +54,4 @@ python -m backend.app.bootstrap --username admin --password 'S3cr3t!' --email ad
 Proyecto Firebase + Authentication→Google · app Android `com.mezquite.app` con huellas SHA-1/SHA-256 ·
 `google-services.json` en `mobile/android/app/` + plugin Gradle Google Services · consentimiento OAuth
 (`openid email profile`) · aviso de privacidad + borrado de datos (Google/Play, LFPDPPP). Detalle paso
-a paso en [`DESPLIEGUE.md`](DESPLIEGUE.md) §2.2.
+a paso en [`DESPLIEGUE.md`](../despliegue/DESPLIEGUE.md) §2.2.

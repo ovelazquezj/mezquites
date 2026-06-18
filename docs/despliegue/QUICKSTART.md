@@ -21,7 +21,7 @@ curl.exe http://localhost:8000/healthz            # -> {"status":"ok"}
 ```
 
 ¿Probar en un **teléfono real** por HTTPS? → `.\scripts\demo.ps1 start` (túnel ngrok), **Parte 4-bis**.
-¿Levantarlo **en la nube** (Dev/QA/Prod)? → [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md).
+¿Levantarlo **en la nube** (Dev/QA/Prod)? → [`DESPLIEGUE.md`](DESPLIEGUE.md).
 
 El resto de esta guía explica cada paso a detalle y **cómo verificar** que funcionó.
 
@@ -428,7 +428,7 @@ la advertencia de origen ciudadano**; las coordenadas finas solo para aliados fi
 ## Parte 6 — Cuando esté desplegado (apuntar las apps a Dev/QA/Prod)
 
 Toda la guía anterior corre contra `http://localhost:8000`. Cuando el backend viva en un entorno
-desplegado (ver [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md)), **lo único que cambia en los clientes es
+desplegado (ver [`DESPLIEGUE.md`](DESPLIEGUE.md)), **lo único que cambia en los clientes es
 la URL base de la API** — se **hornea** en el build (no hay UI de configuración):
 
 ```powershell
@@ -450,7 +450,7 @@ flutter build apk --release --dart-define=API_BASE_URL=https://<host-del-entorno
 
 > **HTTPS en release:** Android (targetSdk 35) bloquea HTTP en claro en release. Cualquier entorno
 > desplegado **debe servir por HTTPS** (QA/Prod con TLS en el ingress; en local usa el túnel ngrok).
-> Para los pasos de provisión de cada entorno → [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md).
+> Para los pasos de provisión de cada entorno → [`DESPLIEGUE.md`](DESPLIEGUE.md).
 
 ---
 

@@ -2,7 +2,7 @@
 
 Solicitudes de cambio **formales** para los dos cambios mayores acordados con el usuario el
 **2026-06-15**. Cada CR contiene **toda la información** para ejecutarse con un **equipo de agentes
-Claude Code** bajo el modelo de orquestación de [`CLAUDE.md`](../../CLAUDE.md): un **subagente por
+Claude Code** bajo un modelo de orquestación con un **subagente por
 unidad construible** (Arquitecto, Dev backend, Dev web-admin, Dev móvil, Tester/QA, Documentador); el
 **orquestador secuencia, verifica los gates y corre las pruebas** antes de declarar algo hecho.
 

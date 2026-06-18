@@ -9,8 +9,8 @@ variables y manifiestos, no fuente.
 > En esta guía **QA = `stg`** (staging). Si prefieres renombrarlo a `qa`, es un cambio mecánico de
 > kustomize; pídelo y lo aplico.
 
-> **Fuente de verdad de infra:** [`infra/k8s/README.md`](../infra/k8s/README.md) y
-> [`ARCHITECTURE.md`](../ARCHITECTURE.md) §9. Esta guía es el runbook operativo de alto nivel.
+> **Fuente de verdad de infra:** [`infra/k8s/README.md`](../../infra/k8s/README.md) y
+> [`ARCHITECTURE.md`](../arquitectura/ARCHITECTURE.md) §9. Esta guía es el runbook operativo de alto nivel.
 
 > **¿Piloto en un solo servidor (cloud o propio)?** Hay un runbook dedicado, agnóstico de proveedor,
 > que despliega TODO en un host con Docker + Caddy (TLS) sin Kubernetes ni nube gestionada:
@@ -41,7 +41,7 @@ cambian los endpoints y el gestor de secretos, **no** los manifiestos ni el cód
 ## 2. Configuración conmutable (el corazón del gate #6)
 
 Toda la diferencia entre entornos vive en estas variables (ver
-[`backend/app/config.py`](../backend/app/config.py)):
+[`backend/app/config.py`](../../backend/app/config.py)):
 
 | Variable | Dev | QA / Prod | Para qué |
 |---|---|---|---|
@@ -123,7 +123,7 @@ perfil `yolo` por si se reactiva a futuro:
 docker compose -f infra/compose/docker-compose.dev.yml --profile yolo up --build -d
 ```
 
-**Detalle completo (poblar datos, revisar UIs):** [`QUICKSTART.md`](../QUICKSTART.md).
+**Detalle completo (poblar datos, revisar UIs):** [`QUICKSTART.md`](QUICKSTART.md).
 
 > Para probar en un **teléfono real** por HTTPS, usa `scripts\demo.ps1` (túnel ngrok) — ver el
 > QUICKSTART, Parte 4-bis.
@@ -372,8 +372,8 @@ curl https://$API/healthz                       # -> {"status":"ok"}
 
 ## 8. Referencias
 
-- [`infra/k8s/README.md`](../infra/k8s/README.md) — detalle de manifiestos, overlays y el swap §6.
-- [`infra/compose/docker-compose.dev.yml`](../infra/compose/docker-compose.dev.yml) — stack local.
-- [`QUICKSTART.md`](../QUICKSTART.md) — arrancar y revisar las UIs paso a paso.
-- [`backend/app/config.py`](../backend/app/config.py) — todas las variables conmutables.
-- [`ARCHITECTURE.md`](../ARCHITECTURE.md) — arquitectura y §9 de despliegue.
+- [`infra/k8s/README.md`](../../infra/k8s/README.md) — detalle de manifiestos, overlays y el swap §6.
+- [`infra/compose/docker-compose.dev.yml`](../../infra/compose/docker-compose.dev.yml) — stack local.
+- [`QUICKSTART.md`](QUICKSTART.md) — arrancar y revisar las UIs paso a paso.
+- [`backend/app/config.py`](../../backend/app/config.py) — todas las variables conmutables.
+- [`ARCHITECTURE.md`](../arquitectura/ARCHITECTURE.md) — arquitectura y §9 de despliegue.

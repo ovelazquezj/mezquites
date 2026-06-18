@@ -6,7 +6,7 @@
 > **Qué NO es:** este documento **no** despliega la aplicación; es el **spec de los assets a crear**. El
 > despliegue del código (build de imagen, migraciones, publicación de las web) lo ejecuta el equipo de
 > desarrollo **después**, cuando los assets existan y por orden explícita. Diseño y justificación:
-> [`docs/change-requests/CR-008-despliegue-azure.md`](change-requests/CR-008-despliegue-azure.md);
+> [`docs/change-requests/CR-008-despliegue-azure.md`](../change-requests/CR-008-despliegue-azure.md);
 > runbook de despliegue: [`docs/DESPLIEGUE.md`](DESPLIEGUE.md).
 
 Última actualización: 2026-06-17.
@@ -240,6 +240,6 @@ Tras CR-001 el envío de observaciones **no encola** nada (la validación autom�
 
 ---
 
-*Referencias:* [`CR-008`](change-requests/CR-008-despliegue-azure.md) (diseño y justificación) ·
+*Referencias:* [`CR-008`](../change-requests/CR-008-despliegue-azure.md) (diseño y justificación) ·
 [`DESPLIEGUE.md`](DESPLIEGUE.md) (runbook de despliegue del código) · `backend/app/config.py` (fuente de
 verdad de las variables). Los SKUs y dominios son **sugerencias**; el patrocinador/infra los confirma.

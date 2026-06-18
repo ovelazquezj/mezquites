@@ -2,7 +2,7 @@
 
 Manifiestos **kustomize** (base + overlays) para el proyecto del mezquite. Espejan la topología ya
 definida en [`infra/compose/docker-compose.dev.yml`](../compose/docker-compose.dev.yml) y la
-sección §9 de [`ARCHITECTURE.md`](../../ARCHITECTURE.md). Arquitectura **centralizada RC1** (Q8-D1):
+sección §9 de [`ARCHITECTURE.md`](../../docs/arquitectura/ARCHITECTURE.md). Arquitectura **centralizada RC1** (Q8-D1):
 una sola instancia lógica; los estados son **filtros geográficos en datos**, NO namespaces ni
 instancias por estado.
 
