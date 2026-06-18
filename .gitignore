@@ -44,3 +44,9 @@ Thumbs.db
 .claude/
 infra/compose/docker-compose.lan.yml
 resultados_paginas/
+
+# Trabajo humano-Claude / prompts: SOLO local, fuera del repo (y del historial).
+# Información de colaboración, no del producto.
+/CLAUDE.md
+/prompt.txt
+/docs/change-requests/PLAN-EJECUCION-AGENTES.md
