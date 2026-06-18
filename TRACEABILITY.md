@@ -242,3 +242,16 @@ Ejecutado directo sobre `main` por el Orquestador. **Total del repo tras CR-011:
 
 **Gate #5:** `GET /admin/analytics/observations` NO expone coords exactas (prueba lo verifica). Decisiones
 del usuario y causa raíz de cada hallazgo en `docs/change-requests/CR-011-ajustes-post-cr010.md`.
+
+## CR-012 — Paginación de tablas + header (solo web-admin)
+
+Directo sobre `main`. **Total tras CR-012: 301 pruebas verdes** (`contract` 21 · `mock` 9 · `backend` 136 ·
+`mobile` 61 · `web-admin` **74**).
+
+| Hallazgo | Arreglo | Prueba |
+|---|---|---|
+| #1 barra horizontal hasta el final | páginas cortas (`PagedTable`) | `widget_cr012_test.dart` (rango "1–10 de 25") |
+| #2 ¿paginan? | sí: `PagedTable<T>` cliente (10/25/50) en las 5 tablas | `widget_cr012_test.dart` ("Siguiente" avanza) |
+| #3 header pequeño | logo 44→56, AppBar 64→80, Club como subtítulo (el logo ya era correcto) | `widget_map_data_test` (`appbar-logo`); web-admin build |
+
+Detalle en `docs/change-requests/CR-012-paginacion-header.md`.
