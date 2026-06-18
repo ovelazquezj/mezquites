@@ -20,6 +20,7 @@ unidad construible** (Arquitecto, Dev backend, Dev web-admin, Dev móvil, Tester
 | [CR-008](CR-008-despliegue-azure.md) | Despliegue en **Azure** (Container Apps + PostgreSQL Flexible Server + Static Web Apps + Key Vault) + backend **Azure Blob** | 📋 **Propuesto — formalizado** (ruta de lanzamiento 10-jul) | CR-004 W1 (auth real) |
 | [CR-009](CR-009-mapa-calor-publico.md) | Mapa de calor público (celdas 300 m) en la app del voluntario (móvil + web) + entrada sin login | ✅ **Integrado en `main`** (250 pruebas verdes; gate #5 enmendado 1 km→300 m) | CR-001, CR-005 |
 | [CR-010](CR-010-lote-mejoras.md) | Lote de mejoras (branding, mapa consola, analista CSV, evaluación, captura estado/municipio, instituciones, evidencia) | ✅ **Integrado en `main`** (292 pruebas verdes; migración 0005) | CR-001, CR-005, CR-009 |
+| [CR-011](CR-011-ajustes-post-cr010.md) | Ajustes post-CR-010 (scroll de tablas, evaluación, "Datos" 404, consola para administrador, aprobar/registrar instituciones, logo) | ✅ **Integrado en `main`** (299 pruebas verdes) | CR-010 |
 
 **Secuencia acordada:** **CR-001** primero (funda los roles y enmienda gates); **CR-003** en paralelo
 (independiente, branding); **CR-002** al final (depende de los roles de CR-001 + Firebase externo).

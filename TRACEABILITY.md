@@ -225,3 +225,20 @@ Orquestador. **Total del repo tras CR-010: 292 pruebas verdes** (`contract` 21 �
 **Gate #5:** el CSV y el mapa de la consola exponen solo celda 300 m. **Migración 0005**
 (`participation_session` + CHECK de veredicto con `aceptada`) validada upgrade/downgrade. **Decisiones del
 usuario** registradas en `docs/change-requests/CR-010-lote-mejoras.md`.
+
+## CR-011 — Ajustes post-CR-010 (hallazgos de revisión visual)
+
+Ejecutado directo sobre `main` por el Orquestador. **Total del repo tras CR-011: 299 pruebas verdes**
+(`contract` 21 · `mock` 9 · `backend` **136** · `mobile` **61** · `web-admin` **72**). Sin migración nueva.
+
+| Hallazgo | Arreglo | Prueba / verificación |
+|---|---|---|
+| #1 logo diminuto | logo 32→44 + `toolbarHeight` | `web-admin` build; `widget_map_data_test` ("header muestra el logo") |
+| #2 tablas cortadas sin scroll | `HScroll` (Scrollbar visible) en 5 tablas | inspección + `flutter test` web-admin verde |
+| #3 sin botones de revisión | filas clicables (`onSelectChanged`) + scroll expone "Abrir" | `widget_review_test` (3 botones de veredicto) |
+| #4 "Datos" no funciona | nuevo `GET /admin/analytics/observations` (faltaba → 404) | `backend/tests/test_cr011_consola_analytics.py`; verificado vivo (2 filas) |
+| #5a sin página de instituciones para admin | nav + `_admin` incluyen `administrador`; `POST /admin/institutions/{id}/approve` | `test_cr011_consola_analytics.py` (administrador usa consola; aprobar); `widget_cr011_test.dart` |
+| #5b móvil: registrar institución desde login | "Registrar nueva institución" (opción A) + `/institutions/request` asocia la cuenta | `test_cr011_consola_analytics.py` (asociación); `mobile` build + `legal_test` |
+
+**Gate #5:** `GET /admin/analytics/observations` NO expone coords exactas (prueba lo verifica). Decisiones
+del usuario y causa raíz de cada hallazgo en `docs/change-requests/CR-011-ajustes-post-cr010.md`.
