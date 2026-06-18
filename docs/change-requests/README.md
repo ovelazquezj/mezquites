@@ -23,6 +23,7 @@ unidad construible** (Arquitecto, Dev backend, Dev web-admin, Dev móvil, Tester
 | [CR-011](CR-011-ajustes-post-cr010.md) | Ajustes post-CR-010 (scroll de tablas, evaluación, "Datos" 404, consola para administrador, aprobar/registrar instituciones, logo) | ✅ **Integrado en `main`** (299 pruebas verdes) | CR-010 |
 | [CR-012](CR-012-paginacion-header.md) | Paginación de tablas (`PagedTable`) + header (logo grande, Club como subtítulo) | ✅ **Integrado en `main`** (301 pruebas verdes) | CR-011 |
 | [CR-013](CR-013-licencia-acerca-de.md) | Licencia **MIT** (copyright del Club, autoría Omar Velázquez) + pantalla **"Acerca de"** (versión `beta-2606`) en ambas apps | ✅ **Integrado en `main`** | CR-012 |
+| [CR-014](CR-014-despliegue-servidor-unico.md) | Despliegue en **un solo servidor** (cloud o propio): compose prod + Caddy (TLS) + runbook (hardware/software/Firebase) | 📋 **Propuesto — formalizado** (paquete listo para infra; sin desplegar) | CR-004 W1 |
 
 **Secuencia acordada:** **CR-001** primero (funda los roles y enmienda gates); **CR-003** en paralelo
 (independiente, branding); **CR-002** al final (depende de los roles de CR-001 + Firebase externo).

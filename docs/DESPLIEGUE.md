@@ -12,6 +12,10 @@ variables y manifiestos, no fuente.
 > **Fuente de verdad de infra:** [`infra/k8s/README.md`](../infra/k8s/README.md) y
 > [`ARCHITECTURE.md`](../ARCHITECTURE.md) §9. Esta guía es el runbook operativo de alto nivel.
 
+> **¿Piloto en un solo servidor (cloud o propio)?** Hay un runbook dedicado, agnóstico de proveedor,
+> que despliega TODO en un host con Docker + Caddy (TLS) sin Kubernetes ni nube gestionada:
+> [`DESPLIEGUE-SERVIDOR-UNICO.md`](DESPLIEGUE-SERVIDOR-UNICO.md) (CR-014).
+
 ---
 
 ## 1. Los tres entornos de un vistazo

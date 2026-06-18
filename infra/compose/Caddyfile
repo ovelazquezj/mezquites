@@ -1,0 +1,57 @@
+# Caddy — reverse proxy + servidor estático para el despliegue de UN SOLO SERVIDOR (CR-014).
+#
+# Cada app web queda en su propio subdominio y, en ese MISMO origen, proxyea /api, /files y /healthz
+# al contenedor `api`. Al ser mismo-origen, el navegador no dispara CORS (la API igual lo aplica por
+# CORS_ALLOW_ORIGINS como defensa en profundidad). TLS automático vía Let's Encrypt.
+#
+# Variables (desde .env.prod):
+#   APP_DOMAIN    p.ej. app.mezquite.org    (web del voluntario)
+#   ADMIN_DOMAIN  p.ej. admin.mezquite.org  (consola del Club)
+#   ACME_EMAIL    correo para los avisos de Let's Encrypt
+{
+	email {$ACME_EMAIL}
+}
+
+# --- Web del voluntario ---
+{$APP_DOMAIN} {
+	encode gzip zstd
+
+	# Backend (mismo origen): API REST, imágenes locales y health.
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+	handle /files/* {
+		reverse_proxy api:8000
+	}
+	handle /healthz {
+		reverse_proxy api:8000
+	}
+
+	# SPA Flutter Web: si la ruta no existe como archivo, sirve index.html.
+	handle {
+		root * /srv/voluntario
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+# --- Web-admin (consola) ---
+{$ADMIN_DOMAIN} {
+	encode gzip zstd
+
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+	handle /files/* {
+		reverse_proxy api:8000
+	}
+	handle /healthz {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		root * /srv/admin
+		try_files {path} /index.html
+		file_server
+	}
+}
