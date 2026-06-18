@@ -5,7 +5,7 @@ import '../api/api_exception.dart';
 import '../models/models.dart';
 import '../state/session.dart';
 import '../ui/copy.dart';
-import '../widgets/h_scroll.dart';
+import '../widgets/paged_table.dart';
 
 /// Lista F3 / instituciones (Q4). Ver lista completa (aprobadas + solicitadas),
 /// crear/aprobar, y "solicitar agregar" (ticket a EA3, status=solicitada).
@@ -171,36 +171,33 @@ class _InstitutionsScreenState extends ConsumerState<InstitutionsScreen> {
               return const Text('Sin instituciones registradas.');
             }
             return Card(
-              child: HScroll(
-                child: DataTable(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: PagedTable<Institution>(
+                  items: rows,
                   columns: const [
                     DataColumn(label: Text('Nombre')),
                     DataColumn(label: Text('Estado')),
                     DataColumn(label: Text('Situación')),
                     DataColumn(label: Text('Acción')),
                   ],
-                  rows: [
-                    for (final i in rows)
-                      DataRow(cells: [
-                        DataCell(Text(i.name)),
-                        DataCell(Text(i.estado ?? '—')),
-                        DataCell(Chip(
-                          label: Text(Copy.institutionStatus(i.status)),
-                          backgroundColor: i.isRequested
-                              ? theme.colorScheme.secondary
-                                  .withValues(alpha: 0.2)
-                              : theme.colorScheme.tertiary
-                                  .withValues(alpha: 0.15),
-                        )),
-                        DataCell(i.isRequested
-                            ? TextButton(
-                                key: Key('institution-approve-${i.id}'),
-                                onPressed: () => _approve(i),
-                                child: const Text('Aprobar'),
-                              )
-                            : const Text('—')),
-                      ]),
-                  ],
+                  rowBuilder: (i) => DataRow(cells: [
+                    DataCell(Text(i.name)),
+                    DataCell(Text(i.estado ?? '—')),
+                    DataCell(Chip(
+                      label: Text(Copy.institutionStatus(i.status)),
+                      backgroundColor: i.isRequested
+                          ? theme.colorScheme.secondary.withValues(alpha: 0.2)
+                          : theme.colorScheme.tertiary.withValues(alpha: 0.15),
+                    )),
+                    DataCell(i.isRequested
+                        ? TextButton(
+                            key: Key('institution-approve-${i.id}'),
+                            onPressed: () => _approve(i),
+                            child: const Text('Aprobar'),
+                          )
+                        : const Text('—')),
+                  ]),
                 ),
               ),
             );

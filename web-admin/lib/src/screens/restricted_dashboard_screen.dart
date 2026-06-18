@@ -5,7 +5,7 @@ import '../api/api_exception.dart';
 import '../models/models.dart';
 import '../state/session.dart';
 import '../ui/copy.dart';
-import '../widgets/h_scroll.dart';
+import '../widgets/paged_table.dart';
 import '../widgets/estado_filter.dart';
 
 /// Dashboard RESTRINGIDO (Q5.B): observaciones con coords **exactas**
@@ -90,30 +90,26 @@ class _RestrictedDashboardScreenState
             return Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: HScroll(
-                  child: DataTable(
-                    columns: const [
-                      DataColumn(label: Text('Usuario')),
-                      DataColumn(label: Text('Latitud exacta')),
-                      DataColumn(label: Text('Longitud exacta')),
-                      DataColumn(label: Text('Nivel de paxtle')),
-                      DataColumn(label: Text('Estado')),
-                      DataColumn(label: Text('Municipio')),
-                      DataColumn(label: Text('Revisión')),
-                    ],
-                    rows: [
-                      for (final o in rows)
-                        DataRow(cells: [
-                          DataCell(Text(o.handle)),
-                          DataCell(Text(o.lat.toStringAsFixed(6))),
-                          DataCell(Text(o.lon.toStringAsFixed(6))),
-                          DataCell(Text(Copy.nivelG4(o.nivelG4))),
-                          DataCell(Text(o.estado ?? '—')),
-                          DataCell(Text(o.municipio ?? '—')),
-                          DataCell(Text(Copy.estadoRevision(o.estadoRevision))),
-                        ]),
-                    ],
-                  ),
+                child: PagedTable<RestrictedObservation>(
+                  items: rows,
+                  columns: const [
+                    DataColumn(label: Text('Usuario')),
+                    DataColumn(label: Text('Latitud exacta')),
+                    DataColumn(label: Text('Longitud exacta')),
+                    DataColumn(label: Text('Nivel de paxtle')),
+                    DataColumn(label: Text('Estado')),
+                    DataColumn(label: Text('Municipio')),
+                    DataColumn(label: Text('Revisión')),
+                  ],
+                  rowBuilder: (o) => DataRow(cells: [
+                    DataCell(Text(o.handle)),
+                    DataCell(Text(o.lat.toStringAsFixed(6))),
+                    DataCell(Text(o.lon.toStringAsFixed(6))),
+                    DataCell(Text(Copy.nivelG4(o.nivelG4))),
+                    DataCell(Text(o.estado ?? '—')),
+                    DataCell(Text(o.municipio ?? '—')),
+                    DataCell(Text(Copy.estadoRevision(o.estadoRevision))),
+                  ]),
                 ),
               ),
             );

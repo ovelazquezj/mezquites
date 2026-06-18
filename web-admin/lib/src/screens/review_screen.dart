@@ -8,7 +8,7 @@ import '../api/api_exception.dart';
 import '../models/models.dart';
 import '../state/session.dart';
 import '../ui/copy.dart';
-import '../widgets/h_scroll.dart';
+import '../widgets/paged_table.dart';
 
 /// Sección REVISIÓN (CR-001): cola de observaciones + detalle con visor de imagen
 /// y botones Confirmar/Retirar. Acceso para `evaluador`/`administrador` (emiten
@@ -110,38 +110,34 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
             return Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: HScroll(
-                  child: DataTable(
-                    columns: const [
-                      DataColumn(label: Text('Usuario')),
-                      DataColumn(label: Text('Fecha')),
-                      DataColumn(label: Text('Estado de revisión')),
-                      DataColumn(label: Text('Nivel de paxtle')),
-                      DataColumn(label: Text('Estado')),
-                      DataColumn(label: Text('Municipio')),
-                      DataColumn(label: Text('')),
-                    ],
-                    rows: [
-                      for (final o in rows)
-                        DataRow(
-                          key: ValueKey('review-row-${o.observationId}'),
-                          onSelectChanged: (_) => _openDetail(o),
-                          cells: [
-                            DataCell(Text(o.handle)),
-                            DataCell(Text(_fmtDate(o.capturedAt))),
-                            DataCell(Text(Copy.estadoRevision(o.estadoRevision))),
-                            DataCell(Text(Copy.nivelG4(o.nivelG4))),
-                            DataCell(Text(o.estado ?? '—')),
-                            DataCell(Text(o.municipio ?? '—')),
-                            DataCell(
-                              TextButton(
-                                key: Key('review-open-${o.observationId}'),
-                                onPressed: () => _openDetail(o),
-                                child: const Text(Copy.reviewOpenDetail),
-                              ),
-                            ),
-                          ],
+                child: PagedTable<ReviewQueueItem>(
+                  items: rows,
+                  columns: const [
+                    DataColumn(label: Text('Usuario')),
+                    DataColumn(label: Text('Fecha')),
+                    DataColumn(label: Text('Estado de revisión')),
+                    DataColumn(label: Text('Nivel de paxtle')),
+                    DataColumn(label: Text('Estado')),
+                    DataColumn(label: Text('Municipio')),
+                    DataColumn(label: Text('')),
+                  ],
+                  rowBuilder: (o) => DataRow(
+                    key: ValueKey('review-row-${o.observationId}'),
+                    onSelectChanged: (_) => _openDetail(o),
+                    cells: [
+                      DataCell(Text(o.handle)),
+                      DataCell(Text(_fmtDate(o.capturedAt))),
+                      DataCell(Text(Copy.estadoRevision(o.estadoRevision))),
+                      DataCell(Text(Copy.nivelG4(o.nivelG4))),
+                      DataCell(Text(o.estado ?? '—')),
+                      DataCell(Text(o.municipio ?? '—')),
+                      DataCell(
+                        TextButton(
+                          key: Key('review-open-${o.observationId}'),
+                          onPressed: () => _openDetail(o),
+                          child: const Text(Copy.reviewOpenDetail),
                         ),
+                      ),
                     ],
                   ),
                 ),

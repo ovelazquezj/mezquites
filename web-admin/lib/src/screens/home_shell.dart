@@ -97,22 +97,23 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 64,
-        // Branding del Club Rotario (CR-010 #1): logo + nombre en el header.
+        toolbarHeight: 80,
+        // Branding (CR-012 #3): logo grande del proyecto + nombre del Club como subtítulo.
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset(
               'assets/branding/logo_horizontal.png',
               key: const Key('appbar-logo'),
-              height: 44,
+              height: 56,
               fit: BoxFit.contain,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Flexible(
               child: Text(
                 Copy.orgName,
                 overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
               ),
             ),
           ],

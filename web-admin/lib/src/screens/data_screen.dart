@@ -6,7 +6,7 @@ import '../models/models.dart';
 import '../services/download.dart';
 import '../state/session.dart';
 import '../ui/copy.dart';
-import '../widgets/h_scroll.dart';
+import '../widgets/paged_table.dart';
 
 /// Pantalla **Datos y descargas** del analista (CR-010 #3). Visible para
 /// `analista` y `administrador`. Muestra:
@@ -433,33 +433,29 @@ class _ObservationsTable extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: HScroll(
-          child: DataTable(
-            columns: const [
-              DataColumn(label: Text('Usuario')),
-              DataColumn(label: Text('Fecha')),
-              DataColumn(label: Text('Estado de revisión')),
-              DataColumn(label: Text('Nivel de paxtle')),
-              DataColumn(label: Text('Cúscuta')),
-              DataColumn(label: Text('Daño')),
-              DataColumn(label: Text('Estado')),
-              DataColumn(label: Text('Municipio')),
-            ],
-            rows: [
-              for (final o in rows)
-                DataRow(
-                  key: ValueKey('data-row-${o.observationId}'),
-                  cells: [
-                    DataCell(Text(o.handle)),
-                    DataCell(Text(_fmtDate(o.capturedAt))),
-                    DataCell(Text(Copy.estadoRevision(o.estadoRevision))),
-                    DataCell(Text(Copy.nivelG4(o.nivelG4))),
-                    DataCell(Text(o.flagCuscuta ? 'sí' : 'no')),
-                    DataCell(Text(o.flagDanio ? 'sí' : 'no')),
-                    DataCell(Text(o.estado ?? '—')),
-                    DataCell(Text(o.municipio ?? '—')),
-                  ],
-                ),
+        child: PagedTable<AnalyticsObservation>(
+          items: rows,
+          columns: const [
+            DataColumn(label: Text('Usuario')),
+            DataColumn(label: Text('Fecha')),
+            DataColumn(label: Text('Estado de revisión')),
+            DataColumn(label: Text('Nivel de paxtle')),
+            DataColumn(label: Text('Cúscuta')),
+            DataColumn(label: Text('Daño')),
+            DataColumn(label: Text('Estado')),
+            DataColumn(label: Text('Municipio')),
+          ],
+          rowBuilder: (o) => DataRow(
+            key: ValueKey('data-row-${o.observationId}'),
+            cells: [
+              DataCell(Text(o.handle)),
+              DataCell(Text(_fmtDate(o.capturedAt))),
+              DataCell(Text(Copy.estadoRevision(o.estadoRevision))),
+              DataCell(Text(Copy.nivelG4(o.nivelG4))),
+              DataCell(Text(o.flagCuscuta ? 'sí' : 'no')),
+              DataCell(Text(o.flagDanio ? 'sí' : 'no')),
+              DataCell(Text(o.estado ?? '—')),
+              DataCell(Text(o.municipio ?? '—')),
             ],
           ),
         ),

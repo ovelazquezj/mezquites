@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/models.dart';
 import '../state/session.dart';
 import '../ui/copy.dart';
-import '../widgets/h_scroll.dart';
+import '../widgets/paged_table.dart';
 import '../widgets/caveat_banner.dart';
 import '../widgets/estado_filter.dart';
 
@@ -189,32 +189,28 @@ class _ObservationsTable extends StatelessWidget {
             Text('Observaciones (ubicación aproximada ~300 m)',
                 style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
-            HScroll(
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text('Usuario')),
-                  DataColumn(label: Text('Latitud (~300 m)')),
-                  DataColumn(label: Text('Longitud (~300 m)')),
-                  DataColumn(label: Text('Nivel de paxtle')),
-                  DataColumn(label: Text('Cúscuta')),
-                  DataColumn(label: Text('Daño')),
-                  DataColumn(label: Text('Estado')),
-                  DataColumn(label: Text('Municipio')),
-                ],
-                rows: [
-                  for (final o in rows)
-                    DataRow(cells: [
-                      DataCell(Text(o.handle)),
-                      DataCell(Text(o.lat.toStringAsFixed(2))),
-                      DataCell(Text(o.lon.toStringAsFixed(2))),
-                      DataCell(Text(Copy.nivelG4(o.nivelG4))),
-                      DataCell(Text(o.flagCuscuta ? 'sí' : 'no')),
-                      DataCell(Text(o.flagDanio ? 'sí' : 'no')),
-                      DataCell(Text(o.estado ?? '—')),
-                      DataCell(Text(o.municipio ?? '—')),
-                    ]),
-                ],
-              ),
+            PagedTable<PublicObservation>(
+              items: rows,
+              columns: const [
+                DataColumn(label: Text('Usuario')),
+                DataColumn(label: Text('Latitud (~300 m)')),
+                DataColumn(label: Text('Longitud (~300 m)')),
+                DataColumn(label: Text('Nivel de paxtle')),
+                DataColumn(label: Text('Cúscuta')),
+                DataColumn(label: Text('Daño')),
+                DataColumn(label: Text('Estado')),
+                DataColumn(label: Text('Municipio')),
+              ],
+              rowBuilder: (o) => DataRow(cells: [
+                DataCell(Text(o.handle)),
+                DataCell(Text(o.lat.toStringAsFixed(2))),
+                DataCell(Text(o.lon.toStringAsFixed(2))),
+                DataCell(Text(Copy.nivelG4(o.nivelG4))),
+                DataCell(Text(o.flagCuscuta ? 'sí' : 'no')),
+                DataCell(Text(o.flagDanio ? 'sí' : 'no')),
+                DataCell(Text(o.estado ?? '—')),
+                DataCell(Text(o.municipio ?? '—')),
+              ]),
             ),
           ],
         ),
