@@ -102,6 +102,8 @@ void main() {
     expect(consent, findsOneWidget);
     expect(find.text(Copy.legalConsentNote), findsOneWidget);
 
+    await tester.ensureVisible(consent);
+    await tester.pumpAndSettle();
     await tester.tap(consent);
     await tester.pumpAndSettle();
 

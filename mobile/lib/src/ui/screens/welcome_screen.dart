@@ -26,6 +26,8 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   List<Institution> _institutions = const [];
   bool _signingIn = false;
   String? _error;
+  // CR-011 #5b: institución nueva a registrar desde el login (Option A: se solicita tras el login).
+  String? _pendingNewInstitution;
 
   @override
   void initState() {
@@ -55,6 +57,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
 
     switch (outcome) {
       case GoogleSignInOutcome.success:
+        await _registerPendingInstitution();
         await _afterLogin();
         break;
       case GoogleSignInOutcome.cancelled:
@@ -80,17 +83,64 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     );
   }
 
+  /// CR-011 (decisión A): si el usuario eligió registrar una institución nueva,
+  /// se solicita DESPUÉS del login (queda `solicitada` y se asocia a su cuenta).
+  Future<void> _registerPendingInstitution() async {
+    final name = _pendingNewInstitution;
+    if (name == null || name.isEmpty) return;
+    try {
+      await ref.read(apiClientProvider).requestInstitution(name: name);
+    } catch (_) {
+      // No bloquea el login; puede reintentarse desde Cuenta.
+    }
+  }
+
+  Future<void> _promptNewInstitution() async {
+    final ctrl = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text(Copy.institutionRequestTitle),
+        content: TextField(
+          key: const Key('welcome_new_institution_field'),
+          controller: ctrl,
+          autofocus: true,
+          decoration:
+              const InputDecoration(labelText: Copy.institutionRequestNameLabel),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text(Copy.institutionRequestCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(ctrl.text.trim()),
+            child: const Text('Usar'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (name != null && name.isNotEmpty) {
+      setState(() {
+        _pendingNewInstitution = name;
+        _selected = null; // registrar nueva ⇒ no se elige una existente
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Spacer(),
+              const SizedBox(height: 24),
               Image.asset(
                 'assets/branding/logo_horizontal.png',
                 height: 84,
@@ -125,7 +175,36 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                 ],
                 onChanged: (v) => setState(() => _selected = v),
               ),
-              const Spacer(),
+              const SizedBox(height: 8),
+              // CR-011 #5b: registrar una institución que no está en el catálogo.
+              if (_pendingNewInstitution == null)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    key: const Key('welcome_register_institution'),
+                    onPressed: _signingIn ? null : _promptNewInstitution,
+                    icon: const Icon(Icons.add),
+                    label: const Text(Copy.institutionRequestButton),
+                  ),
+                )
+              else
+                Row(
+                  children: [
+                    const Icon(Icons.school_outlined, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text('Registrarás: $_pendingNewInstitution',
+                          style: theme.textTheme.bodySmall),
+                    ),
+                    TextButton(
+                      key: const Key('welcome_clear_new_institution'),
+                      onPressed: () =>
+                          setState(() => _pendingNewInstitution = null),
+                      child: const Text('Quitar'),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 24),
               if (_error != null) ...[
                 Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
                 const SizedBox(height: 12),
