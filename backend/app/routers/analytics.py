@@ -114,6 +114,51 @@ def analytics_summary(
     )
 
 
+@router.get("/observations")
+def analytics_observations(
+    estado: str | None = Query(None),
+    municipio: str | None = Query(None),
+    nivel_g4: str | None = Query(None),
+    estado_revision: str | None = Query(None),
+    desde: str | None = Query(None, description="ISO date/datetime: captured_at >= desde."),
+    hasta: str | None = Query(None, description="ISO date/datetime: captured_at <= hasta."),
+    limit: int = Query(1000, le=5000),
+    user: CurrentUser = Depends(_analyst),
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    """Tabla de observaciones para el analista (CR-010 #3). Sin coords exactas (gate #5):
+    expone solo estado/municipio agregables; las coords NO se incluyen en esta vista."""
+    params = _filter_params(estado, municipio, nivel_g4, estado_revision, desde, hasta)
+    params["limit"] = limit
+    rows = db.execute(
+        text(
+            f"""
+            SELECT id, captured_at, handle, estado, municipio, nivel_g4,
+                   flag_cuscuta, flag_danio, estado_revision
+            FROM observation
+            WHERE {_FILTER_WHERE}
+            ORDER BY captured_at DESC
+            LIMIT :limit
+            """
+        ),
+        params,
+    ).mappings().all()
+    return [
+        {
+            "observation_id": str(r["id"]),
+            "captured_at": r["captured_at"].isoformat() if r["captured_at"] is not None else None,
+            "handle": r["handle"],
+            "estado": r["estado"],
+            "municipio": r["municipio"],
+            "nivel_g4": r["nivel_g4"],
+            "flag_cuscuta": r["flag_cuscuta"],
+            "flag_danio": r["flag_danio"],
+            "estado_revision": r["estado_revision"],
+        }
+        for r in rows
+    ]
+
+
 @router.get("/observations.csv")
 def analytics_csv(
     estado: str | None = Query(None),

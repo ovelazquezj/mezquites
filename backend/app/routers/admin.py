@@ -8,6 +8,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -19,7 +21,8 @@ from ..snapshots import create_snapshot
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-_admin = require_role("admin_consorcio")
+# Consola del proyecto: el `administrador` (CR-002) y el legacy `admin_consorcio` (CR-011).
+_admin = require_role("admin_consorcio", "administrador")
 
 
 @router.post("/indicators/organizational", status_code=status.HTTP_201_CREATED)
@@ -81,5 +84,21 @@ def add_institution(
         status="solicitada" if body.request_only else "aprobada",
     )
     db.add(inst)
+    db.commit()
+    return {"id": str(inst.id), "name": inst.name, "estado": inst.estado, "status": inst.status}
+
+
+@router.post("/institutions/{institution_id}/approve")
+def approve_institution(
+    institution_id: uuid.UUID,
+    user: CurrentUser = Depends(_admin),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Aprueba una institución **solicitada** (CR-011): pasa a ``aprobada`` y entra al catálogo
+    público (``GET /institutions``), donde el voluntario ya puede elegirla."""
+    inst = db.get(Institution, institution_id)
+    if inst is None:
+        raise HTTPException(status_code=404, detail="institución no encontrada")
+    inst.status = "aprobada"
     db.commit()
     return {"id": str(inst.id), "name": inst.name, "estado": inst.estado, "status": inst.status}

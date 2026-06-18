@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import CurrentUser, require_role
-from ..models import Institution
+from ..models import Account, Institution
 from ..schemas import InstitutionRequestIn, InstitutionRequestResponse
 
 router = APIRouter(prefix="/institutions", tags=["institutions"])
@@ -53,10 +53,18 @@ def request_institution(
     """El voluntario registra una institución nueva (CR-010). Queda ``solicitada`` (ticket a EA3).
 
     NO aparece en el catálogo público (``GET /institutions`` solo lista aprobadas) hasta que el
-    ``admin_consorcio`` la apruebe. Sin PII (gate #2); no gatea nada (gate #3).
+    administrador la apruebe. Sin PII (gate #2); no gatea nada (gate #3).
+
+    CR-011 (decisión A): la institución solicitada se **asocia** a la cuenta que la registra (su
+    ``institution_id``), para que el flujo de alta desde el login quede completo aunque la institución
+    siga pendiente de aprobación.
     """
     inst = Institution(name=body.name, estado=body.estado, status="solicitada")
     db.add(inst)
+    db.flush()  # obtiene inst.id antes de asociar
+    account = db.get(Account, user.account_id)
+    if account is not None:
+        account.institution_id = inst.id
     db.commit()
     db.refresh(inst)
     return InstitutionRequestResponse(id=inst.id, name=inst.name, status=inst.status)
