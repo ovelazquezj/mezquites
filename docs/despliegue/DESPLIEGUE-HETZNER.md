@@ -219,19 +219,38 @@ Hoy el stack **solo** sirve `app.` y `admin.`. Si quieres que quien escriba
 > Cubre el pendiente **CR-004 W1**. Incluye un **paso de código** (generar `firebase_options.dart`),
 > normalmente a cargo del equipo de desarrollo; se documenta completo para que quede reproducible.
 > **Si vas con piloto cerrado (`mock`), salta esta sección** (ver el atajo del §1).
+> **Nota (UI verificada 2026-06):** Google reorganizó la consola — el antiguo *"OAuth consent screen"* es
+> ahora **"Google Auth Platform"** (pestañas **Público / Marca / Acceso a datos**). Los pasos de abajo ya lo reflejan.
 
 ### 7.1 Crear el proyecto y habilitar Google
 
-1. En <https://console.firebase.google.com> → **Agregar proyecto** (anota el **Project ID**, p. ej.
+1. En <https://console.firebase.google.com> → **Crear un proyecto** (anota el **Project ID**, p. ej.
    `mezquite-prod`).
-2. **Build → Authentication → Get started → Sign-in method → Google → Habilitar**. Define el correo de
-   soporte. Guarda.
-3. **Authentication → Settings → Authorized domains:** agrega `app.<dominio>` (la consola entra con
-   usuario/contraseña, así que basta `app`).
-4. **Pantalla de consentimiento OAuth** (Google Cloud → *APIs & Services → OAuth consent screen*):
-   scopes `openid`, `email`, `profile`; en **"Application privacy policy link"** pon
-   **`https://app.<dominio>/aviso-privacidad`** y en **"Application terms of service link"** (opcional)
-   `https://app.<dominio>/terminos` (ya servidos por Caddy, §1.3). El dominio debe estar verificado.
+2. **Authentication** (menú izquierdo, sección *Build*) → **Comenzar / Get started** → pestaña
+   **Sign-in method** → **Agregar proveedor (Add new provider)** → **Google** → **Activar**; elige el
+   **correo de asistencia del proyecto** → **Guardar**.
+3. **Authentication → Settings → Dominios autorizados (Authorized domains):** agrega
+   **`app.rescatando-el-mezquite.org`** (la consola del admin entra con usuario/contraseña, así que basta `app`).
+4. **Configura el "Google Auth Platform"** ⚠️ — *aquí está el cambio*: Google **renombró y reorganizó** el
+   antiguo *"OAuth consent screen"*. Ahora vive en **Google Cloud Console → APIs y servicios →
+   Google Auth Platform** (Firebase también te ofrece un botón directo al activar Google). El formulario de
+   una sola página se reemplazó por **pestañas**:
+   - **Público (Audience):** tipo de usuario **External**. En **Testing** solo los **usuarios de prueba**
+     que agregues (hasta 100) pueden entrar; para abrir al público pulsa **Publicar app** (pasar a producción).
+   - **Marca (Branding):** nombre de la app, logo y correo de asistencia. En **Dominio de la app (App domain)**
+     pon los enlaces (ya servidos por Caddy, §1.3):
+     - **Vínculo a la política de privacidad:** `https://app.rescatando-el-mezquite.org/aviso-privacidad`
+     - **Vínculo a las condiciones del servicio:** `https://app.rescatando-el-mezquite.org/terminos`
+     - **Página principal:** `https://app.rescatando-el-mezquite.org`
+   - **Acceso a datos (Data Access / scopes):** deja solo los básicos **`openid`, `email`, `profile`**
+     (no-sensibles; no disparan verificación de marca). El backend guarda **solo el id opaco** del usuario,
+     nunca correo/nombre (gate #2).
+
+> **Por qué el aviso va en `app.<dominio>`:** Google exige que la **política de privacidad esté en el mismo
+> dominio** que la app y sea pública (por eso la servimos en `/aviso-privacidad`). Sin estos enlaces **no
+> deja publicar ni verificar**. Con solo scopes básicos puedes **publicar a producción**; puede aparecer un
+> aviso de *"app no verificada"* (el login funciona igual) que desaparece si más adelante envías la
+> **verificación de marca** (opcional para el piloto).
 
 ### 7.2 Registrar la app Web
 

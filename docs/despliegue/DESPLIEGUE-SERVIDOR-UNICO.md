@@ -115,12 +115,16 @@ docker compose version          # confirma Compose v2
 
 1. En <https://console.firebase.google.com> → **Agregar proyecto** (anota el **Project ID**, p. ej.
    `mezquite-prod`).
-2. **Build → Authentication → Get started → Sign-in method → Google → Habilitar**. Define el correo de
-   soporte. Guarda.
-3. **Authentication → Settings → Authorized domains:** agrega `app.<dominio>` (y `admin.<dominio>` si la
-   consola también usara Google; hoy la consola entra con usuario/contraseña, así que basta `app`).
-4. Configura la **pantalla de consentimiento OAuth** (Google Cloud → APIs & Services → OAuth consent screen):
-   scopes `openid`, `email`, `profile`; enlaza el **aviso de privacidad** publicado (§4).
+2. **Authentication** (menú izquierdo, sección *Build*) → **Comenzar** → pestaña **Sign-in method** →
+   **Agregar proveedor** → **Google** → **Activar**; elige el **correo de asistencia** → **Guardar**.
+3. **Authentication → Settings → Dominios autorizados:** agrega `app.<dominio>` (la consola entra con
+   usuario/contraseña, así que basta `app`).
+4. Configura el **"Google Auth Platform"** (Google Cloud → *APIs y servicios → Google Auth Platform*;
+   **antes** se llamaba "OAuth consent screen", reorganizado por Google en pestañas Público/Marca/Acceso a
+   datos): en **Marca (Branding)** pon el **vínculo a la política de privacidad**
+   (`https://app.<dominio>/aviso-privacidad`) y a las **condiciones** (`/terminos`) — Google exige que estén
+   en el **mismo dominio** que la app; en **Acceso a datos** deja scopes `openid`, `email`, `profile`; en
+   **Público** **publica la app** para abrir al público (en *Testing* solo entran usuarios de prueba).
 
 ### 5.2 Registrar la app Web
 
