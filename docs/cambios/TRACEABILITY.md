@@ -269,3 +269,43 @@ Directo sobre `main`. **Total tras CR-013: 303 pruebas verdes** (`contract` 21 �
 | Gate #2 (sin PII) | autoría/copyright = metadato del proyecto, no dato de usuario ni cambio al modelo | aserciones de copyright/autoría en ambos tests |
 
 Detalle en `docs/change-requests/CR-013-licencia-acerca-de.md`.
+
+## CR-015 — Autenticación con Google sin Firebase (Google Identity Services)
+
+Directo sobre `main` + desplegado en la VM (Testing). **Total tras CR-015/016: 304 pruebas verdes**
+(`contract` 21 · `mock` 9 · `backend` 136 · `mobile` **63** · `web-admin` 75). Amend de CR-002 / cierre
+de CR-004 W1 por vía sin Firebase.
+
+| Requisito (usuario) | Implementación | Prueba |
+|---|---|---|
+| Login con Google **sin Firebase** | App: GIS (`google_sign_in` 7.x + `google_sign_in_web`, `renderButton` + `authenticationEvents`) → ID token de Google; `google_auth_service.dart`, `welcome_screen.dart`, `main.dart` | `mobile/test/google_signin_test.dart` (contrato `signInWithGoogle`/`completeGoogleSignIn` intacto) |
+| Backend verifica token de Google "puro" | `FirebaseAuthProvider` (`iss=accounts.google.com`, `aud=Web Client ID`); `google-auth`+`requests` en `pyproject.toml`; `AUTH_PROVIDER=firebase` + `GOOGLE_OAUTH_AUDIENCE` sin `FIREBASE_PROJECT_ID` | Verificación en vivo: `/auth/google` con token mock → **401** |
+| Gate #2 (sin PII) | la app solo entrega el ID token; backend guarda solo el `sub` opaco | `google_signin_test.dart` (sin email/name en el cuerpo) |
+| Gate #6 (conmutable) | `AUTH_MODE=mock`/`google`; `AUTH_PROVIDER=mock`/`firebase` | suites dev/test verdes en modo mock |
+
+Detalle en `docs/change-requests/CR-015-auth-google-sin-firebase.md`.
+
+## CR-016 — Botón "Instalar app" (PWA) en la app del voluntario
+
+Directo sobre `main` (solo web). Sin backend ni migración.
+
+| Requisito (usuario) | Implementación | Prueba |
+|---|---|---|
+| Botón propio "Instalar app" en Bienvenida y Perfil | `install_app_button.dart` (auto-oculta si no aplica); `welcome_screen.dart` + `profile_screen.dart` | `mobile/test/install_app_button_test.dart` (fuera de web no se muestra) |
+| Disparar instalación aunque el banner esté en cooldown | `index.html` captura `beforeinstallprompt`; servicio `pwa_install*.dart` (import condicional) | manual en navegador (Android) |
+| iOS sin prompt programático | instrucciones "Compartir → Agregar a inicio" | — |
+| Gate #3 (sin gating) | el botón es opcional; nunca bloquea el uso | revisión |
+
+Detalle en `docs/change-requests/CR-016-pwa-install.md`.
+
+## CR-017 — Imágenes y base de datos en el Cloud Volume (bind durable y configurable)
+
+Directo sobre `main` + aplicado en la VM. Infra/config; sin pruebas automáticas (verificación operativa).
+
+| Requisito (usuario) | Implementación | Prueba |
+|---|---|---|
+| Imágenes **y** DB en el Cloud Volume, no en el disco raíz | `docker-compose.prod.yml` parametrizado `${OBSDATA_HOST_DIR:-obsdata}` / `${PGDATA_HOST_DIR:-pgdata}`; `.env.prod` con las rutas; `--env-file` | verificación en VM: captura aterriza en `/mnt/HC_Volume_106165488/obsdata`; `df` crece |
+| Durable entre redeploys | parametrización versionada (ya no se edita el compose a mano) | runbooks actualizados sin paso de re-bind |
+| Gate #6 (storage conmutable) | ruta = config; dev usa volúmenes nombrados | — |
+
+Detalle en `docs/change-requests/CR-017-almacenamiento-cloud-volume.md`.
