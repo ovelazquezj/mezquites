@@ -1,11 +1,16 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../models/models.dart';
 import '../../state/providers.dart';
 import '../copy.dart';
 import '../widgets/common.dart';
 import '../widgets/disclaimer_dialog.dart';
+import '../widgets/google_sign_in_button.dart';
 import 'heat_map_screen.dart';
 import 'home_shell.dart';
 import 'legal_screen.dart';
@@ -29,10 +34,68 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   // CR-011 #5b: institución nueva a registrar desde el login (Option A: se solicita tras el login).
   String? _pendingNewInstitution;
 
+  /// `true` cuando el login real va por el botón GIS de Google (solo WEB con `AUTH_MODE=google`).
+  /// En ese caso NO se muestra el botón propio: GIS obliga a usar su botón renderizado.
+  bool _useGisButton = false;
+
+  /// Suscripción a los eventos de autenticación de GIS (solo en el modo botón web).
+  StreamSubscription<GoogleSignInAuthenticationEvent>? _authSub;
+
   @override
   void initState() {
     super.initState();
     _loadInstitutions();
+    _useGisButton = ref.read(appConfigProvider).usesGoogleSignIn && kIsWeb;
+    if (_useGisButton) {
+      // El usuario pulsa el botón GIS; al completar, GIS emite el evento con el ID token de Google.
+      _authSub = GoogleSignIn.instance.authenticationEvents.listen(
+        _onGisAuthEvent,
+        onError: (_) {
+          if (mounted) setState(() => _error = Copy.loginError);
+        },
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
+  }
+
+  /// Maneja un evento de GIS: al detectar sign-in, toma el ID token y completa el login.
+  void _onGisAuthEvent(GoogleSignInAuthenticationEvent event) {
+    if (event is GoogleSignInAuthenticationEventSignIn) {
+      final idToken = event.user.authentication.idToken;
+      if (idToken != null) {
+        _completeGisLogin(idToken);
+      }
+    }
+  }
+
+  /// Completa el login web con el ID token entregado por el botón GIS (mismo post-proceso que el
+  /// flujo nativo: registrar institución pendiente, disclaimer, navegar).
+  Future<void> _completeGisLogin(String idToken) async {
+    setState(() {
+      _signingIn = true;
+      _error = null;
+    });
+    final outcome = await ref
+        .read(authProvider.notifier)
+        .completeGoogleSignIn(idToken, institutionId: _selected?.id);
+    if (!mounted) return;
+    setState(() => _signingIn = false);
+    switch (outcome) {
+      case GoogleSignInOutcome.success:
+        await _registerPendingInstitution();
+        await _afterLogin();
+        break;
+      case GoogleSignInOutcome.cancelled:
+        break;
+      case GoogleSignInOutcome.error:
+        setState(() => _error = Copy.loginError);
+        break;
+    }
   }
 
   Future<void> _loadInstitutions() async {
@@ -209,21 +272,34 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                 Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
                 const SizedBox(height: 12),
               ],
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  key: const Key('sign_in_google'),
-                  onPressed: _signingIn ? null : _signInWithGoogle,
-                  icon: _signingIn
-                      ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+              if (_useGisButton)
+                // Web real: botón OFICIAL de Google (GIS). El botón propio no se usa porque GIS no
+                // permite iniciar sesión desde UI propia en el navegador; el login lo dispara este
+                // botón y se completa por `authenticationEvents` (ver initState).
+                Center(
+                  child: _signingIn
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: CircularProgressIndicator(),
                         )
-                      : const Icon(Icons.login),
-                  label: const Text(Copy.signInWithGoogle),
+                      : googleSignInButton(),
+                )
+              else
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    key: const Key('sign_in_google'),
+                    onPressed: _signingIn ? null : _signInWithGoogle,
+                    icon: _signingIn
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.login),
+                    label: const Text(Copy.signInWithGoogle),
+                  ),
                 ),
-              ),
               const SizedBox(height: 8),
               // Entrada pública al mapa de calor SIN iniciar sesión (CR-009,
               // gate #3: abre siempre; los datos públicos no requieren auth).

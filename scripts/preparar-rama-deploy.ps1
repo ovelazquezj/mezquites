@@ -16,22 +16,24 @@
 
 .PREREQUISITOS
   - Flutter 3.27 y git en PATH.
-  - `mobile/lib/firebase_options.dart` presente (config de Firebase) si AuthMode=firebase.
+  - Login con Google SIN Firebase (Google Identity Services): pasa el Web Client ID de OAuth
+    (Google Cloud > APIs y servicios > Credenciales) con -ClientId si AuthMode=google.
   - Tu rama actual (p. ej. main) COMMITEADA Y EMPUJADA: la rama deploy se basa en ese commit.
 
 .EXAMPLE
-  .\scripts\preparar-rama-deploy.ps1
-  # build con el dominio y auth del piloto, publica origin/deploy
+  .\scripts\preparar-rama-deploy.ps1 -ClientId "1234-abc.apps.googleusercontent.com"
+  # build con el dominio y login Google (GIS) del piloto, publica origin/deploy
 
 .EXAMPLE
   .\scripts\preparar-rama-deploy.ps1 -AuthMode mock
-  # piloto cerrado (sin Google); no requiere firebase_options.dart
+  # piloto cerrado (sin Google); no requiere Client ID
 #>
 [CmdletBinding()]
 param(
   [string]$Dominio  = "rescatando-el-mezquite.org",
   [string]$Rama     = "deploy",
-  [ValidateSet("firebase", "mock")] [string]$AuthMode = "firebase"
+  [ValidateSet("google", "mock")] [string]$AuthMode = "google",
+  [string]$ClientId = ""
 )
 $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent $PSScriptRoot
@@ -42,9 +44,9 @@ function Assert($cond, $msg) { if (-not $cond) { Write-Error $msg; exit 1 } }
 # 0. Validaciones -----------------------------------------------------------
 Assert (Get-Command flutter -ErrorAction SilentlyContinue) "Flutter no está en PATH."
 Assert (Get-Command git     -ErrorAction SilentlyContinue) "git no está en PATH."
-if ($AuthMode -eq "firebase") {
-  Assert (Test-Path "mobile/lib/firebase_options.dart") `
-    "Falta mobile/lib/firebase_options.dart. Configura Firebase (flutterfire configure) antes de compilar, o usa -AuthMode mock."
+if ($AuthMode -eq "google") {
+  Assert (-not [string]::IsNullOrWhiteSpace($ClientId)) `
+    "Falta -ClientId (Web Client ID de OAuth de Google Cloud, ...apps.googleusercontent.com). Pasalo, o usa -AuthMode mock."
 }
 $ramaActual = (git rev-parse --abbrev-ref HEAD).Trim()
 Assert ($ramaActual -ne $Rama) "Estás en la rama '$Rama'. Ejecuta el script desde tu rama de trabajo (p. ej. main)."
@@ -62,7 +64,8 @@ Push-Location mobile
 try {
   flutter build web --release `
     --dart-define=API_BASE_URL="https://app.$Dominio/api/v1" `
-    --dart-define=AUTH_MODE=$AuthMode
+    --dart-define=AUTH_MODE=$AuthMode `
+    --dart-define=GOOGLE_WEB_CLIENT_ID="$ClientId"
   Assert ($LASTEXITCODE -eq 0) "Falló el build del voluntario."
 } finally { Pop-Location }
 

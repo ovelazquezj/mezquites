@@ -51,12 +51,12 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   return client;
 });
 
-/// Servicio de "Entrar con Google" (CR-002), conmutable por `AUTH_MODE` (gate #6).
-/// Por defecto MOCK (offline, sin google-services.json); override en pruebas.
+/// Servicio de "Entrar con Google" (CR-002, sin Firebase), conmutable por `AUTH_MODE` (gate #6).
+/// Por defecto MOCK (offline); con `AUTH_MODE=google` usa Google Identity Services. Override en pruebas.
 final googleAuthServiceProvider = Provider<GoogleAuthService>((ref) {
   final config = ref.watch(appConfigProvider);
-  if (config.usesFirebase) {
-    return FirebaseGoogleAuthService();
+  if (config.usesGoogleSignIn) {
+    return GisGoogleAuthService();
   }
   return MockGoogleAuthService();
 });
@@ -87,12 +87,27 @@ class AuthController extends StateNotifier<AuthSession?> {
   final SessionStore _store;
   final SessionTracker _tracker;
 
-  /// "Entrar con Google": abre el flujo, manda el ID token al backend y guarda el JWT.
-  /// Devuelve [GoogleSignInOutcome.cancelled] si el usuario cerró el diálogo de Google.
+  /// "Entrar con Google": abre el flujo (móvil nativo / mock), manda el ID token al backend y guarda
+  /// el JWT. Devuelve [GoogleSignInOutcome.cancelled] si el usuario cerró el diálogo de Google.
+  /// En WEB-real el token llega por evento GIS; ver [completeGoogleSignIn].
   Future<GoogleSignInOutcome> signInWithGoogle({String? institutionId}) async {
     try {
       final idToken = await _google.signIn();
       if (idToken == null) return GoogleSignInOutcome.cancelled;
+      return completeGoogleSignIn(idToken, institutionId: institutionId);
+    } catch (_) {
+      return GoogleSignInOutcome.error;
+    }
+  }
+
+  /// Completa el login con un **ID token de Google ya obtenido**: lo manda al backend, guarda el JWT
+  /// y arranca el conteo de sesión. Lo usa el flujo WEB (botón GIS), donde el token llega por
+  /// `authenticationEvents` en vez de una llamada directa a `signIn()`.
+  Future<GoogleSignInOutcome> completeGoogleSignIn(
+    String idToken, {
+    String? institutionId,
+  }) async {
+    try {
       final session = await _api.loginWithGoogle(
         idToken: idToken,
         institutionId: institutionId,

@@ -24,14 +24,17 @@ dependencies:
   shared_preferences: ^2.3.3
   # Wordmark "Mezquite" en serif de Google Fonts (CR-003): se usa Fraunces.
   google_fonts: ^6.2.1
-  # --- Autenticación con identidad real (CR-002) ---
-  # Sign in with Google vía Firebase Auth. La app guarda SOLO el id opaco (provider+sub):
-  # nunca email/nombre (gate #2 acotado). Estas dependencias COMPILAN sin google-services.json;
-  # la inicialización real de Firebase es condicional (AUTH_MODE), de modo que `flutter build apk`
-  # y los tests funcionan en modo MOCK sin un proyecto Firebase real (ver docs/DESPLIEGUE.md).
-  firebase_core: ^3.6.0
-  firebase_auth: ^5.3.1
-  google_sign_in: ^6.2.1
+  # --- Autenticación con identidad real (CR-002, sin Firebase) ---
+  # Sign in with Google con Google Identity Services (GIS) DIRECTO, sin Firebase: el OAuth se
+  # configuró en Google Cloud (APIs y servicios). La app guarda SOLO el id opaco (provider+sub):
+  # nunca email/nombre (gate #2 acotado). En WEB el login usa el botón que renderiza el SDK
+  # (`renderButton`, de google_sign_in_web) y se obtiene el ID token de Google; el backend lo
+  # verifica (iss=accounts.google.com, aud=Web Client ID). En modo MOCK (por defecto) no se usa
+  # ninguna de estas librerías en red, así que `flutter build`/tests corren sin proyecto real.
+  # 7.0–7.1: 7.2+ exige Dart 3.7 (tenemos 3.6 con Flutter 3.27).
+  google_sign_in: ">=7.0.0 <7.2.0"
+  # Implementación web de google_sign_in: expone `renderButton` (web_only.dart) para el botón GIS.
+  google_sign_in_web: ^1.0.0
   # Captura por cámara en WEB (CR-005): image_picker(camera) -> bytes -> MultipartFile.fromBytes.
   # En navegador de teléfono/tablet abre la cámara real (gate #4, W0=a). El móvil NATIVO sigue
   # usando `camera`+`native_exif` (sin galería); image_picker solo se usa en la rama web.
