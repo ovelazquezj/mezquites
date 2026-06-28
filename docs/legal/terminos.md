@@ -1,13 +1,10 @@
 # Términos y Condiciones de uso
 
-> **BORRADOR — sujeto a revisión legal de la organización responsable.** Este documento es un
-> borrador de trabajo redactado por el equipo de desarrollo para cubrir el mínimo de cumplimiento
-> al lanzamiento. **No constituye asesoría legal.** El texto final debe ser revisado y
-> aprobado por el Club Rotario Bosques Aguascalientes y, en su caso, por asesoría jurídica antes
-> de publicarse. Cierra el pendiente *"texto final del disclaimer/aviso"* de la bitácora únicamente
-> cuando la organización responsable lo apruebe.
+> **Términos y Condiciones vigentes.** Responsable: **Club Rotario Bosques Aguascalientes**, con domicilio
+> en **Paseo de la Asunción #305, Jardines de Aguascalientes, C.P. 20270, Aguascalientes, México**.
+> Contacto: **contacto@rescatando-el-mezquite.org**.
 
-Última actualización del borrador: 2026-06-16.
+Última actualización: 2026-06-27.
 
 ## 1. Qué es esta plataforma
 
@@ -89,4 +86,4 @@ Aguascalientes** a través del administrador de la plataforma (ver el contacto d
 
 ---
 
-*Borrador del equipo de desarrollo (CR-006). Pendiente de revisión y aprobación del Club Rotario Bosques Aguascalientes.*
+*Términos y Condiciones aprobados por el Club Rotario Bosques Aguascalientes (CR-006).*
