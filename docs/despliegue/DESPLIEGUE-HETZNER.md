@@ -141,28 +141,32 @@ sudo mount /mnt/obsdata
 df -h /mnt/obsdata                                  # confirma el tamaño montado
 ```
 
-### 5.2 Apuntar el almacén de imágenes al volumen
+### 5.2 Apuntar imágenes y base de datos al volumen (CR-017)
 
-El `api` guarda las fotos en `/data/storage` (`STORAGE_LOCAL_DIR`), respaldado por el volumen Docker
-**`obsdata`**. Para que viva en el Cloud Volume, edita **una sola cosa** en
-[`infra/compose/docker-compose.prod.yml`](../../infra/compose/docker-compose.prod.yml) — el bloque
-`volumes:` del final:
+El `api` guarda las fotos en `/data/storage` y Postgres sus datos en `/var/lib/postgresql/data`. Para
+que **ambos vivan en el Cloud Volume** (y no saturen el disco raíz, que es chico), **no se edita el
+`compose`**: solo se definen dos variables en `.env.prod` apuntando a subcarpetas del volumen montado, y
+se corre el compose **con `--env-file`** (la interpolación las toma). El `compose` ya está parametrizado
+con `${OBSDATA_HOST_DIR:-obsdata}` y `${PGDATA_HOST_DIR:-pgdata}`.
 
-```yaml
-volumes:
-  pgdata:
-  obsdata:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /mnt/obsdata        # ← Cloud Volume de Hetzner montado en §5.1
-  caddy_data:
-  caddy_config:
+```bash
+# Punto de montaje del Cloud Volume (§5.1). En un volumen Hetzner GESTIONADO suele auto-montarse en
+# /mnt/HC_Volume_XXXXXXXX (revisa con `df -h | grep HC_Volume`); si lo montaste a mano, es /mnt/obsdata.
+VOL=/mnt/HC_Volume_XXXXXXXX
+sudo mkdir -p "$VOL/obsdata" "$VOL/pgdata"
+
+# En infra/compose/.env.prod (NO en el compose):
+#   OBSDATA_HOST_DIR=/mnt/HC_Volume_XXXXXXXX/obsdata
+#   PGDATA_HOST_DIR=/mnt/HC_Volume_XXXXXXXX/pgdata
 ```
 
-> El backend corre como `root` dentro del contenedor, así que escribe en `/mnt/obsdata` sin ajustes de
-> permisos. La **DB** se queda en el disco del servidor (volumen `pgdata`).
+Sin definir, el compose usa volúmenes nombrados de Docker (en el disco raíz): útil en dev, **no** en
+prod. **Siempre** levanta con `--env-file infra/compose/.env.prod` para que las variables se interpolen.
+
+> El backend y Postgres escriben en el bind sin ajustes de permisos. **Migración:** si ya había datos en
+> los volúmenes nombrados, cópialos con el stack **detenido** antes de levantar:
+> `docker compose ... down`; `cp -a /var/lib/docker/volumes/compose_pgdata/_data/. "$VOL/pgdata/"` (y el
+> equivalente para `obsdata`).
 
 ---
 

@@ -35,7 +35,9 @@
 
 - **Un solo `docker compose`** levanta los 3 servicios: `caddy`, `api`, `postgres`.
 - **Imágenes** de las observaciones: filesystem local (`STORAGE_BACKEND=local`, volumen `obsdata`). La DB
-  guarda **solo la clave**, nunca el binario.
+  guarda **solo la clave**, nunca el binario. **CR-017:** para que imágenes y DB vivan en un volumen
+  elástico (no en el disco raíz), define `OBSDATA_HOST_DIR`/`PGDATA_HOST_DIR` en `.env.prod` y levanta con
+  `--env-file`; sin definir, usa volúmenes nombrados de Docker.
 - **Cola §6 (YOLO) inactiva** (CR-001): `BROKER=memory`, **sin Redis** ni workers.
 - La API aplica las **migraciones Alembic al arrancar** (`alembic upgrade head`).
 

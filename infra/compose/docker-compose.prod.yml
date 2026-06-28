@@ -17,8 +17,10 @@ services:
     env_file: [.env.prod]
     # POSTGRES_USER/PASSWORD/DB se leen de .env.prod. La imagen postgis ya trae la extensión;
     # la migración 0001 ejecuta `CREATE EXTENSION postgis` sobre la base creada aquí.
+    # CR-017: PGDATA_HOST_DIR (en .env.prod) apunta los datos a un Cloud Volume y NO al disco raíz.
+    # Sin definir ⇒ volumen nombrado `pgdata` (dev). Requiere correr con `--env-file .env.prod`.
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ${PGDATA_HOST_DIR:-pgdata}:/var/lib/postgresql/data
     # Sin `ports`: la DB NO se expone fuera del host (solo la red interna la alcanza). Para un
     # psql manual: `docker compose ... exec postgres psql -U $POSTGRES_USER -d $POSTGRES_DB`.
     healthcheck:
@@ -34,8 +36,11 @@ services:
       dockerfile: backend/Dockerfile
     env_file: [.env.prod]
     # Imágenes en el filesystem del host (STORAGE_BACKEND=local). La DB guarda solo la clave.
+    # CR-017: OBSDATA_HOST_DIR (en .env.prod) apunta las imágenes a un Cloud Volume y NO al disco
+    # raíz (que es chico y se saturaría). Sin definir ⇒ volumen nombrado `obsdata` (dev). Requiere
+    # correr con `--env-file .env.prod`.
     volumes:
-      - obsdata:/data/storage
+      - ${OBSDATA_HOST_DIR:-obsdata}:/data/storage
     # Expuesto SOLO a localhost para smoke test/diagnóstico; el tráfico público entra por Caddy.
     ports:
       - "127.0.0.1:8000:8000"
