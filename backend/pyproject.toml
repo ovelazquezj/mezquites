@@ -19,7 +19,9 @@ dependencies = [
     "python-jose[cryptography]>=3.3",
     # Verificación del ID token de Google (AUTH_PROVIDER=firebase/google): valida firma/aud/iss
     # contra las llaves públicas de Google. Sin Firebase: el OAuth se configuró en Google Cloud.
+    # `requests` es el transporte HTTP que usa google-auth (google.auth.transport.requests).
     "google-auth>=2.0",
+    "requests>=2",
     "argon2-cffi>=23",
     "python-multipart>=0.0.9",
     "boto3>=1.34",
