@@ -6,6 +6,7 @@ import '../../state/providers.dart';
 import '../copy.dart';
 import '../widgets/branded_app_bar.dart';
 import '../widgets/common.dart';
+import '../widgets/install_app_button.dart';
 import 'about_screen.dart';
 import 'account_screen.dart';
 import 'help_screen.dart';
@@ -83,6 +84,11 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ],
               ),
+            ),
+            // Instalar como app (CR-016): se auto-oculta si no aplica (no-web / ya instalada).
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: InstallAppButton(),
             ),
             // Acerca de (CR-013): nombre, versión y créditos.
             Card(

@@ -51,6 +51,9 @@ dependencies:
   flutter_map: ^7.0.2
   # Tipo LatLng para flutter_map (centro de celda obfuscado, gate #5).
   latlong2: ^0.9.1
+  # --- Instalación como PWA (CR-016) ---
+  # Interop con el navegador (window/eventos) para el botón "Instalar app" (solo web).
+  web: ^1.1.0
 
 dev_dependencies:
   flutter_test:

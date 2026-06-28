@@ -11,6 +11,7 @@ import '../copy.dart';
 import '../widgets/common.dart';
 import '../widgets/disclaimer_dialog.dart';
 import '../widgets/google_sign_in_button.dart';
+import '../widgets/install_app_button.dart';
 import 'heat_map_screen.dart';
 import 'home_shell.dart';
 import 'legal_screen.dart';
@@ -312,6 +313,9 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                   label: const Text(Copy.publicMapButton),
                 ),
               ),
+              const SizedBox(height: 8),
+              // Instalar como app (CR-016): se auto-oculta si no aplica (no-web / ya instalada).
+              const Center(child: InstallAppButton()),
               const SizedBox(height: 8),
               // Enlace discreto de consentimiento (CR-006 §4.3). Informativo:
               // NO bloquea el inicio de sesión (gate #3).

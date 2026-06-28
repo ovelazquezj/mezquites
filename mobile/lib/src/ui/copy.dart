@@ -131,6 +131,14 @@ class Copy {
   /// Entrada pública SIN login desde la Bienvenida (gate #3: abre siempre).
   static const publicMapButton = 'Ver el mapa público';
 
+  /// Instalación como PWA (CR-016). Botón propio "Instalar app" + instrucción iOS.
+  static const installButton = 'Instalar app';
+  static const installTitle = 'Instalar la app';
+  static const installIosInstructions =
+      'En iPhone o iPad: toca el botón Compartir (el cuadro con la flecha ↑) '
+      'en la barra de Safari y elige "Agregar a inicio".';
+  static const installIosOk = 'Entendido';
+
   /// Botón "ⓘ": abre el panel con disclaimer + indicadores.
   static const mapInfoTooltip = 'Acerca de estos datos';
   static const mapInfoTitle = 'Acerca de estos datos';

@@ -47,6 +47,34 @@
       if (s) { s.style.opacity = '0'; setTimeout(function () { s.remove(); }, 320); }
     });
   </script>
+  <!-- PWA (CR-016): captura el evento de instalación para ofrecer un botón propio "Instalar app".
+       El navegador entrega `beforeinstallprompt` una sola vez; lo guardamos para dispararlo desde la
+       app aunque el banner automático esté en cooldown. iOS no emite el evento (instalación manual). -->
+  <script>
+    window._deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window._deferredInstallPrompt = e;
+      window.dispatchEvent(new Event('pwa-install-available'));
+    });
+    window.addEventListener('appinstalled', function () {
+      window._deferredInstallPrompt = null;
+      window.dispatchEvent(new Event('pwa-installed'));
+    });
+    window.pwaCanInstall = function () { return !!window._deferredInstallPrompt; };
+    window.pwaIsStandalone = function () {
+      return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+        || window.navigator.standalone === true;
+    };
+    window.pwaPromptInstall = async function () {
+      var e = window._deferredInstallPrompt;
+      if (!e) return 'unavailable';
+      e.prompt();
+      var choice = await e.userChoice;
+      window._deferredInstallPrompt = null;
+      return (choice && choice.outcome) ? choice.outcome : 'dismissed';
+    };
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
