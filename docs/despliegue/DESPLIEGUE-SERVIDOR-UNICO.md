@@ -5,6 +5,8 @@
 > cualquier cloud o un servidor propio/on-prem), listo para el **primer piloto a producción**.
 > **Agnóstico de proveedor:** sirve para AWS/GCP/Azure/DigitalOcean/Hetzner o hierro propio; solo
 > necesitas una máquina Linux con Docker y un dominio. Diseño y justificación: [`CR-014`](../change-requests/CR-014-despliegue-servidor-unico.md).
+> **Guía concreta para Hetzner (la opción más barata para el piloto, con sizing y costos):**
+> [`DESPLIEGUE-HETZNER.md`](DESPLIEGUE-HETZNER.md).
 > **Alternativa gestionada (sin K8s):** ruta Azure en [`CR-008`](../change-requests/CR-008-despliegue-azure.md) / [`DESPLIEGUE.md`](DESPLIEGUE.md) §5-bis.
 
 Última actualización: 2026-06-18.
@@ -67,8 +69,11 @@ En el servidor:
 - **git**, **curl**, **openssl** (para clonar, probar y generar `AUTH_SECRET`).
 - **Reloj sincronizado** (NTP) y zona horaria correcta (TLS y tokens lo agradecen).
 
-Para **compilar los bundles Flutter Web** (puedes hacerlo en el propio servidor o en una máquina de build
-y copiar el resultado):
+Para **compilar los bundles Flutter Web** — **hazlo en una máquina de build (tu PC/CI), NO en el servidor**
+si la VM es chica (≤ 4 GB RAM): `flutter build web` consume 2–4 GB y puede tronar. Copia el `build/web`
+resultante al servidor (`rsync`/`scp`) o publícalo en una rama `deploy` (ver
+[`DESPLIEGUE-HETZNER.md §9`](DESPLIEGUE-HETZNER.md) y `scripts/preparar-rama-deploy.ps1`). En la máquina de
+build necesitas:
 
 - **Flutter 3.27** (incluye Dart).
 - **Node.js ≥ 18** + **Firebase CLI** (`firebase-tools`) + **FlutterFire CLI** — solo para configurar Firebase
@@ -91,7 +96,11 @@ docker compose version          # confirma Compose v2
    - `admin.<dominio>` → IP del servidor (web-admin)
 2. **Proyecto Firebase / Google Cloud** con *Sign in with Google* (ver §5). **Sin esto el público no puede
    autenticarse** (el `mock` no es para producción abierta).
-3. **Aviso de privacidad publicado** (lo exige la pantalla de consentimiento de Google y la LFPDPPP).
+3. **Aviso de privacidad** (lo exige la pantalla de consentimiento de Google y la LFPDPPP). El stack ya lo
+   **sirve** como página estática en `https://app.<dominio>/aviso-privacidad` (y `/terminos`) vía Caddy
+   (`infra/compose/legal/*.html`, fuente editable en [`docs/legal/`](../legal/)); esa es la URL para Google.
+   **Pendiente humano:** el Club **finaliza y aprueba el texto** (hoy BORRADOR: responsable/contacto sin
+   definir) antes de abrir al público.
 4. **(Opcional) Proveedor SMTP** para el reset de contraseña del administrador. Si no hay, el reset degrada
    a "lo hace el administrador" (no bloquea el arranque).
 
@@ -168,9 +177,14 @@ En `.env.prod`: `AUTH_PROVIDER=firebase` y `FIREBASE_PROJECT_ID=<PROJECT_ID>` (e
 
 ---
 
-## 6. Compilar las imágenes y los bundles web
+## 6. Compilar los bundles web (en una máquina de build, **no** en una VM chica)
 
-En el servidor (o en una máquina de build; si es otra, copia `build/web` al servidor por `rsync`/`scp`):
+> **VM ≤ 4 GB RAM:** compila **fuera del servidor** y lleva el `build/web` ya hecho. La forma recomendada
+> para el piloto Hetzner es la rama `deploy` (`scripts/preparar-rama-deploy.ps1`), ver
+> [`DESPLIEGUE-HETZNER.md §9`](DESPLIEGUE-HETZNER.md). Lo de abajo es el build manual (sirve también en CI).
+
+En la máquina de build (o, solo si la VM tiene RAM de sobra, en el propio servidor; copia `build/web` por
+`rsync`/`scp` si es otra máquina):
 
 ```bash
 git clone <REPO_URL> mezquite && cd mezquite

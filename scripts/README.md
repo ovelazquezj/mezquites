@@ -65,6 +65,24 @@ Python 3 (sirve el web y el proxy). PIDs/logs en `.logs\` (ignorado por git).
 
 ---
 
+## `preparar-rama-deploy.ps1` — build LOCAL + publicar la rama `deploy` (producción)
+
+La VM del piloto (CX22, 4 GB) **no compila Flutter**. Este script, en tu **PC (Windows)**, compila los dos
+bundles web y publica la rama **`deploy`** en GitHub con los compilados, lista para que el agente la
+despliegue en la VM **sin Flutter** (ver `docs/despliegue/DESPLIEGUE-AGENTE.md` y `DESPLIEGUE-HETZNER.md §9`).
+
+```powershell
+.\scripts\preparar-rama-deploy.ps1                 # dominio del piloto, AUTH_MODE=firebase
+.\scripts\preparar-rama-deploy.ps1 -AuthMode mock  # piloto cerrado (sin Google)
+.\scripts\preparar-rama-deploy.ps1 -Dominio otro-dominio.org
+```
+
+Requisitos: **Flutter 3.27** + git en PATH; `mobile/lib/firebase_options.dart` presente (si `firebase`); tu
+rama de trabajo **commiteada y empujada** (la rama `deploy` se basa en ese commit). Crea/actualiza
+`deploy` = (tu rama) + `mobile/build/web` + `web-admin/build/web` y hace `git push --force origin deploy`.
+
+---
+
 ## Uso
 
 Desde la raíz del repo:
