@@ -27,6 +27,20 @@
 		reverse_proxy api:8000
 	}
 
+	# Páginas legales PÚBLICAS como HTML estático (sin login, sin depender del SPA): URL estable
+	# que cumple el requisito de la pantalla de consentimiento OAuth de Google y la accesibilidad
+	# de la LFPDPPP. Fuente editable: docs/legal/*.md → artefactos servidos: infra/compose/legal/*.html.
+	handle /aviso-privacidad {
+		root * /srv/legal
+		try_files /aviso-privacidad.html
+		file_server
+	}
+	handle /terminos {
+		root * /srv/legal
+		try_files /terminos.html
+		file_server
+	}
+
 	# SPA Flutter Web: si la ruta no existe como archivo, sirve index.html.
 	handle {
 		root * /srv/voluntario

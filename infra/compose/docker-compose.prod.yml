@@ -58,6 +58,9 @@ services:
       # Bundles Flutter Web ya compilados (ver runbook §6). Solo lectura.
       - ../../mobile/build/web:/srv/voluntario:ro
       - ../../web-admin/build/web:/srv/admin:ro
+      # Páginas legales públicas (aviso de privacidad / términos) servidas en /aviso-privacidad y
+      # /terminos del dominio del voluntario: URL estable para OAuth de Google + LFPDPPP.
+      - ./legal:/srv/legal:ro
       # Persistencia de certificados y estado de Caddy (no re-emitir TLS en cada reinicio).
       - caddy_data:/data
       - caddy_config:/config

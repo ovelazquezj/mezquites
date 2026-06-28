@@ -5,8 +5,9 @@ class Copy {
   Copy._();
 
   /// Organización responsable del proyecto (decisión del usuario, 2026-06-17).
-  /// Centralizado para no repetirlo y poder ajustarlo en un solo lugar. La
-  /// denominación legal exacta, domicilio y contacto oficiales siguen pendientes.
+  /// Centralizado para no repetirlo y poder ajustarlo en un solo lugar. Domicilio y
+  /// contacto oficiales (CR-006): Paseo de la Asunción #305, Jardines de Aguascalientes,
+  /// C.P. 20270, Aguascalientes, México · contacto@rescatando-el-mezquite.org.
   static const orgName = 'Club Rotario Bosques Aguascalientes';
 
   static const appTitle = 'Mezquite — Ciencia ciudadana';
@@ -266,8 +267,9 @@ class Copy {
       'Cómo ejercer tus derechos. Solicita el ejercicio de tus derechos ARCO a '
       'través del $orgName, en el contacto indicado abajo.\n\n'
       'Contacto. Para dudas sobre privacidad o para ejercer tus derechos, '
-      'escribe al $orgName: privacidad@proyecto-mezquite.org '
-      '(contacto provisional, pendiente de confirmación).';
+      'escribe al $orgName (Paseo de la Asunción #305, Jardines de '
+      'Aguascalientes, C.P. 20270, Aguascalientes, México): '
+      'contacto@rescatando-el-mezquite.org.';
 
   /// Etiqueta de identidad L3 → texto legible (Q4).
   static String identityLabel(String key) =>

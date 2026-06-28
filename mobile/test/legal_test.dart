@@ -56,9 +56,9 @@ void main() {
     expect(privacy.contains('no guardamos tu correo'), isTrue);
     // El cuerpo no incluye datos personales reales.
     expect(
-      Copy.privacyBody.contains('@proyecto-mezquite.org'),
+      Copy.privacyBody.contains('contacto@rescatando-el-mezquite.org'),
       isTrue,
-      reason: 'el contacto es del consorcio, no un dato del voluntario',
+      reason: 'el contacto es del Club (organización responsable), no un dato del voluntario',
     );
   });
 

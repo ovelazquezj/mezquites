@@ -1,19 +1,17 @@
 # Aviso de privacidad
 
-> **BORRADOR — sujeto a revisión legal de la organización responsable.** Redactado por el equipo de desarrollo
-> conforme a la **Ley Federal de Protección de Datos Personales en Posesión de los Particulares
-> (LFPDPPP)** para cubrir el mínimo de cumplimiento al lanzamiento. **No constituye asesoría
-> legal.** El texto final, así como la identidad del responsable y los datos de contacto, deben
-> ser revisados y aprobados por el Club Rotario Bosques Aguascalientes antes de publicarse.
+> **Aviso de privacidad vigente.** Responsable: **Club Rotario Bosques Aguascalientes**, con domicilio en
+> **Paseo de la Asunción #305, Jardines de Aguascalientes, C.P. 20270, Aguascalientes, México**. Contacto
+> para privacidad y ejercicio de derechos ARCO: **contacto@rescatando-el-mezquite.org**. Elaborado conforme
+> a la **Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP)**.
 
-Última actualización del borrador: 2026-06-16.
+Última actualización: 2026-06-25.
 
 ## 1. Responsable del tratamiento
 
-El **Club Rotario Bosques Aguascalientes** (en adelante, "el Club") es el
-responsable del tratamiento de los datos personales recabados a través de esta plataforma.
-*(La denominación legal exacta, el domicilio y los datos de contacto quedan pendientes de
-definición — decisión humana.)*
+El **Club Rotario Bosques Aguascalientes** (en adelante, "el Club"), con domicilio en **Paseo de la
+Asunción #305, Jardines de Aguascalientes, C.P. 20270, Aguascalientes, México**, es el responsable del
+tratamiento de los datos personales recabados a través de esta plataforma. Datos de contacto en el punto 9.
 
 ## 2. Datos personales que se recaban
 
@@ -93,10 +91,13 @@ las imágenes salvo para aliados firmantes autorizados.
 
 ## 9. Contacto
 
-Para ejercer tus derechos ARCO o resolver dudas sobre este aviso, contacta al **Club Rotario
-Bosques Aguascalientes** a través del **administrador de la plataforma**.
-*(El correo/medio de contacto oficial queda pendiente de definición —
-decisión humana.)*
+Para ejercer tus derechos ARCO o resolver dudas sobre este aviso, contacta al **Club Rotario Bosques
+Aguascalientes**:
+
+- **Correo:** contacto@rescatando-el-mezquite.org
+- **Domicilio:** Paseo de la Asunción #305, Jardines de Aguascalientes, C.P. 20270, Aguascalientes, México
+
+También puedes canalizar tu solicitud a través del **administrador de la plataforma**.
 
 ## 10. Cambios a este aviso
 
@@ -105,4 +106,4 @@ de la plataforma.
 
 ---
 
-*Borrador del equipo de desarrollo (CR-006). Pendiente de revisión y aprobación del Club Rotario Bosques Aguascalientes.*
+*Aviso de privacidad aprobado por el Club Rotario Bosques Aguascalientes (CR-006).*

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<!--
+  Página pública del AVISO DE PRIVACIDAD — artefacto PUBLICADO que sirve Caddy en
+  https://app.<dominio>/aviso-privacidad  (un solo origen, sin login, sin SPA).
+  Sirve para cumplir el requisito de la pantalla de consentimiento OAuth de Google
+  y la accesibilidad que exige la LFPDPPP.
+
+  Fuente editable / canónica: docs/legal/aviso-privacidad.md  (CR-006).
+  Texto APROBADO por el Club Rotario Bosques Aguascalientes (responsable, domicilio y contacto reales).
+  Al actualizar el .md, sincroniza este HTML.
+-->
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index,follow">
+  <title>Aviso de privacidad — Ciencia ciudadana del mezquite</title>
+  <style>
+    :root { color-scheme: light; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6; color: #1f2933; background: #f7f9fb;
+      margin: 0; padding: 2rem 1rem;
+    }
+    main { max-width: 820px; margin: 0 auto; background: #fff; padding: 2rem 2.25rem;
+           border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    h1 { color: #16324f; font-size: 1.8rem; margin-top: 0; }
+    h2 { color: #16324f; font-size: 1.2rem; margin-top: 2rem; border-bottom: 1px solid #e3e8ee;
+         padding-bottom: .3rem; }
+    a { color: #1d6fb8; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { border: 1px solid #d6dde4; padding: .55rem .7rem; text-align: left; vertical-align: top; }
+    th { background: #eef3f7; }
+    .draft { background: #fff4e5; border: 1px solid #ffd28a; border-radius: 8px;
+             padding: .9rem 1.1rem; font-size: .92rem; margin-bottom: 1.5rem; }
+    .meta { color: #67727e; font-size: .9rem; }
+    footer { margin-top: 2.5rem; color: #67727e; font-size: .85rem; border-top: 1px solid #e3e8ee;
+             padding-top: 1rem; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Aviso de privacidad</h1>
+
+  <p class="meta">
+    <strong>Responsable:</strong> Club Rotario Bosques Aguascalientes ·
+    <strong>Domicilio:</strong> Paseo de la Asunción #305, Jardines de Aguascalientes, C.P. 20270,
+    Aguascalientes, México ·
+    <strong>Contacto:</strong>
+    <a href="mailto:contacto@rescatando-el-mezquite.org">contacto@rescatando-el-mezquite.org</a><br>
+    Elaborado conforme a la LFPDPPP. Última actualización: 2026-06-25.
+  </p>
+
+  <h2>1. Responsable del tratamiento</h2>
+  <p>El <strong>Club Rotario Bosques Aguascalientes</strong> (en adelante, "el Club"), con domicilio en
+  <strong>Paseo de la Asunción #305, Jardines de Aguascalientes, C.P. 20270, Aguascalientes, México</strong>,
+  es el responsable del tratamiento de los datos personales recabados a través de esta plataforma. Datos de
+  contacto en el punto 9.</p>
+
+  <h2>2. Datos personales que se recaban</h2>
+  <p>La plataforma aplica <strong>minimización de datos</strong>. Según el tipo de cuenta:</p>
+  <table>
+    <thead>
+      <tr><th>Tipo de cuenta</th><th>Datos personales que se guardan</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Voluntario</strong> (app móvil/web)</td>
+        <td>Únicamente un <strong>identificador opaco</strong> del proveedor de identidad (Google).
+        <strong>No</strong> se guarda tu nombre, correo, teléfono ni foto de perfil. Se genera además
+        un <strong>usuario</strong> público (handle) seudónimo.</td>
+      </tr>
+      <tr>
+        <td><strong>Administrador</strong> (consola de administración)</td>
+        <td><strong>Usuario</strong> y, <strong>solo en este rol</strong>, un <strong>correo
+        electrónico</strong> para poder restablecer la contraseña.</td>
+      </tr>
+      <tr>
+        <td><strong>Evaluador / Analista</strong> (consola de administración)</td>
+        <td><strong>Usuario</strong> y contraseña. <strong>No</strong> se guarda correo.</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Las contraseñas se almacenan <strong>cifradas</strong> (hash con argon2); nunca en texto claro.</p>
+  <p>Adicionalmente, cada observación incluye <strong>datos de la observación</strong> (fotografía del
+  árbol, ubicación geográfica, fecha de captura y atributos autodeclarados del árbol). La ubicación se
+  considera dato del árbol, no de la persona, y se protege según el punto 5.</p>
+
+  <h2>3. Finalidad del tratamiento</h2>
+  <p>Los datos se tratan para:</p>
+  <ul>
+    <li>operar la plataforma de ciencia ciudadana (registrar y mostrar tus aportes de forma seudónima);</li>
+    <li>organizar, revisar y publicar el <strong>dato ecológico agregado</strong> del mezquite y sus
+      parásitos con fines de investigación, educación y gestión ambiental;</li>
+    <li>mantener la seguridad de las cuentas (autenticación y, para el administrador, recuperación de
+      acceso por correo).</li>
+  </ul>
+  <p><strong>No</strong> se realiza mercadotecnia, perfilamiento comercial ni decisiones automatizadas
+  que produzcan efectos jurídicos sobre las personas.</p>
+
+  <h2>4. No venta ni cesión indebida</h2>
+  <p>El Club <strong>no vende</strong> tus datos personales ni los cede a terceros con fines comerciales.
+  El dato ecológico que se publica como dato abierto va <strong>agregado y seudonimizado</strong>, y la
+  ubicación va <strong>obfuscada</strong> según el punto 5.</p>
+
+  <h2>5. Protección de la ubicación (obfuscación)</h2>
+  <p>Para proteger los árboles, la <strong>ubicación visible en el panel público nunca es más precisa
+  que una cuadrícula de ~300 m</strong>. Las <strong>coordenadas exactas</strong> solo son accesibles
+  para <strong>aliados firmantes</strong> autorizados por el Club, bajo el acuerdo de aliados
+  correspondiente.</p>
+
+  <h2>6. Conservación de los datos</h2>
+  <ul>
+    <li>Los <strong>datos de identidad</strong> se conservan mientras la cuenta exista.</li>
+    <li>El <strong>dato ecológico</strong> (observaciones) puede conservarse de forma indefinida, ya que
+      su valor científico es permanente; cuando una persona cancela su cuenta, sus observaciones se
+      <strong>anonimizan</strong> y permanecen en el dataset desligadas de ella.</li>
+    <li>Los <strong>registros de auditoría</strong> de acciones administrativas (p. ej. la cancelación de
+      una cuenta) se conservan <strong>sin datos personales</strong> (solo un identificador opaco, quién
+      ejecutó la acción y la fecha).</li>
+  </ul>
+
+  <h2>7. Derechos ARCO y cómo ejercerlos</h2>
+  <p>Conforme a la LFPDPPP tienes derecho de <strong>Acceso, Rectificación, Cancelación y Oposición
+  (ARCO)</strong> sobre tus datos personales.</p>
+  <ul>
+    <li><strong>Cancelación (eliminar tu cuenta):</strong> disponible hoy. Al ejecutarla, tu identidad se
+      <strong>elimina</strong> (se borra el identificador del proveedor, el usuario, el correo y los
+      hashes de contraseña) y tus observaciones se <strong>anonimizan</strong> (se reasignan a una cuenta
+      centinela y el usuario mostrado pasa a <code>anonimo</code>); el <strong>dato ecológico se
+      conserva</strong> en el panel público. La acción queda <strong>auditada sin datos personales</strong>.</li>
+    <li><strong>Acceso, Rectificación y Oposición:</strong> se atienden caso por caso por el Club mientras
+      se habilita el autoservicio.</li>
+  </ul>
+  <p><strong>Cómo ejercerlos hoy:</strong> envía tu solicitud al <strong>Club Rotario Bosques
+  Aguascalientes</strong> a través del <strong>administrador</strong> de la plataforma (ver contacto en el
+  punto 9). Por ahora la cancelación la <strong>ejecuta el administrador</strong> desde la consola de
+  administración (no es autoservicio del usuario). <em>(El procedimiento formal de atención de solicitudes
+  ARCO y los plazos de respuesta quedan pendientes de definición.)</em></p>
+
+  <h2>8. Seguridad</h2>
+  <p>La plataforma aplica medidas técnicas razonables: contraseñas cifradas (argon2), tokens de sesión sin
+  datos personales, control de acceso por rol y saneamiento de los metadatos GPS de las imágenes salvo
+  para aliados firmantes autorizados.</p>
+
+  <h2>9. Contacto</h2>
+  <p>Para ejercer tus derechos ARCO o resolver dudas sobre este aviso, contacta al <strong>Club Rotario
+  Bosques Aguascalientes</strong>:</p>
+  <ul>
+    <li><strong>Correo:</strong>
+      <a href="mailto:contacto@rescatando-el-mezquite.org">contacto@rescatando-el-mezquite.org</a></li>
+    <li><strong>Domicilio:</strong> Paseo de la Asunción #305, Jardines de Aguascalientes, C.P. 20270,
+      Aguascalientes, México</li>
+  </ul>
+  <p>También puedes canalizar tu solicitud a través del <strong>administrador de la plataforma</strong>.</p>
+
+  <h2>10. Cambios a este aviso</h2>
+  <p>El Club puede actualizar este aviso. Los cambios relevantes se comunicarán por los canales de la
+  plataforma.</p>
+
+  <footer>
+    Aviso de privacidad aprobado por el Club Rotario Bosques Aguascalientes (CR-006). · Ver también los
+    <a href="/terminos">Términos y Condiciones</a>.
+  </footer>
+</main>
+</body>
+</html>
