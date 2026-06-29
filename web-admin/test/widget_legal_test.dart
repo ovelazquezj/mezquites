@@ -4,10 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mezquite_web_admin/src/screens/legal_screen.dart';
 import 'package:mezquite_web_admin/src/ui/copy.dart';
 
-/// CR-006 — AC4: Términos y Aviso de privacidad accesibles y marcados BORRADOR.
+/// CR-006/CR-020 — AC4: Términos y Aviso de privacidad accesibles y APROBADOS
+/// (ya no llevan sello de borrador).
 
 void main() {
-  testWidgets('la pantalla Legal muestra Términos, Aviso y el sello de BORRADOR',
+  testWidgets('la pantalla Legal muestra Términos y Aviso, sin sello de borrador',
       (tester) async {
     tester.view.physicalSize = const Size(1200, 2400);
     tester.view.devicePixelRatio = 1.0;
@@ -24,9 +25,9 @@ void main() {
     expect(find.text(Copy.legalTermsTitle), findsOneWidget);
     expect(find.text(Copy.legalPrivacyTitle), findsOneWidget);
 
-    // Marcado claramente como BORRADOR sujeto a revisión legal.
-    expect(find.byKey(const Key('legal-draft-badge')), findsOneWidget);
-    expect(find.text(Copy.legalDraftBadge), findsOneWidget);
+    // CR-020: ya NO hay sello de borrador (textos aprobados).
+    expect(find.byKey(const Key('legal-draft-badge')), findsNothing);
+    expect(find.textContaining('BORRADOR'), findsNothing);
 
     // Menciona derechos ARCO (cómo ejercerlos).
     expect(find.textContaining('ARCO'), findsWidgets);

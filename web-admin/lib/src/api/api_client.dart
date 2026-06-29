@@ -473,5 +473,35 @@ class ApiClient {
     throw ApiException(r.statusCode, 'No se pudo descargar el CSV', body: r.body);
   }
 
+  // --- Reportes de problemas (CR-019): rol admin (admin_consorcio/administrador) ---
+
+  /// Lista de reportes de problemas que envían las apps (GET /admin/problem-reports).
+  /// Requiere rol admin; lanza [ApiException] 403 si el rol no es suficiente.
+  /// Sin PII más allá del handle seudónimo (gate #2).
+  Future<List<ProblemReport>> listProblemReports() async {
+    final r = await _http.get(
+      _uri('/admin/problem-reports'),
+      headers: _headers(json: false),
+    );
+    return _decodeList(r)
+        .map((e) => ProblemReport.fromJson((e as Map).cast()))
+        .toList();
+  }
+
+  /// Cambia el estado de un reporte (POST /admin/problem-reports/{id}/status).
+  /// `status`: 'visto' | 'resuelto'. Devuelve el reporte actualizado si el backend
+  /// lo incluye en la respuesta.
+  Future<ProblemReport> setProblemReportStatus({
+    required String id,
+    required String status,
+  }) async {
+    final r = await _http.post(
+      _uri('/admin/problem-reports/$id/status'),
+      headers: _headers(),
+      body: json.encode({'status': status}),
+    );
+    return ProblemReport.fromJson(_decode(r));
+  }
+
   void close() => _http.close();
 }

@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import '../ui/copy.dart';
 
 /// Legal (CR-006): Términos y Condiciones + Aviso de privacidad, accesibles desde
-/// la consola de administración. Es un **BORRADOR** (lo marca el badge) sujeto a
-/// revisión legal de la organización responsable; no es asesoría legal. La fuente completa vive en
-/// `docs/legal/terminos.md` y `docs/legal/aviso-privacidad.md`; aquí se muestra un
-/// resumen accesible de las secciones clave (incluye derechos ARCO y obfuscación
-/// a 300 m del gate #5, enmendado por CR-009). No introduce PII (gate #2).
+/// la consola de administración. **APROBADOS** por la organización responsable
+/// (Aviso de privacidad 2026-06-25, Términos 2026-06-27; CR-020): ya no llevan
+/// sello de borrador. La fuente completa vive en `docs/legal/terminos.md` y
+/// `docs/legal/aviso-privacidad.md`; aquí se muestra un resumen accesible de las
+/// secciones clave (incluye derechos ARCO y obfuscación a 300 m del gate #5,
+/// enmendado por CR-009). No introduce PII (gate #2).
 class LegalScreen extends StatelessWidget {
   const LegalScreen({super.key});
 
@@ -20,8 +21,6 @@ class LegalScreen extends StatelessWidget {
         Text(Copy.navLegal, style: theme.textTheme.displayLarge),
         const SizedBox(height: 8),
         Text(Copy.legalIntro, style: theme.textTheme.bodyMedium),
-        const SizedBox(height: 12),
-        _DraftBadge(),
         const SizedBox(height: 16),
 
         // --- Términos y Condiciones ---
@@ -87,42 +86,13 @@ class LegalScreen extends StatelessWidget {
                     'esta consola; el resto se atiende caso por caso. Para ejercerlos, '
                     'contacta al ${Copy.orgName} a través del administrador de la plataforma.'),
             _Section('Contacto',
-                '${Copy.orgName}, a través del administrador de la '
-                    'plataforma. El medio de contacto oficial queda pendiente de '
-                    'definición.'),
+                'Para dudas de privacidad o ejercer tus derechos, escribe al '
+                    '${Copy.orgName} (Paseo de la Asunción #305, Jardines de '
+                    'Aguascalientes, C.P. 20270, Aguascalientes, México): '
+                    'contacto@rescatando-el-mezquite.org.'),
           ],
         ),
       ],
-    );
-  }
-}
-
-class _DraftBadge extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      key: const Key('legal-draft-badge'),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.warning_amber_outlined,
-              color: theme.colorScheme.onErrorContainer, size: 20),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              Copy.legalDraftBadge,
-              style: theme.textTheme.labelLarge
-                  ?.copyWith(color: theme.colorScheme.onErrorContainer),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

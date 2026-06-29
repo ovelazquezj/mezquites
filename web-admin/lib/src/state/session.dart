@@ -46,6 +46,10 @@ class SessionState {
   /// Datos y descargas del analista (CR-010 #3): `analista`/`administrador`.
   bool get canSeeData => session?.canSeeData ?? false;
 
+  /// Reportes de problemas (CR-019): `admin_consorcio`/`administrador` (igual que
+  /// los módulos de consola). La autorización real la impone el backend.
+  bool get canSeeProblemReports => session?.canSeeProblemReports ?? false;
+
   SessionState copyWith({AuthSession? session, String? error}) =>
       SessionState(session: session, error: error);
 }

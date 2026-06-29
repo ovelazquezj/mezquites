@@ -58,6 +58,8 @@ class Copy {
   static const navUsers = 'Usuarios del equipo';
   // Cancelación de cuenta — derecho ARCO (CR-006, solo administrador).
   static const navAccounts = 'Eliminar cuenta';
+  // Reportes de problemas (CR-019, admin_consorcio/administrador).
+  static const navProblems = 'Reportes';
   // Términos y Aviso de privacidad (CR-006).
   static const navLegal = 'Legal';
   // Acerca de (CR-013): nombre, versión y créditos. Visible a toda la consola.
@@ -80,13 +82,12 @@ class Copy {
   static const accountsConfirmCancel = 'Cancelar';
   static const accountsConfirmOk = 'Sí, eliminar';
 
-  // --- Legal: Términos y Aviso de privacidad (CR-006) ---
+  // --- Legal: Términos y Aviso de privacidad (CR-006; APROBADOS, CR-020) ---
   static const legalIntro =
-      'Términos y Condiciones y Aviso de privacidad del piloto. Son un BORRADOR '
-      'sujeto a revisión legal del $orgName; no constituyen asesoría legal.';
+      'Términos y Condiciones y Aviso de privacidad del piloto, aprobados por el '
+      '$orgName. La versión completa vive en docs/legal/.';
   static const legalTermsTitle = 'Términos y Condiciones';
   static const legalPrivacyTitle = 'Aviso de privacidad';
-  static const legalDraftBadge = 'BORRADOR · sujeto a revisión legal del $orgName';
 
   // --- Revisión humana (CR-001) ---
   static const reviewIntro =
@@ -146,6 +147,46 @@ class Copy {
   static const dataSummaryByRevision = 'Por estado de revisión';
   static const dataSummaryByNivel = 'Por nivel de paxtle';
   static const dataSummaryByMunicipio = 'Por municipio';
+
+  // --- Reportes de problemas (CR-019, admin) ---
+  static const problemsTitle = 'Reportes de problemas';
+  static const problemsIntro =
+      'Avisos de problemas que envían las personas usuarias desde las apps. '
+      'Márcalos como "Visto" cuando los estés atendiendo y como "Resuelto" '
+      'cuando queden arreglados.';
+  static const problemsRefresh = 'Actualizar';
+  static const problemsLoadError =
+      'No se pudieron cargar los reportes. Inténtalo de nuevo.';
+  static const problemsEmpty = 'No hay reportes de problemas por ahora.';
+  static const problemsViewDetail = 'Ver detalle';
+  static const problemsMarkSeen = 'Visto';
+  static const problemsMarkResolved = 'Resuelto';
+  static const problemsMarkedSeen = 'Reporte marcado como visto.';
+  static const problemsMarkedResolved = 'Reporte marcado como resuelto.';
+  static const problemsActionError =
+      'No se pudo actualizar el reporte. Inténtalo de nuevo.';
+  static const problemsAnon = 'Anónimo';
+  static const problemsDetailTitle = 'Detalle del reporte';
+  static const problemsNoMessage = 'Sin mensaje.';
+  static const problemsNoDetail = 'No hay detalle técnico para este reporte.';
+  static const problemsDetailLabel = 'Detalle técnico';
+  static const problemsMessageLabel = 'Mensaje';
+  static const problemsContextLabel = 'Contexto';
+  static const problemsDateLabel = 'Fecha';
+  static const problemsUserLabel = 'Usuario';
+  static const problemsBrowserLabel = 'Navegador';
+  static const problemsPlatformLabel = 'Plataforma';
+  static const problemsVersionLabel = 'Versión';
+  static const problemsStatusLabel = 'Estado';
+
+  /// Estado de un reporte de problema (wire del backend) → etiqueta legible.
+  static String problemStatus(String wire) =>
+      const {
+        'nuevo': 'Nuevo',
+        'visto': 'Visto',
+        'resuelto': 'Resuelto',
+      }[wire] ??
+      wire;
 
   /// Etiqueta legible de las claves de indicadores que entrega el backend
   /// (`/public/indicators`). Si una clave no está mapeada, se humaniza el

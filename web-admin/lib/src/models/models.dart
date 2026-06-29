@@ -39,6 +39,10 @@ class AuthSession {
   /// Datos y descargas (CR-010 #3): `analista` y `administrador`.
   bool get canSeeData => role == 'analista' || role == 'administrador';
 
+  /// Reportes de problemas (CR-019): mismo gateo que los módulos de consola —
+  /// `admin_consorcio` y `administrador` (los roles que administran el piloto).
+  bool get canSeeProblemReports => isAdmin || isAdministrador;
+
   /// Roles con acceso a la consola de administración (CR-001 amplía los de revisión).
   bool get canEnterAdminConsole => isAdmin || canReview;
 }
@@ -568,6 +572,59 @@ class Indicators {
         ecologico: ((j['ecologico'] ?? {}) as Map).cast<String, dynamic>(),
         organizacional:
             ((j['organizacional'] ?? {}) as Map).cast<String, dynamic>(),
+      );
+}
+
+/// Reporte de un problema enviado desde las apps (CR-019). Lo levanta una persona
+/// voluntaria (o un rol de backend) para avisar de un fallo. Gate #2: el backend
+/// NUNCA incluye PII (email/nombre); como mucho el `handle` seudónimo. Refleja
+/// `GET /admin/problem-reports`.
+class ProblemReport {
+  ProblemReport({
+    required this.id,
+    required this.createdAt,
+    required this.accountId,
+    required this.handle,
+    required this.userAgent,
+    required this.platform,
+    required this.appVersion,
+    required this.context,
+    required this.message,
+    required this.errorDetail,
+    required this.status,
+  });
+
+  final String id;
+  final DateTime createdAt;
+  final String? accountId;
+  final String? handle;
+  final String? userAgent;
+  final String? platform;
+  final String? appVersion;
+  final String? context;
+  final String? message;
+  final String? errorDetail;
+
+  /// `nuevo` | `visto` | `resuelto` (wire del backend).
+  final String status;
+
+  bool get isNuevo => status == 'nuevo';
+  bool get isVisto => status == 'visto';
+  bool get isResuelto => status == 'resuelto';
+
+  factory ProblemReport.fromJson(Map<String, dynamic> j) => ProblemReport(
+        id: (j['id'] ?? '') as String,
+        createdAt: DateTime.tryParse((j['created_at'] ?? '') as String) ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+        accountId: j['account_id'] as String?,
+        handle: j['handle'] as String?,
+        userAgent: j['user_agent'] as String?,
+        platform: j['platform'] as String?,
+        appVersion: j['app_version'] as String?,
+        context: j['context'] as String?,
+        message: j['message'] as String?,
+        errorDetail: j['error_detail'] as String?,
+        status: (j['status'] ?? 'nuevo') as String,
       );
 }
 

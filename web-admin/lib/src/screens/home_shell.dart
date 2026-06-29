@@ -12,6 +12,7 @@ import 'legal_screen.dart';
 import 'map_screen.dart';
 import 'monitor_screen.dart';
 import 'org_indicators_screen.dart';
+import 'problem_reports_screen.dart';
 import 'public_dashboard_screen.dart';
 import 'restricted_dashboard_screen.dart';
 import 'review_screen.dart';
@@ -80,6 +81,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         _NavItem(Icons.camera_outlined, Copy.navSnapshots,
             () => const SnapshotsScreen()),
       ],
+      // Reportes de problemas (CR-019): mismo gateo que los módulos de consola
+      // (admin_consorcio/administrador).
+      if (session.canSeeProblemReports)
+        _NavItem(Icons.bug_report_outlined, Copy.navProblems,
+            () => const ProblemReportsScreen()),
       // Vista restringida: SOLO si el rol autoriza coords exactas (gate #5).
       if (session.canSeeRestricted)
         _NavItem(Icons.lock_outline, Copy.navRestricted,
