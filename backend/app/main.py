@@ -20,6 +20,7 @@ from .routers import (
     institutions,
     me,
     observations,
+    problem_reports,
     public,
     restricted,
     review,
@@ -62,6 +63,7 @@ def create_app() -> FastAPI:
         analytics.router,
         users.router,
         accounts.router,
+        problem_reports.router,
     ):
         app.include_router(router, prefix=API_PREFIX)
 

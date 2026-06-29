@@ -4,8 +4,9 @@
   (``settings.obfuscation_grid_m``; CR-009: 300 m) usando una proyección métrica (EPSG:6372,
   México) y reproyecta el centro de la celda a WGS84. Las **vistas públicas NUNCA exponen coords
   más finas que la celda** (gate #5). ``obfuscate_1km`` se conserva como alias por compatibilidad.
-- ``assign_tree`` — agrupa observaciones dentro de ``tree_radius_m`` (10 m, R3) vía ``ST_DWithin``
-  sobre ``geography`` (metros reales); crea o reutiliza un ``tree`` (gate T3).
+- ``assign_tree`` — CR-022 (enmienda R3/T3): crea SIEMPRE un árbol nuevo (1:1 observación↔árbol).
+  Ya NO reutiliza árboles cercanos (la consulta ``ST_DWithin`` de 10 m queda retirada); la tabla
+  ``tree`` se conserva, pero cada captura registra su propio árbol.
 - ``compute_observation_seq`` — posición en la serie temporal del árbol (gap > 30 días, R3).
 - ``derive_estado_municipio`` — join espacial a ``admin_boundary`` (Q8); deriva estado/municipio
   del EXIF. Sin límites cargados ⇒ (None, None) sin romper el flujo.
@@ -60,35 +61,14 @@ obfuscate_1km = obfuscate_to_grid
 def assign_tree(
     db: Session, *, lat: float, lon: float, estado: str | None, municipio: str | None
 ) -> uuid.UUID:
-    """Asigna ``tree_id`` agrupando dentro de ``tree_radius_m`` (10 m) — gate T3.
+    """Crea SIEMPRE un árbol nuevo — CR-022 (enmienda R3/T3): 1:1 observación↔árbol.
 
-    Usa ``ST_DWithin(centroid, :geom, radio)`` sobre ``geography`` (metros reales). Si existe un
-    árbol a ≤ radio, reutiliza su id; si no, crea uno nuevo con centroide en el punto capturado.
+    Antes (R3/gate T3) se agrupaban observaciones dentro de ``tree_radius_m`` (10 m) reutilizando el
+    árbol cercano vía ``ST_DWithin``; esa consulta se omite. La tabla ``tree`` y el concepto de árbol
+    se conservan, pero la asignación NUNCA reutiliza un árbol existente: crea y devuelve un ``Tree``
+    nuevo con centroide en el punto capturado. (``compute_observation_seq`` devolverá 1 por árbol, al
+    ser cada uno único.) Se conserva la firma para no tocar a los llamadores.
     """
-    settings = get_settings()
-    radius = settings.tree_radius_m
-    row = db.execute(
-        text(
-            """
-            SELECT id
-            FROM tree
-            WHERE ST_DWithin(
-                centroid,
-                ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
-                :radius
-            )
-            ORDER BY ST_Distance(
-                centroid,
-                ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography
-            )
-            LIMIT 1
-            """
-        ),
-        {"lon": lon, "lat": lat, "radius": radius},
-    ).first()
-    if row is not None:
-        return row[0]
-
     point_wkt = f"SRID=4326;POINT({lon} {lat})"
     tree = Tree(centroid=point_wkt, estado=estado, municipio=municipio)
     db.add(tree)

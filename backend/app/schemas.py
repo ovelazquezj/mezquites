@@ -451,3 +451,42 @@ class ReviewStats(BaseModel):
     total: int
     pendientes_de_revision: int  # = aceptadas (aún sin veredicto humano)
     revisiones_totales: int  # filas en human_review
+
+
+# --- Reportar un problema (CR-019) ---
+
+
+class ProblemReportCreate(BaseModel):
+    """Reporte de problema del voluntario (CR-019). Diagnóstico SIN PII (gate #2).
+
+    Todos los campos son opcionales (un reporte mínimo es válido); el backend NUNCA pide
+    email/nombre/teléfono. ``context`` distingue el origen (p.ej. 'camera'/'general').
+    """
+
+    context: str | None = None
+    message: str | None = None
+    error_detail: str | None = None
+    user_agent: str | None = None
+    platform: str | None = None
+    app_version: str | None = None
+
+
+class ProblemReportOut(BaseModel):
+    """Reporte tal como lo ve el administrador (CR-019). ``handle`` seudónimo o None (anónimo)."""
+
+    id: uuid.UUID
+    created_at: datetime
+    status: str
+    handle: str | None
+    context: str | None
+    message: str | None
+    error_detail: str | None
+    user_agent: str | None
+    platform: str | None
+    app_version: str | None
+
+
+class ProblemReportStatusIn(BaseModel):
+    """El administrador mueve el reporte entre 'nuevo'/'visto'/'resuelto' (CR-019)."""
+
+    status: Literal["nuevo", "visto", "resuelto"]

@@ -413,3 +413,45 @@ class ParticipationSession(Base):
     __table_args__ = (
         Index("participation_session_account_idx", "account_id", "started_at"),
     )
+
+
+# Estados de un reporte de problema (CR-019). 'nuevo' por defecto; el admin lo mueve a visto/resuelto.
+PROBLEM_REPORT_STATUSES = ("nuevo", "visto", "resuelto")
+
+
+class ProblemReport(Base):
+    """Reporte de problema del voluntario (CR-019) — diagnóstico para depurar, SIN PII (gate #2).
+
+    Los voluntarios reportan fallas (cámara, etc.) desde la app; el administrador las consulta para
+    depurar. Gate #2: NO se guarda email/nombre/teléfono — solo metadatos técnicos de diagnóstico y
+    el ``handle`` seudónimo (si hay sesión). Gate #3 (sin gating): el reporte se acepta SIN login
+    (``account_id``/``handle`` nullable ⇒ reportes anónimos permitidos).
+    """
+
+    __tablename__ = "problem_report"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    # Opcional: si hay sesión válida se adjunta; si no, reporte anónimo (gate #3).
+    account_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("account.id")
+    )
+    handle: Mapped[str | None] = mapped_column(Text)  # seudónimo (sin PII), si hay sesión
+    user_agent: Mapped[str | None] = mapped_column(Text)
+    platform: Mapped[str | None] = mapped_column(Text)
+    app_version: Mapped[str | None] = mapped_column(Text)
+    context: Mapped[str | None] = mapped_column(Text)  # p.ej. 'camera' / 'general'
+    message: Mapped[str | None] = mapped_column(Text)  # nota del usuario
+    error_detail: Mapped[str | None] = mapped_column(Text)  # último error técnico
+    status: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default="nuevo", default="nuevo"
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('nuevo','visto','resuelto')", name="ck_problem_report_status"
+        ),
+        Index("problem_report_created_idx", "created_at"),
+    )

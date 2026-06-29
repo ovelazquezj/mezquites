@@ -55,6 +55,28 @@ def get_current_user(
     return CurrentUser(account.id, account.handle, account.role)
 
 
+def get_current_user_optional(
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> CurrentUser | None:
+    """Auth OPCIONAL (CR-019, gate #3): devuelve el usuario si el token es válido; ``None`` si falta
+    o es inválido (NUNCA lanza 401). Reutiliza la misma decodificación que ``get_current_user`` para
+    habilitar endpoints accesibles sin sesión (p.ej. reportar un problema antes de iniciar sesión).
+    """
+    if not authorization or not authorization.lower().startswith("bearer "):
+        return None
+    token = authorization.split(" ", 1)[1].strip()
+    try:
+        payload = decode_token(token)
+        account_id = uuid.UUID(payload["sub"])
+    except (ValueError, KeyError):
+        return None
+    account = db.get(Account, account_id)
+    if account is None:
+        return None
+    return CurrentUser(account.id, account.handle, account.role)
+
+
 def require_role(*roles: str):
     """Factoría de dependencia que exige uno de ``roles``."""
 
