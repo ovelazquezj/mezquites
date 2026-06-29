@@ -309,3 +309,75 @@ Directo sobre `main` + aplicado en la VM. Infra/config; sin pruebas automáticas
 | Gate #6 (storage conmutable) | ruta = config; dev usa volúmenes nombrados | — |
 
 Detalle en `docs/change-requests/CR-017-almacenamiento-cloud-volume.md`.
+
+## CR-018 — Cámara web robusta (`getUserMedia`)
+
+Directo sobre `main` (solo el camino web). Sin backend ni migración. **Total tras CR-018..022: 325
+pruebas verdes** (`contract` 21 · `mock` 9 · `backend` **144** · `mobile` **66** · `web-admin` **85**).
+
+| Requisito (usuario) | Implementación | Prueba / verificación |
+|---|---|---|
+| La cámara web pide permiso del navegador | camino principal `getUserMedia` + preview `<video>` → `<canvas>` `toBlob('image/jpeg')` → bytes; `getUserMedia` dispara el permiso | `flutter build web` ✅; preview/permiso real en dispositivo (rutas web-only no se compilan en la VM) |
+| No bloquear dispositivos no reconocidos (Honor X9) | se **quitó la compuerta de UA** (`isMobileWebBrowser` ya no deshabilita; pista informativa sin uso vivo) | `flutter test` 66 verdes |
+| Robustez de cámara | `facingMode {ideal:'environment'}` con reintento `{video:true}` ante `OverconstrainedError`; `enumerateDevices()` + "Cambiar cámara"; teardown que detiene todos los tracks | revisión + build web |
+| Recuperación ante error | mapeo de errores por `name` a textos en español; UI con "Reintentar" / "Tomar con la cámara del sistema" (fallback `image_picker`) / "Reportar un problema" (CR-019) | revisión `capture_pane_web.dart` |
+| Gate #4 (cámara, nunca galería) | ambos caminos son cámara en vivo; escritorio con webcam captura como cámara | revisión |
+| Gate #3 (sin gating) | ningún dispositivo queda bloqueado por UA | revisión |
+
+Detalle en `docs/change-requests/CR-018-camara-web-robusta.md`.
+
+## CR-019 — "Reportar un problema" + vista de admin + diagnóstico
+
+Directo sobre `main` (backend + móvil + web-admin). **Migración 0006_problem_reports** (down_revision 0005).
+
+| Criterio (CR-019) | Implementación | Prueba |
+|---|---|---|
+| Reporte con auth **opcional** (201 anónimo o con handle) | `POST /problem-reports` (`get_current_user_optional`); modelo `ProblemReport` (tabla `problem_report`, status nuevo/visto/resuelto, `account_id`/`handle` nullable) | `backend/tests/test_problem_reports.py` (**8**) |
+| Admin lista y cambia estado, gateado | `GET /admin/problem-reports`; `POST /admin/problem-reports/{id}/status`; gateo `admin_consorcio`/`administrador` | `test_problem_reports.py` (gateo + estados) |
+| Vista de admin "Reportes" | `problem_reports_screen.dart` con `PagedTable` (Fecha/Contexto/Navegador/Versión/Usuario/Estado/Mensaje) + detalle `error_detail`; entrada NavigationRail gateada | `web-admin/test/problem_reports_test.dart` (**10**) |
+| Móvil: reportar desde Bienvenida/Perfil/error de cámara | `ProblemReportScreen`, `ApiClient.submitProblemReport`, `device_diagnostics.dart` (export condicional: web manda `user_agent`+platform; VM stub) | suite móvil verde |
+| Gate #2 (sin PII) | solo diagnóstico (user_agent/platform/app_version) + nota libre + error técnico; nunca email/nombre | `test_problem_reports.py` |
+| Gate #3 (sin gating) | funciona sin login (auth opcional) | `test_problem_reports.py` (alta anónima) |
+
+Detalle en `docs/change-requests/CR-019-reportar-problema.md`.
+
+## CR-020 — Quitar el sello "BORRADOR" de Términos/Aviso (ya aprobados)
+
+Directo sobre `main` (solo lo legal). Sin backend ni migración. Cierra el pendiente de CR-006.
+
+| Criterio (CR-020) | Implementación | Prueba |
+|---|---|---|
+| Móvil: sin banner BORRADOR en lo legal | se quitó `InfoNote(Copy.legalDraftBanner)` de `legal_screen.dart` + constante `legalDraftBanner` de `copy.dart` | `mobile/test/legal_test.dart` (`findsNothing` 'BORRADOR') |
+| Web-admin: sin sello + contacto real | se quitó `_DraftBadge`/`Copy.legalDraftBadge`; `legalIntro` (aprobados); "Contacto" → contacto@rescatando-el-mezquite.org + domicilio | `web-admin/test/widget_legal_test.dart` (sin sello) |
+| "Aprender" sigue en borrador | `learningDraftBanner` **conservado** (revisión AU2/H4) | revisión |
+| Gate #2 (sin PII) | contacto/domicilio = dato del responsable, no de usuario | revisión |
+
+Detalle en `docs/change-requests/CR-020-legal-sin-borrador.md`.
+
+## CR-021 — `InfoNote` colapsable / descartable (móvil)
+
+Directo sobre `main`. Sin backend ni migración.
+
+| Criterio (CR-021) | Implementación | Prueba |
+|---|---|---|
+| Cerrar un aviso informativo | `InfoNote` → StatefulWidget con botón "X" (key `info_note_dismiss`) | **3** pruebas nuevas (móvil): oculta, persiste, `dismissible:false` sin "X" |
+| Recordar el descarte entre sesiones | `SharedPreferences` (+ `localStorage` en web); acceso defensivo `try/catch`; id por `id` opcional o derivado del texto | pruebas de persistencia |
+| Aplicación por defecto + fijos | 12 usos `dismissible:true`; claves fijas con `dismissible:false` (p. ej. intro de "Reportar un problema") | revisión `common.dart` |
+| Gate #3 (sin gating) | cerrar el aviso NO bloquea nada | revisión |
+
+Detalle en `docs/change-requests/CR-021-avisos-descartables.md`.
+
+## CR-022 — Cada foto registra su propio árbol (ENMIENDA a R3 / T3)
+
+Directo sobre `main` (backend). ⚠️ **Enmienda a decisión SELLADA** (R3/T3, 10 m → 1:1), autorizada por el
+usuario el 2026-06-28; anotada en la bitácora (Q2-D1 y T3) con el estilo de CR-001/CR-009.
+
+| Criterio (CR-022) | Implementación | Prueba |
+|---|---|---|
+| ~~**Q2/T3** Backend agrupa dentro de 10 m bajo un `tree_id`~~ | **Enmendado:** `assign_tree` siempre crea un `Tree` nuevo (1:1); se quitó la reutilización por `ST_DWithin`; `observation_seq`=1 | `backend/tests/test_tree_grouping.py` (reescrito: dos obs cercanas → **2 árboles**) |
+| El mapa público no se ve afectado | el mapa de calor agrega por celda de 300 m, no por árbol | `test_public_grid.py` (sin cambios) |
+| Gate #5 (obfuscación) | intacto: público sigue a 300 m | revisión |
+
+**Consecuencia documentada:** se pierde la serie temporal por árbol (revisitas = árboles distintos);
+atenuante: el ruido del GPS de celular (~3–10 m) ya hacía la re-agrupación poco fiable. Detalle en
+`docs/change-requests/CR-022-foto-por-arbol.md`.

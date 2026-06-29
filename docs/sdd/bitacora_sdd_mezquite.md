@@ -282,6 +282,10 @@ etiquetando su grado de soporte. Etiquetas usadas en toda la bitácora:
   - **Revisitas = R3:** backend agrupa observaciones dentro de **radio 10 m** como mismo árbol
     (`tree_id`); si pasaron **>30 días** desde la última, entra como punto independiente de la **serie
     temporal** del árbol. Radio y ventana = defaults refinables por AU2.
+    > **Enmendado por CR-022 (2026-06-28):** se retira la agrupación; **cada observación crea su propio
+    > árbol** (1:1). `observation_seq` queda en 1; se **pierde la serie temporal por árbol** (decisión
+    > humana, en la línea de CR-001/CR-002). El **mapa público sigue agregando por celda de 300 m**.
+    > Atenuante: el ruido del GPS de celular (~3–10 m) ya hacía la re-agrupación a 10 m poco fiable.
   - **Atribución = I2:** **handle visible por observación** en el dataset publicado.
 - **Soporte:** `[supuesto del autor con apoyo en patrones de citizen science]`.
 - **Protocolo.** Vocabulario controlado de tamaño y contexto; regla de agrupamiento declarada (params
@@ -380,6 +384,9 @@ configuración**, para que dev/QA corran sin nube. Dev/QA sobre **minikube + Ran
 - **Soporte:** `[evidencia disponible — estándar de la industria para geoespacial]`.
 - **Criterio de aceptación.** Existe consulta que agrupa observaciones dentro de 10 m y consulta que
   devuelve coordenada redondeada a celda de 1 km.
+  > **Enmendado por CR-022 (2026-06-28):** se retira la agrupación a 10 m (`assign_tree` ya no reutiliza
+  > por `ST_DWithin`); **cada observación crea su propio árbol** (1:1). El criterio de la celda agregada
+  > pasa a 300 m por CR-009. Ver enmienda en Q2-D1 (R3).
 
 ### T4 — Almacenamiento de imágenes
 - **Decisión.** Capa de abstracción **`StorageProvider`** con dos implementaciones conmutables por
