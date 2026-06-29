@@ -15,18 +15,19 @@ import 'helpers.dart';
 
 /// CR-006 §4.3 — Términos y Aviso de privacidad accesibles en la app del
 /// voluntario (AC4): desde Ayuda y con un enlace discreto en la Bienvenida.
-/// Es contenido INFORMATIVO (gate #3, no bloquea) y BORRADOR (revisión legal
-/// del consorcio). Gate #2 acotado: el aviso no expone PII.
+/// Es contenido INFORMATIVO (gate #3, no bloquea). Los textos fueron APROBADOS
+/// por la organización (CR-020): ya no se muestra el banner de borrador.
+/// Gate #2 acotado: el aviso no expone PII.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('LegalScreen muestra borrador, Términos y Aviso de privacidad',
+  testWidgets('LegalScreen ya no muestra borrador; sí Términos y Aviso de privacidad',
       (tester) async {
     await tester.pumpWidget(wrap(const LegalScreen()));
     await tester.pumpAndSettle();
 
-    // Banner de borrador visible (no asesoría legal).
-    expect(find.textContaining('BORRADOR'), findsOneWidget);
+    // Textos APROBADOS (CR-020): ya no hay banner de borrador.
+    expect(find.textContaining('BORRADOR'), findsNothing);
 
     // Términos arriba (visible al arranque).
     expect(find.byKey(const Key('legal_terms')), findsOneWidget);

@@ -7,10 +7,11 @@ import '../widgets/common.dart';
 /// Pantalla legal (CR-006 §4.3): Términos y Condiciones + Aviso de privacidad.
 ///
 /// Es **informativa** (gate #3): no bloquea ninguna funcionalidad de la app y
-/// es consultable en todo momento desde Ayuda y desde la Bienvenida. El texto
-/// es un **BORRADOR sujeto a revisión legal de la organización responsable** (no asesoría legal);
-/// vive en `copy.dart` como copia que la app muestra al voluntario, mientras la
-/// fuente canónica se redacta en `docs/legal/`.
+/// es consultable en todo momento desde Ayuda y desde la Bienvenida. Los textos
+/// fueron **APROBADOS por la organización responsable** (CR-020): el Aviso de
+/// privacidad el 2026-06-25 y los Términos el 2026-06-27 (ya no son borrador).
+/// Viven en `copy.dart` como copia que la app muestra al voluntario, sincronizada
+/// con la fuente canónica en `docs/legal/`.
 class LegalScreen extends StatelessWidget {
   const LegalScreen({super.key});
 
@@ -29,9 +30,6 @@ class LegalScreen extends StatelessWidget {
         key: const Key('legal_content'),
         padding: const EdgeInsets.all(16),
         children: const [
-          // Marca el carácter de borrador, sin condicionar el uso (gate #3).
-          InfoNote(Copy.legalDraftBanner),
-          SizedBox(height: 12),
           SectionCard(
             key: Key('legal_terms'),
             title: Copy.termsTitle,

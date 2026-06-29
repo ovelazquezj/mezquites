@@ -1,33 +1,40 @@
 import 'package:geolocator/geolocator.dart';
-import 'package:image_picker/image_picker.dart';
+// `hide CameraDevice`: image_picker exporta su propio `CameraDevice` (front/rear) que
+// colisiona con el nuestro (camera_web_shared.dart). No usamos el de image_picker.
+import 'package:image_picker/image_picker.dart' hide CameraDevice;
 
+import 'camera_web.dart';
 import 'capture_service.dart';
-import 'web_platform.dart';
 
-/// Servicio de captura WEB (CR-005): cámara del navegador vía `image_picker`.
+/// Servicio de captura WEB (CR-005 + CR-018): cámara del navegador.
 ///
-/// Gate #4 (W0, opción a): la web es para **teléfono/tablet**. La captura usa
-/// SIEMPRE `ImageSource.camera` (NUNCA `ImageSource.gallery`): en navegador móvil
-/// abre la cámara real. En **escritorio** `ImageSource.camera` degradaría a un
-/// selector de archivos (≈ galería), así que [cameraAvailable] es `false` y la UI
-/// **bloquea/advierte** la captura (no es objetivo y la galería no se permite).
+/// CR-018 (cámara robusta): el camino principal es **`getUserMedia`** (preview en vivo +
+/// captura por canvas, vía [camera_web.dart]). `getUserMedia` SÍ dispara el permiso del
+/// navegador (arregla "no pidió permiso") y funciona en cualquier dispositivo con soporte
+/// (ya NO se compuerta por user-agent). Para WebViews sin `getUserMedia` queda el **fallback**
+/// [captureFromSystemCamera] con `image_picker` (`<input capture>` → cámara del SO).
 ///
-/// `native_exif` no corre en web: lat/lon/timestamp se obtienen de `geolocator`
-/// (geolocalización del navegador) y viajan en el payload (el backend usa el
-/// payload, no el EXIF). La imagen se entrega por **bytes** (`readAsBytes`).
+/// Gate #4: ambos caminos son CÁMARA, NUNCA galería (`ImageSource.camera`, jamás `gallery`).
+/// `native_exif` no corre en web: lat/lon/timestamp salen de `geolocator` y viajan en el
+/// payload (el backend usa el payload, no el EXIF). La imagen se entrega por **bytes**.
 class WebCaptureService {
-  WebCaptureService({ImagePicker? picker, GeolocatorPlatformReader? geo})
-      : _picker = picker ?? ImagePicker(),
-        _geo = geo;
+  WebCaptureService({
+    ImagePicker? picker,
+    GeolocatorPlatformReader? geo,
+    WebCamera? camera,
+  })  : _picker = picker ?? ImagePicker(),
+        _geo = geo,
+        _camera = camera ?? WebCamera();
 
   final ImagePicker _picker;
   final GeolocatorPlatformReader? _geo;
+  final WebCamera _camera;
 
-  /// En web, la captura por cámara solo se ofrece en teléfono/tablet (gate #4).
-  bool get cameraAvailable => isMobileWebBrowser();
+  /// `true` si el navegador soporta el preview en vivo con `getUserMedia`.
+  bool get liveCameraSupported => _camera.isSupported;
 
-  String get unavailableReason =>
-      'Esta página es para teléfono o tablet. Ábrela en tu celular para tomar la foto con la cámara.';
+  /// viewType del HtmlElementView del preview en vivo.
+  String get previewViewType => _camera.viewType;
 
   Future<({double lat, double lon})> _currentPosition() async {
     if (_geo != null) return _geo.current();
@@ -49,13 +56,34 @@ class WebCaptureService {
     return (lat: pos.latitude, lon: pos.longitude);
   }
 
-  /// Toma la foto con la cámara del navegador y devuelve bytes + ubicación real.
-  Future<CaptureResult> captureFromCamera() async {
-    if (!cameraAvailable) {
-      throw CaptureException(unavailableReason);
+  /// Abre (o reabre, al cambiar de cámara) el preview en vivo y devuelve las cámaras
+  /// disponibles para el botón "Cambiar cámara". Lanza [CameraException] mapeable a texto.
+  Future<List<CameraDevice>> openLiveCamera({String? deviceId}) async {
+    await _camera.start(deviceId: deviceId);
+    return _camera.listVideoInputs();
+  }
+
+  /// Toma la foto del preview en vivo (canvas → JPEG) + ubicación real y libera la cámara.
+  Future<CaptureResult> captureFromLivePreview() async {
+    final bytes = await _camera.capture();
+    try {
+      final pos = await _currentPosition();
+      return CaptureResult(
+        imageBytes: bytes,
+        lat: pos.lat,
+        lon: pos.lon,
+        capturedAt: DateTime.now(),
+      );
+    } finally {
+      // Suelta la cámara tras capturar (defensa "cámara ocupada").
+      _camera.dispose();
     }
+  }
+
+  /// Fallback para WebViews sin `getUserMedia`: cámara del SO vía `image_picker`.
+  /// SOLO cámara (gate #4): NUNCA `ImageSource.gallery`.
+  Future<CaptureResult> captureFromSystemCamera() async {
     final pos = await _currentPosition();
-    // SOLO cámara (gate #4): nunca ImageSource.gallery.
     final XFile? shot = await _picker.pickImage(source: ImageSource.camera);
     if (shot == null) {
       throw CaptureException('No se tomó ninguna foto.');
@@ -68,4 +96,10 @@ class WebCaptureService {
       capturedAt: DateTime.now(),
     );
   }
+
+  /// Compat (firma histórica): delega en el fallback de la cámara del sistema.
+  Future<CaptureResult> captureFromCamera() => captureFromSystemCamera();
+
+  /// Libera la cámara (llamar desde `dispose()` del panel).
+  void releaseCamera() => _camera.dispose();
 }

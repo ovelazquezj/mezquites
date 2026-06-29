@@ -251,6 +251,37 @@ class ApiClient {
     return Evidence.fromJson(_decode(r));
   }
 
+  // --- Reportar un problema (CR-019) ---
+
+  /// Envía un reporte de problema con diagnóstico técnico SIN PII (gate #2: nunca email/nombre;
+  /// `userAgent`/`platform`/`appVersion` son metadatos técnicos aceptables). Auth OPCIONAL
+  /// (gate #3): `_headers()` adjunta el token solo si existe; sin token el reporte va anónimo.
+  /// El backend responde 201; propaga [ApiException] si falla para que la UI muestre `reportFailed`.
+  Future<void> submitProblemReport({
+    String? note,
+    String? context,
+    String? errorDetail,
+    required String userAgent,
+    required String platform,
+    required String appVersion,
+  }) async {
+    final r = await _http.post(
+      _uri('/problem-reports'),
+      headers: _headers(),
+      body: json.encode({
+        'user_agent': userAgent,
+        'platform': platform,
+        'app_version': appVersion,
+        'context': (context == null || context.isEmpty) ? 'general' : context,
+        if (note != null && note.isNotEmpty) 'message': note,
+        if (errorDetail != null && errorDetail.isNotEmpty)
+          'error_detail': errorDetail,
+      }),
+    );
+    // 201 esperado; _decode valida el rango 2xx y lanza ApiException si no.
+    _decode(r);
+  }
+
   void close() => _http.close();
 }
 

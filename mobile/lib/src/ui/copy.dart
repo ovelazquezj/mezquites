@@ -70,6 +70,25 @@ class Copy {
   static const captureCameraOnly =
       'La foto se toma con la cámara del dispositivo. No se admiten imágenes '
       'de la galería.';
+
+  // --- Cámara web robusta (CR-018): preview con getUserMedia + errores claros ---
+  static const cameraStarting = 'Abriendo la cámara…';
+  static const cameraTakePhoto = 'Tomar foto';
+  static const cameraSwitch = 'Cambiar cámara';
+  static const cameraRetry = 'Reintentar';
+  static const cameraOpen = 'Abrir cámara';
+  static const cameraPermissionDenied =
+      'No diste permiso para la cámara. Actívalo en los ajustes del navegador y '
+      'vuelve a intentar.';
+  static const cameraNotFound = 'No se encontró una cámara en este dispositivo.';
+  static const cameraInUse =
+      'La cámara está en uso por otra app. Ciérrala y vuelve a intentar.';
+  static const cameraGenericError =
+      'No se pudo abrir la cámara. Reintenta; si sigue fallando, repórtalo con el '
+      'botón de abajo.';
+  static const cameraDesktopNote =
+      'Esta página es para teléfono o tablet. Ábrela en tu celular para tomar la '
+      'foto con la cámara.';
   static const captureNivelLabel = 'Nivel de paxtle (parte de la copa cubierta)';
   static const captureNivelHint = 'Lo estimas tú a ojo; no se revisa.';
   static const captureCuscutaLabel = '¿Cúscuta visible?';
@@ -208,21 +227,35 @@ class Copy {
   // --- Ayuda ---
   static const helpTitle = 'Ayuda';
 
+  /// Tooltip del botón "X" que oculta un aviso informativo (CR-021).
+  static const dismissNote = 'Ocultar';
+
+  // --- Reportar un problema (CR-019): diagnóstico sin PII ---
+  static const reportButton = 'Reportar un problema';
+  static const reportTitle = 'Reportar un problema';
+  static const reportIntro =
+      'Cuéntanos qué pasó. Se enviará información técnica de tu dispositivo '
+      '(navegador, versión de la app y el último error) para ayudarnos a '
+      'corregirlo. No incluimos tu nombre ni tu correo.';
+  static const reportNoteLabel = 'Describe el problema (opcional)';
+  static const reportNoteHint = 'Ej.: "Al tocar Tomar foto no abre la cámara".';
+  static const reportSend = 'Enviar reporte';
+  static const reportSending = 'Enviando…';
+  static const reportSent = '¡Gracias! Recibimos tu reporte.';
+  static const reportFailed =
+      'No se pudo enviar el reporte. Revisa tu conexión e inténtalo de nuevo.';
+
   // --- Legal: Términos y Aviso de privacidad (CR-006 §4.3) ---
-  // BORRADOR sujeto a revisión legal de la organización responsable. Texto en español acorde a
-  // la LFPDPPP. La FUENTE canónica vive en docs/legal/ (web-admin); esta es la
-  // copia que la app muestra al voluntario. Gate #2 acotado (CR-002): la app
-  // guarda solo el id opaco del proveedor; sin email/nombre/teléfono.
+  // APROBADOS por la organización responsable (CR-020): Aviso de privacidad
+  // (2026-06-25) y Términos (2026-06-27). Texto en español acorde a la LFPDPPP.
+  // La FUENTE canónica vive en docs/legal/ (sincronizada con las páginas públicas
+  // de Caddy); esta es la copia que la app muestra al voluntario. Gate #2 acotado
+  // (CR-002): la app guarda solo el id opaco del proveedor; sin email/nombre/teléfono.
   static const legalTitle = 'Términos y privacidad';
 
   /// Enlace discreto en la Bienvenida, cerca de "Entrar con Google".
   static const legalConsentNote =
       'Al continuar aceptas los Términos y el Aviso de privacidad.';
-
-  /// Aviso visible de que el texto es un borrador (no asesoría legal).
-  static const legalDraftBanner =
-      'BORRADOR sujeto a revisión legal del $orgName. Es un texto informativo, '
-      'no asesoría legal, y no condiciona el uso de la app.';
 
   static const termsTitle = 'Términos y condiciones';
   static const termsBody =

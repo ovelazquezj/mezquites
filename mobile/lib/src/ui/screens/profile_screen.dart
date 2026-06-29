@@ -10,6 +10,7 @@ import '../widgets/install_app_button.dart';
 import 'about_screen.dart';
 import 'account_screen.dart';
 import 'help_screen.dart';
+import 'problem_report_screen.dart';
 import 'rankings_screen.dart';
 
 /// Perfil del voluntario (Q4): lifelist, etiqueta de identidad L3, insignias,
@@ -89,6 +90,20 @@ class ProfileScreen extends ConsumerWidget {
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 4),
               child: InstallAppButton(),
+            ),
+            // Reportar un problema (CR-019): diagnóstico sin PII (gate #2).
+            Card(
+              child: ListTile(
+                key: const Key('profile_report_link'),
+                leading: const Icon(Icons.bug_report_outlined),
+                title: const Text(Copy.reportButton),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ProblemReportScreen(),
+                  ),
+                ),
+              ),
             ),
             // Acerca de (CR-013): nombre, versión y créditos.
             Card(

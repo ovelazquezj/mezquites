@@ -15,6 +15,7 @@ import '../widgets/install_app_button.dart';
 import 'heat_map_screen.dart';
 import 'home_shell.dart';
 import 'legal_screen.dart';
+import 'problem_report_screen.dart';
 
 /// Pantalla de bienvenida + login (CR-002). Punto de entrada cuando no hay sesión.
 ///
@@ -328,6 +329,19 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodySmall,
                   ),
+                ),
+              ),
+              // Reportar un problema (CR-019): enlace discreto, accesible SIN login (gate #3).
+              Center(
+                child: TextButton.icon(
+                  key: const Key('welcome_report_problem'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const ProblemReportScreen(),
+                    ),
+                  ),
+                  icon: const Icon(Icons.bug_report_outlined, size: 18),
+                  label: const Text(Copy.reportButton),
                 ),
               ),
             ],
