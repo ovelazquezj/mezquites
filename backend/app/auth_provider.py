@@ -14,9 +14,32 @@ el nombre del token de Google **se descartan** (jamás se persisten).
 
 from __future__ import annotations
 
+import base64
+import json
+import logging
 from dataclasses import dataclass
 
 from .config import Settings, get_settings
+
+# Logger de uvicorn: garantiza que los WARNING aparezcan en `docker compose logs api`.
+logger = logging.getLogger("uvicorn.error")
+
+
+def _peek_unverified(id_token: str | None) -> str:
+    """Decodifica SIN verificar el payload del JWT, solo para diagnóstico de fallos de login.
+
+    Devuelve únicamente ``aud``/``iss``/``exp``/``iat``/``azp`` (no son PII; nunca ``email``/``sub``)
+    para distinguir audiencia equivocada vs. token expirado vs. "no es un ID token" en los logs.
+    """
+    try:
+        parts = (id_token or "").split(".")
+        if len(parts) != 3:
+            return f"no-es-jwt (segmentos={len(parts)}, len={len(id_token or '')})"
+        pad = parts[1] + "=" * (-len(parts[1]) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(pad))
+        return repr({k: payload.get(k) for k in ("aud", "iss", "exp", "iat", "azp")})
+    except Exception as exc:  # noqa: BLE001
+        return f"no-decodificable: {exc}"
 
 
 class AuthVerificationError(Exception):
@@ -84,9 +107,19 @@ class FirebaseAuthProvider(AuthProvider):
 
         try:
             claims = google_id_token.verify_oauth2_token(
-                id_token, google_requests.Request(), self._audience
+                id_token,
+                google_requests.Request(),
+                self._audience,
+                # Tolera desfase de reloj (gotcha clásico que produce 401 espurios "used too early").
+                clock_skew_in_seconds=10,
             )
-        except (ValueError, Exception) as exc:  # noqa: BLE001 - google levanta ValueError genéricos
+        except Exception as exc:  # noqa: BLE001 - google levanta ValueError genéricos
+            logger.warning(
+                "Verificación de ID token de Google falló (aud esperado=%r): %s | claims sin verificar: %s",
+                self._audience,
+                exc,
+                _peek_unverified(id_token),
+            )
             raise AuthVerificationError("ID token de Google inválido") from exc
 
         # Validar emisor (Firebase/Google).
