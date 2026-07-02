@@ -29,9 +29,12 @@ class SessionState {
   /// (Instituciones/Aliados/Indicadores/Cortes), antes solo `admin_consorcio`.
   bool get isAdministrador => session?.isAdministrador ?? false;
 
-  /// True si el token autenticado puede ver la vista restringida (coords
-  /// exactas): rol `aliado_firmante` (la autorización real la impone el backend).
-  bool get canSeeRestricted => session?.role == 'aliado_firmante';
+  /// True si el token autenticado puede ver la UBICACIÓN EXACTA (mapa exacto +
+  /// tabla restringida): `aliado_firmante` y —desde CR-023, para presentar
+  /// reportes— los roles administrativos/analista (`administrador`,
+  /// `admin_consorcio`, `analista`). Enmienda ACOTADA al gate #5 (el público
+  /// sigue en celdas de 300 m). La autorización real la impone el backend.
+  bool get canSeeRestricted => session?.canSeeExactLocation ?? false;
 
   /// Capacidades de revisión humana (CR-001). La autorización real la impone el backend.
   bool get canReview => session?.canReview ?? false;

@@ -60,7 +60,7 @@
 | 2. ~~Sin PII~~ → **Acotado por CR-002** | Identidad real con mínima PII: voluntario guarda solo `provider_subject` (sin email/nombre); email SOLO para `administrador` (CHECK `ck_account_email_only_admin`); token sin PII. `backend/tests/test_security_no_pii.py` + `test_auth_google.py::test_ac4_*` + `test_auth_login_admin.py` | ✅ acotado |
 | 3. Sin gating | backend: sin checks de nivel/capacitación; móvil: Learning/HomeShell sin bloqueos, identidad no desbloquea: `mobile/test/no_gating_test.dart` | ✅ |
 | 4. Captura cámara-nativa + EXIF | móvil: `CaptureService` solo `takePicture()` + EXIF, **sin `image_picker`/galería**: `mobile/test/capture_camera_test.dart`; backend exige `lat`/`lon`/`captured_at` | ✅ (build APK ✅; cámara real en hardware = Inc 5) |
-| 5. Obfuscación 1 km | `/public/*` obfusca server-side (`obfuscate_1km`, EPSG:6372); exactas solo `/restricted/*` (rol firmante): `test_obfuscation.py` + `test_roles.py`. **CR-001:** la imagen de revisión se sirve con **EXIF GPS saneado** salvo `aliado_firmante`: `backend/tests/test_review.py::test_ac4_image_gps_stripped_for_evaluador/analista` + `::test_ac4_image_keeps_gps_only_for_aliado_firmante` | ✅ |
+| 5. Obfuscación 1 km→300 m (CR-009) | `/public/*` obfusca server-side (celda 300 m); exactas en `/restricted/*` y CSV. **CR-023:** exactas en la consola para `EXACT_LOCATION_ROLES` (`aliado_firmante`/`administrador`/`admin_consorcio`/`analista`), público intacto (300 m): `test_obfuscation.py` + `test_roles.py`. **CR-001:** la imagen de revisión se sirve con **EXIF GPS saneado** salvo `aliado_firmante`: `backend/tests/test_review.py::test_ac4_image_gps_stripped_for_evaluador/analista` + `::test_ac4_image_keeps_gps_only_for_aliado_firmante` | ✅ |
 | 6. Paridad de entornos (conmutable sin nube) | `make_broker("memory")` + `StorageProvider` local↔s3 + `DATABASE_URL`: `test_storage_provider.py`; compose dev sin nube (storage local, redis/postgis local) | ✅ |
 | 7. Trazabilidad | este documento + `human_review` (log append-only de veredictos) | ✅ (vivo) |
 | 8. ~~Alcance validación automática (es-árbol + parásitos)~~ | **Enmendado por CR-001** (bitácora): se elimina la validación automática; calidad por revisión humana. El backend sigue sin validar especie/G4 (autodeclarados) | ⏸️ enmendado |
@@ -381,3 +381,29 @@ usuario el 2026-06-28; anotada en la bitácora (Q2-D1 y T3) con el estilo de CR-
 **Consecuencia documentada:** se pierde la serie temporal por árbol (revisitas = árboles distintos);
 atenuante: el ruido del GPS de celular (~3–10 m) ya hacía la re-agrupación poco fiable. Detalle en
 `docs/change-requests/CR-022-foto-por-arbol.md`.
+
+## CR-023 — Ubicación EXACTA en la consola (mapa + tabla restringida + CSV) para reportes
+
+Directo sobre `main` (backend + web-admin). ⚠️ **Enmienda ACOTADA al gate #5** (obfuscación), autorizada
+por el usuario el 2026-07-02; anotada en la bitácora (gate #5 y Q5.B-D1) con el estilo de CR-009. Sin
+migración nueva. **La vista pública NO cambia** (sigue a celda 300 m). Nuevo conjunto de roles con acceso
+a exactas: `EXACT_LOCATION_ROLES = (aliado_firmante, administrador, admin_consorcio, analista)`.
+
+| AC (CR-023 §5) | Implementación | Prueba |
+|---|---|---|
+| **AC1** `GET /restricted/observations` acepta los 4 roles de `EXACT_LOCATION_ROLES` (exactas) y **rechaza** `voluntario`/`evaluador` (403); sin token → 401 | chequeo por `EXACT_LOCATION_ROLES` en `routers/restricted.py` (sustituye el `aliado_firmante` directo) | `backend/tests/test_cr023_ubicacion_exacta.py` (restricted acepta `aliado_firmante`/`administrador`/`admin_consorcio`/`analista`; rechaza `voluntario`/`evaluador`) |
+| **AC2** CSV exacto vs. obfuscado por rol | `GET /admin/analytics/observations.csv` → `lat`/`lon` para `EXACT_LOCATION_ROLES`; `lat_celda_300m`/`lon_celda_300m` para el resto (p. ej. `evaluador`) | `backend/tests/test_cr023_ubicacion_exacta.py` (columnas exactas para admin/analista vs. `*_celda_300m` para evaluador) + `test_cr010_analytics.py` (obfuscación 300 m con `evaluador`) |
+| **AC3** público intacto (nada más fino que 300 m; ningún endpoint público expone exactas) | `GET /public/grid` y `GET /public/observations` sin cambios | `backend/tests/test_obfuscation.py` + `test_public_grid.py` (sin regresión) |
+| **AC4** web-admin: toggle "Mapa de calor (300 m) / Ubicaciones exactas" **visible solo** para los 4 roles; default = calor | `map_screen.dart` (toggle gateado por `canSeeExactLocation`) | `web-admin/test/widget_map_exact_test.dart` (toggle presente para administrador/analista/admin_consorcio; ausente para `evaluador`/sin sesión) |
+| **AC5** web-admin: modo exacto renderiza **un marcador por árbol** + **banner** de uso interno | `map_screen.dart` (capa de marcadores exactos + banner "no publicar sin obfuscar") | `web-admin/test/widget_map_exact_test.dart` (N marcadores + banner `map_exact_banner` en modo exacto) |
+| **AC6** getter `canSeeExactLocation` verdadero exactamente para `EXACT_LOCATION_ROLES`; gobierna toggle + vista restringida | `session.dart` (getter por rol) | `web-admin/test/session_test.dart` (getter) + `widget_shell_test.dart` (tabla restringida visible para admin_consorcio, no para evaluador) + nota CSV exacto `widget_map_data_test.dart` (`data-exact-note`) |
+| **AC7** suites verdes; móvil y vista pública sin cambios; gate #5 enmendado en bitácora + trazado aquí | — | corridas de suites (números reales abajo) |
+
+**Gate #5 (enmendado, acotado):** el público sigue a 300 m; dentro de la consola, `EXACT_LOCATION_ROLES`
+ve exactas para reportes. **Salvaguarda:** default a calor 300 m + banner de uso interno; qué se publica
+es responsabilidad operativa. Decisiones del usuario en `docs/change-requests/CR-023-ubicacion-exacta-consola.md`.
+
+> **Total de pruebas tras CR-023: 345 verdes** (21 contrato · 9 mock · 153 backend · 66 móvil · 96 web-admin),
+> corridas por el orquestador el 2026-07-02. Delta sobre las 325 previas: **+9 backend** (test_cr023 +
+> ajuste de 1 test de analytics) y **+11 web-admin** (toggle exacto, getter, shell y nota CSV). Móvil,
+> contrato y mock sin cambios.

@@ -49,6 +49,11 @@ ROLES = (
 )
 # Roles con acceso a la cola de revisión humana (CR-001). `analista` es solo lectura.
 REVIEW_ROLES = ("evaluador", "analista", "administrador")
+# CR-023: roles que pueden ver la UBICACIÓN EXACTA del árbol dentro de la consola autenticada
+# (tabla restringida + CSV exacto), para presentación de reportes. Enmienda ACOTADA al gate #5:
+# el público sigue viendo SOLO la celda de 300 m (obfuscada). Amplía el acceso interno de 1 rol
+# (aliado_firmante) a los roles administrativos/de análisis. NO incluye voluntario ni evaluador.
+EXACT_LOCATION_ROLES = ("aliado_firmante", "administrador", "admin_consorcio", "analista")
 REVIEW_VERDICT_ROLES = ("evaluador", "administrador")  # pueden emitir veredicto
 # Estado de revisión humana (CR-001): default 'aceptada'; un humano confirma/rechaza.
 ESTADOS_REVISION = ("aceptada", "confirmada", "rechazada")

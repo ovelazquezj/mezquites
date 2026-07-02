@@ -43,6 +43,15 @@ class AuthSession {
   /// `admin_consorcio` y `administrador` (los roles que administran el piloto).
   bool get canSeeProblemReports => isAdmin || isAdministrador;
 
+  /// CR-023: roles que ven la UBICACIÓN EXACTA en la consola (mapa exacto + tabla
+  /// restringida). Enmienda ACOTADA al gate #5 (el público sigue en celda de 300 m).
+  /// La autorización real la impone el backend.
+  bool get canSeeExactLocation =>
+      role == 'aliado_firmante' ||
+      role == 'administrador' ||
+      role == 'admin_consorcio' ||
+      role == 'analista';
+
   /// Roles con acceso a la consola de administración (CR-001 amplía los de revisión).
   bool get canEnterAdminConsole => isAdmin || canReview;
 }

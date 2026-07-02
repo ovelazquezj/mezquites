@@ -130,6 +130,8 @@ class _DataScreenState extends ConsumerState<DataScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // CR-023: roles con ubicación exacta ven un aviso extra sobre el CSV.
+    final canSeeExact = ref.watch(sessionProvider).canSeeRestricted;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
@@ -140,6 +142,32 @@ class _DataScreenState extends ConsumerState<DataScreen> {
           key: const Key('data-location-note'),
           style: theme.textTheme.bodySmall,
         ),
+        if (canSeeExact) ...[
+          const SizedBox(height: 8),
+          Card(
+            key: const Key('data-exact-note'),
+            color: theme.colorScheme.errorContainer,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      size: 20, color: theme.colorScheme.onErrorContainer),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      Copy.dataExactNote,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onErrorContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
         _Filters(
           estadoRevision: _estadoRevision,

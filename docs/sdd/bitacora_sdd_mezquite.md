@@ -164,6 +164,13 @@ etiquetando su grado de soporte. Etiquetas usadas en toda la bitácora:
     > **Enmendado por CR-009 (2026-06-16):** la celda pública pasa de **1 km → 300 m** (mapa de calor
     > público). Sigue siendo celda agregada que oculta el árbol exacto; coords exactas solo a
     > `aliado_firmante`. Ver gate #5 enmendado.
+    > **Enmendado (acotado) por CR-023 (2026-07-02):** la **vista restringida** con coords exactas
+    > (mapa "Ubicaciones exactas", tabla `GET /restricted/observations` y CSV `observations.csv` con
+    > `lat`/`lon`) se abre —**dentro de la consola autenticada**— a `administrador`, `admin_consorcio`
+    > y `analista` además de `aliado_firmante` (`EXACT_LOCATION_ROLES`), para **presentación de
+    > reportes**. La **vista pública sigue obfuscada a la celda (300 m)** y **ningún endpoint público**
+    > expone coords exactas; `voluntario` y `evaluador` siguen sin acceso a exactas. Salvaguarda: default
+    > a calor 300 m + banner de "uso interno para reportes". Ver gate #5 enmendado.
   - **Destinatarios = todos** (autoridades estatales, CONAFOR regional, universidades, municipios,
     público). Transparencia operacional.
   - **Cadencia = trimestral** (snapshots cada 3 meses).
@@ -464,6 +471,15 @@ contexto. El **sistema de validación (YOLO) NO se desarrolla aquí** — track 
    Conmutable por `obfuscation_grid_m` (gate #6). **Motivo:** la protección del árbol se sostiene a 300 m
    (la celda agrupa varios árboles); la decisión humana del 2026-06-16 acepta el trade-off para la
    visualización de impacto.
+   **Enmendado (acotado) por CR-023 (2026-07-02):** **dentro de la consola autenticada**, además de
+   `aliado_firmante` pueden ver la ubicación **EXACTA** los roles `administrador`, `admin_consorcio` y
+   `analista` (`EXACT_LOCATION_ROLES`) — mapa (toggle "Ubicaciones exactas"), tabla restringida
+   (`GET /restricted/observations`) y CSV (`GET /admin/analytics/observations.csv`, columnas `lat`/`lon`)
+   — para **presentación de reportes**. **La vista pública NO cambia:** sigue obfuscada a la celda de
+   300 m; **ningún endpoint público** expone coords exactas. `voluntario` y `evaluador` **no** acceden a
+   exactas (el CSV les sirve `lat_celda_300m`/`lon_celda_300m`). **Salvaguarda:** el mapa arranca por
+   defecto en calor 300 m y el modo exacto muestra un banner de "uso interno para reportes — no publicar
+   sin obfuscar"; qué se publica es responsabilidad operativa. Ver Q5.B-D1.
 6. **Paridad de entornos:** dev/QA corren sin nube (storage/broker/DB conmutables).
 7. **Trazabilidad:** cada criterio de aceptación de la bitácora tiene prueba asociada.
 8. ~~**Alcance de validación:** la validación automática se limita a **es-árbol + presencia-de-parásitos**

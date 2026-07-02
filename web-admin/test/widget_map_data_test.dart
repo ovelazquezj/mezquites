@@ -204,6 +204,26 @@ void main() {
     expect(rec.hitPathContaining('/admin/analytics/observations'), isTrue);
   });
 
+  testWidgets('analista ve el aviso de CSV con coords exactas (CR-023)',
+      (tester) async {
+    big(tester);
+    await tester.pumpWidget(_dataAs('analista', RequestRecorder()));
+    await tester.pumpAndSettle();
+    // La nota original de privacidad sigue presente (no la rompemos).
+    expect(find.byKey(const Key('data-location-note')), findsOneWidget);
+    // Y el aviso extra de CR-023 (coords exactas en el CSV).
+    expect(find.byKey(const Key('data-exact-note')), findsOneWidget);
+  });
+
+  testWidgets('evaluador NO ve el aviso de coords exactas del CSV (CR-023)',
+      (tester) async {
+    big(tester);
+    await tester.pumpWidget(_dataAs('evaluador', RequestRecorder()));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('data-location-note')), findsOneWidget);
+    expect(find.byKey(const Key('data-exact-note')), findsNothing);
+  });
+
   testWidgets('Descargar CSV baja el CSV por fetch autenticado (CR-010 #3)',
       (tester) async {
     big(tester);

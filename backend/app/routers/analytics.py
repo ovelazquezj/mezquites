@@ -4,9 +4,13 @@
   total (para tableros del analista). Descriptivo (gate #1: no promete control fitosanitario).
 - ``GET /admin/analytics/observations.csv`` — exportación CSV de observaciones con filtros.
 
-GATE #5 (BLOQUEANTE): el analista (y la consola) NO son ``aliado_firmante``. El CSV expone SOLO la
-celda de obfuscación (CR-009: 300 m) vía ``geo.obfuscate_to_grid``; NUNCA coords exactas. El backend
-extrae lat/lon exactas únicamente para obfuscarlas server-side antes de escribir cada fila.
+GATE #5 (BLOQUEANTE, ENMENDADO por CR-023): el público NUNCA ve coords más finas que la celda de
+300 m. Dentro de la consola autenticada, el CSV es **exacto** SOLO para los roles administrativos/de
+análisis (``EXACT_LOCATION_ROLES``: aliado_firmante/administrador/admin_consorcio/analista), para la
+presentación de reportes. Para el resto de roles con acceso al endpoint (p.ej. ``evaluador``) se
+conserva EXACTAMENTE el comportamiento anterior: el CSV expone SOLO la celda de obfuscación (CR-009:
+300 m) vía ``geo.obfuscate_to_grid``; el backend extrae lat/lon exactas únicamente para obfuscarlas
+server-side antes de escribir cada fila. La lógica de obfuscación NO se borra: sigue vigente.
 
 Gate #2 (sin PII): solo el ``handle`` seudónimo; nunca email/nombre.
 """
@@ -24,7 +28,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..deps import CurrentUser, require_role
 from ..geo import obfuscate_to_grid
-from ..models import REVIEW_ROLES
+from ..models import EXACT_LOCATION_ROLES, REVIEW_ROLES
 from ..schemas import AnalyticsSummary
 
 router = APIRouter(prefix="/admin/analytics", tags=["analytics"])
@@ -48,6 +52,11 @@ _CSV_COLUMNS = [
     "lat_celda_300m",
     "lon_celda_300m",
 ]
+
+# CR-023: columnas del CSV **exacto** (uso interno para reportes) — idénticas salvo las 2 últimas,
+# que traen la ubicación exacta (``lat``/``lon``) en vez de la celda obfuscada. Solo se emite a los
+# roles de ``EXACT_LOCATION_ROLES``.
+_CSV_COLUMNS_EXACT = _CSV_COLUMNS[:-2] + ["lat", "lon"]
 
 # WHERE compartido por summary y CSV (filtros opcionales). CAST a text/timestamptz para NULL-safe.
 _FILTER_WHERE = """
@@ -170,10 +179,14 @@ def analytics_csv(
     user: CurrentUser = Depends(_analyst),
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
-    """Exportación CSV (CR-010).
+    """Exportación CSV (CR-010; enmendado por CR-023).
 
-    GATE #5 (BLOQUEANTE): coords SOLO a celda de obfuscación (300 m) vía ``obfuscate_to_grid``;
-    NUNCA exactas. El backend extrae lat/lon exactas solo para obfuscarlas antes de escribir.
+    GATE #5 (BLOQUEANTE): el público NUNCA ve coords más finas que la celda de 300 m. Aquí, dentro
+    de la consola autenticada, el CSV es **exacto** SOLO si ``user.role`` está en
+    ``EXACT_LOCATION_ROLES`` (uso interno para reportes) — termina en columnas ``lat``/``lon``. Para
+    el resto (p.ej. ``evaluador``) se conserva el comportamiento anterior: coords a celda de
+    obfuscación (300 m) vía ``obfuscate_to_grid``, columnas ``lat_celda_300m``/``lon_celda_300m``; el
+    backend extrae lat/lon exactas solo para obfuscarlas antes de escribir.
     """
     params = _filter_params(estado, municipio, nivel_g4, estado_revision, desde, hasta)
     rows = db.execute(
@@ -190,11 +203,17 @@ def analytics_csv(
         params,
     ).mappings().all()
 
+    # CR-023: exacto para roles administrativos/de análisis; obfuscado (300 m) para el resto.
+    exact = user.role in EXACT_LOCATION_ROLES
+
     buf = io.StringIO()
     writer = csv.writer(buf)
-    writer.writerow(_CSV_COLUMNS)
+    writer.writerow(_CSV_COLUMNS_EXACT if exact else _CSV_COLUMNS)
     for r in rows:
-        lat_celda, lon_celda = obfuscate_to_grid(float(r["lat"]), float(r["lon"]))
+        if exact:
+            lat_out, lon_out = float(r["lat"]), float(r["lon"])
+        else:
+            lat_out, lon_out = obfuscate_to_grid(float(r["lat"]), float(r["lon"]))
         writer.writerow(
             [
                 str(r["id"]),
@@ -208,8 +227,8 @@ def analytics_csv(
                 r["tamanio"] or "",
                 r["contexto"] or "",
                 r["estado_revision"],
-                lat_celda,
-                lon_celda,
+                lat_out,
+                lon_out,
             ]
         )
 

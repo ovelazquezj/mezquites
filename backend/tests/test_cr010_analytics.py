@@ -77,15 +77,16 @@ def test_summary_filter_by_municipio(client, db_session):
 
 
 def test_csv_uses_300m_cell_not_exact_coords(client, db_session):
-    """GATE #5: el CSV trae celda 300 m (obfuscada), NUNCA las coords exactas."""
+    """GATE #5: para un rol NO exacto (evaluador; CR-023) el CSV trae celda 300 m (obfuscada),
+    NUNCA las coords exactas."""
     from backend.app.geo import obfuscate_to_grid
 
     volunteer = register(client)
     _submit(client, volunteer["token"], lat=EXACT_LAT, lon=EXACT_LON, municipio="Aguascalientes")
 
-    analista = register(client, role="analista")
+    evaluador = register(client, role="evaluador")
     resp = client.get(
-        "/api/v1/admin/analytics/observations.csv", headers=auth_header(analista["token"])
+        "/api/v1/admin/analytics/observations.csv", headers=auth_header(evaluador["token"])
     )
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("text/csv")

@@ -46,8 +46,10 @@ class _RestrictedDashboardScreenState
         Text(Copy.navRestricted, style: theme.textTheme.displayLarge),
         const SizedBox(height: 8),
         Text(
-          'Ubicaciones exactas. Acceso solo para aliados firmantes autorizados '
-          '(para proteger los árboles). Vista de solo consulta.',
+          'Ubicaciones exactas de los árboles (uso interno para reportes). '
+          'Acceso para aliados firmantes autorizados y para los roles '
+          'administrativos y de análisis; el público sigue viendo solo celdas '
+          'aproximadas de ~300 m (gate #5). Vista de solo consulta.',
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: 16),

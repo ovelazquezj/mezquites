@@ -21,11 +21,24 @@ Color heatColor(BuildContext context, double g4Indice) {
   return ramp.colorFor(g4Indice);
 }
 
+/// Índice 0..3 del nivel de paxtle autodeclarado (sano/leve/moderado/severo).
+/// Default 0 (sano) para claves desconocidas.
+int _nivelIndex(String nivel) =>
+    const {'sano': 0, 'leve': 1, 'moderado': 2, 'severo': 3}[nivel] ?? 0;
+
+/// Modo del mapa (CR-023): calor público (300 m) o ubicaciones exactas.
+enum _MapMode { heat, exact }
+
 /// Pantalla **Mapa** de la consola (CR-010 #2): mapa de calor de `/public/grid`
 /// (celdas de 300 m, tiles OSM, leyenda por severidad). Visible para TODOS los
-/// roles de la consola. Gate #5: nunca pide ni muestra coords exactas (el centro
-/// de cada celda viene obfuscado a ~300 m server-side); gate #1: muestra
-/// presencia/impacto, no control/manejo.
+/// roles de la consola. Gate #5: por defecto nunca pide ni muestra coords
+/// exactas (el centro de cada celda viene obfuscado a ~300 m server-side).
+///
+/// CR-023 (enmienda ACOTADA al gate #5): los roles con `canSeeExactLocation`
+/// (aliado_firmante + administrativos/analista) pueden **conmutar** a un mapa de
+/// **ubicaciones exactas** (`/restricted/observations`) para preparar reportes.
+/// El toggle NO se muestra a los demás roles y la autorización real la impone el
+/// backend. Gate #1: muestra presencia/impacto, no control/manejo.
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
 
@@ -34,17 +47,34 @@ class MapScreen extends ConsumerStatefulWidget {
 }
 
 class _MapScreenState extends ConsumerState<MapScreen> {
-  late Future<List<GridCell>> _future;
+  _MapMode _mode = _MapMode.heat;
+  late Future<List<GridCell>> _gridFuture;
+  // Se crea perezosamente al conmutar a "exacto" (evita pedir coords exactas
+  // salvo que el usuario lo solicite explícitamente).
+  Future<List<RestrictedObservation>>? _exactFuture;
 
   @override
   void initState() {
     super.initState();
-    _future = ref.read(apiClientProvider).publicGrid();
+    _gridFuture = ref.read(apiClientProvider).publicGrid();
+  }
+
+  void _setMode(_MapMode mode) {
+    setState(() {
+      _mode = mode;
+      if (mode == _MapMode.exact) {
+        _exactFuture ??=
+            ref.read(apiClientProvider).restrictedObservations(limit: 2000);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final canExact = ref.watch(sessionProvider).canSeeRestricted;
+    // Si el rol perdiera el permiso, no dejes el mapa en modo exacto.
+    final exactActive = canExact && _mode == _MapMode.exact;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -56,6 +86,26 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               Text(Copy.navMap, style: theme.textTheme.displayLarge),
               const SizedBox(height: 8),
               Text(Copy.mapIntro, style: theme.textTheme.bodyMedium),
+              if (canExact) ...[
+                const SizedBox(height: 12),
+                SegmentedButton<_MapMode>(
+                  key: const Key('map_mode_toggle'),
+                  segments: const [
+                    ButtonSegment(
+                      value: _MapMode.heat,
+                      label: Text(Copy.mapModeHeat),
+                      icon: Icon(Icons.blur_on_outlined),
+                    ),
+                    ButtonSegment(
+                      value: _MapMode.exact,
+                      label: Text(Copy.mapModeExact),
+                      icon: Icon(Icons.location_on_outlined),
+                    ),
+                  ],
+                  selected: {_mode},
+                  onSelectionChanged: (s) => _setMode(s.first),
+                ),
+              ],
             ],
           ),
         ),
@@ -64,22 +114,41 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: FutureBuilder<List<GridCell>>(
-                future: _future,
-                builder: (context, snap) {
-                  if (snap.connectionState != ConnectionState.done) {
-                    return const _MapWithCells(cells: []);
-                  }
-                  if (snap.hasError) {
-                    return const _MapErrorState();
-                  }
-                  return _MapWithCells(cells: snap.data ?? const []);
-                },
-              ),
+              child: exactActive ? _buildExact() : _buildHeat(),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildHeat() {
+    return FutureBuilder<List<GridCell>>(
+      future: _gridFuture,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const _MapWithCells(cells: []);
+        }
+        if (snap.hasError) {
+          return const _MapErrorState();
+        }
+        return _MapWithCells(cells: snap.data ?? const []);
+      },
+    );
+  }
+
+  Widget _buildExact() {
+    return FutureBuilder<List<RestrictedObservation>>(
+      future: _exactFuture,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const _MapWithExact(observations: []);
+        }
+        if (snap.hasError) {
+          return const _MapExactErrorState();
+        }
+        return _MapWithExact(observations: snap.data ?? const []);
+      },
     );
   }
 }
@@ -165,6 +234,121 @@ class _HeatCell extends StatelessWidget {
   }
 }
 
+/// El `FlutterMap` en modo **ubicaciones exactas** (CR-023): un marcador por
+/// árbol en su coord real, banner fijo de "uso interno" y la misma leyenda de
+/// severidad. Solo se monta para roles con `canSeeExactLocation`.
+class _MapWithExact extends StatelessWidget {
+  const _MapWithExact({required this.observations});
+
+  final List<RestrictedObservation> observations;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: FlutterMap(
+            key: const Key('exact_map'),
+            options: const MapOptions(
+              initialCenter: kAguascalientesCenter,
+              initialZoom: kAguascalientesZoom,
+              interactionOptions: InteractionOptions(
+                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+              ),
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'mx.proyecto.mezquite',
+              ),
+              MarkerLayer(
+                key: const Key('exact_markers'),
+                markers: [
+                  for (final obs in observations)
+                    Marker(
+                      point: LatLng(obs.lat, obs.lon),
+                      width: 22,
+                      height: 22,
+                      child: _ExactMarker(obs: obs),
+                    ),
+                ],
+              ),
+              const RichAttributionWidget(
+                attributions: [TextSourceAttribution('OpenStreetMap')],
+              ),
+            ],
+          ),
+        ),
+        const Positioned(left: 12, bottom: 16, child: _HeatLegend()),
+        // Banner fijo de "uso interno": debe verse en capturas (CR-023).
+        const Positioned(top: 12, left: 12, right: 12, child: _ExactBanner()),
+      ],
+    );
+  }
+}
+
+/// Un árbol en su ubicación exacta (CR-023): círculo pequeño coloreado por su
+/// nivel de paxtle, con borde blanco. Tappable → popup con lat/lon exactas.
+class _ExactMarker extends StatelessWidget {
+  const _ExactMarker({required this.obs});
+
+  final RestrictedObservation obs;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = heatColor(context, _nivelIndex(obs.nivelG4).toDouble());
+    return GestureDetector(
+      key: Key('exact_marker_${obs.lat}_${obs.lon}'),
+      onTap: () => _showExactPopup(context, obs),
+      child: Container(
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.92),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 2),
+        ),
+      ),
+    );
+  }
+}
+
+/// Banner fijo del modo exacto: recuerda que es uso interno para reportes.
+class _ExactBanner extends StatelessWidget {
+  const _ExactBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Card(
+        key: const Key('map_exact_banner'),
+        color: scheme.errorContainer,
+        elevation: 3,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.warning_amber_rounded,
+                  size: 20, color: scheme.onErrorContainer),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  Copy.mapExactBanner,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onErrorContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Popup de una celda: `n`, paxtle, cúscuta y la severidad media.
 /// NUNCA coords exactas ni lista de árboles (gate #5).
 void _showCellPopup(BuildContext context, GridCell cell) {
@@ -214,6 +398,67 @@ void _showCellPopup(BuildContext context, GridCell cell) {
     },
   );
 }
+
+/// Popup de un árbol exacto (CR-023): nivel, paxtle, cúscuta, fecha y las
+/// **coordenadas exactas** con 6 decimales. Solo accesible en modo exacto.
+void _showExactPopup(BuildContext context, RestrictedObservation obs) {
+  final level = _nivelIndex(obs.nivelG4);
+  showDialog<void>(
+    context: context,
+    builder: (ctx) {
+      final theme = Theme.of(ctx);
+      return AlertDialog(
+        key: const Key('exact_popup'),
+        title: Row(
+          children: [
+            Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: heatColor(ctx, level.toDouble()),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(Copy.mapExactPopupTitle,
+                  style: theme.textTheme.titleLarge),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _PopupRow(
+                label: Copy.mapLegendTitle, value: Copy.mapLegendLevels[level]),
+            _PopupRow(
+                label: Copy.mapCellPaxtle, value: obs.flagDanio ? 'Sí' : 'No'),
+            _PopupRow(
+                label: Copy.mapCellCuscuta,
+                value: obs.flagCuscuta ? 'Sí' : 'No'),
+            _PopupRow(label: 'Fecha', value: _fmtDate(obs.capturedAt)),
+            _PopupRow(
+                label: Copy.mapExactPopupLat,
+                value: obs.lat.toStringAsFixed(6)),
+            _PopupRow(
+                label: Copy.mapExactPopupLon,
+                value: obs.lon.toStringAsFixed(6)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+String _fmtDate(DateTime d) =>
+    '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
 class _PopupRow extends StatelessWidget {
   const _PopupRow({required this.label, required this.value});
@@ -289,7 +534,7 @@ class _HeatLegend extends StatelessWidget {
   }
 }
 
-/// Estado de error: mantiene el mapa base (encuadre Aguascalientes) y avisa.
+/// Estado de error del calor: mantiene el mapa base (encuadre Aguascalientes) y avisa.
 class _MapErrorState extends StatelessWidget {
   const _MapErrorState();
 
@@ -308,6 +553,35 @@ class _MapErrorState extends StatelessWidget {
               child: const Padding(
                 padding: EdgeInsets.all(12),
                 child: Text(Copy.mapError, key: Key('map-error')),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Estado de error del modo exacto (p. ej. 403): mantiene el mapa base y el
+/// banner de uso interno, y muestra el aviso sin volver a calor.
+class _MapExactErrorState extends StatelessWidget {
+  const _MapExactErrorState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        const Positioned.fill(child: _MapWithExact(observations: [])),
+        Positioned(
+          top: 64,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Card(
+              color: Theme.of(context).colorScheme.errorContainer,
+              child: const Padding(
+                padding: EdgeInsets.all(12),
+                child: Text(Copy.mapExactError, key: Key('map-exact-error')),
               ),
             ),
           ),

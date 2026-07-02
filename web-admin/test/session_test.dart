@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mezquite_web_admin/src/api/api_client.dart';
+import 'package:mezquite_web_admin/src/models/models.dart';
 import 'package:mezquite_web_admin/src/state/session.dart';
 
 import 'helpers.dart';
@@ -127,12 +128,37 @@ void main() {
       expect(c.state.canManageUsers, isFalse);
     });
 
-    test('canSeeRestricted es false para admin_consorcio puro', () {
+    test('canSeeRestricted es true para admin_consorcio (CR-023)', () {
       final api = _clientReturning(status: 200, body: {});
       final c = SessionController(api);
       c.loginWithToken(fakeJwt(handle: 'obs-A', role: 'admin_consorcio'));
+      expect(c.state.canSeeRestricted, isTrue,
+          reason: 'CR-023: los roles administrativos ven ubicación exacta');
+    });
+
+    test('canSeeRestricted es false para evaluador (CR-023)', () {
+      final api = _clientReturning(status: 200, body: {});
+      final c = SessionController(api);
+      c.loginWithToken(fakeJwt(handle: 'obs-EV', role: 'evaluador'));
       expect(c.state.canSeeRestricted, isFalse,
-          reason: 'gate #5: un admin puro no ve coords exactas');
+          reason: 'gate #5: el evaluador no ve coords exactas');
+    });
+
+    test('AuthSession.canSeeExactLocation: 4 roles sí, voluntario/evaluador no '
+        '(CR-023)', () {
+      AuthSession s(String role) =>
+          AuthSession(handle: 'h', role: role, token: 't');
+      for (final role in [
+        'aliado_firmante',
+        'administrador',
+        'admin_consorcio',
+        'analista'
+      ]) {
+        expect(s(role).canSeeExactLocation, isTrue,
+            reason: '$role debe ver ubicación exacta (CR-023)');
+      }
+      expect(s('voluntario').canSeeExactLocation, isFalse);
+      expect(s('evaluador').canSeeExactLocation, isFalse);
     });
 
     test('el body de /auth/login lleva usuario/contraseña; sin email/nombre (gate #2 acotado)',

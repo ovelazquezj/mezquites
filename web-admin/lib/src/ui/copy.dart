@@ -127,6 +127,18 @@ class Copy {
   static const mapCellCuscuta = 'Con cúscuta';
   static const mapCellNivel = 'Nivel de paxtle (promedio)';
 
+  // --- Mapa: modo de ubicación exacta (CR-023, uso interno para reportes) ---
+  static const mapModeHeat = 'Mapa de calor (300 m)';
+  static const mapModeExact = 'Ubicaciones exactas';
+  static const mapExactBanner =
+      'Ubicaciones exactas — uso interno para reportes. No publiques capturas '
+      'sin obfuscarlas.';
+  static const mapExactPopupTitle = 'Árbol (ubicación exacta)';
+  static const mapExactPopupLat = 'Latitud';
+  static const mapExactPopupLon = 'Longitud';
+  static const mapExactError =
+      'No se pudieron cargar las ubicaciones exactas. Inténtalo de nuevo.';
+
   // --- Datos y descargas del analista (CR-010 #3) ---
   static const dataIntro =
       'Tabla de observaciones para análisis. Por privacidad de los árboles, solo '
@@ -147,6 +159,10 @@ class Copy {
   static const dataSummaryByRevision = 'Por estado de revisión';
   static const dataSummaryByNivel = 'Por nivel de paxtle';
   static const dataSummaryByMunicipio = 'Por municipio';
+  // Aviso extra para roles con ubicación exacta (CR-023).
+  static const dataExactNote =
+      'El CSV que descargues incluye coordenadas exactas (uso interno para '
+      'reportes). No lo publiques sin obfuscar.';
 
   // --- Reportes de problemas (CR-019, admin) ---
   static const problemsTitle = 'Reportes de problemas';
