@@ -100,6 +100,9 @@ flutter_native_splash:
   image: "assets/branding/splash_logo_master.png"
   android: true
   ios: false
+  # El splash web es el propio (CR-005, en web/index.html). Que la tool NO lo regenere
+  # (evita que sobrescriba index.html y cree web/splash/).
+  web: false
   android_12:
     color: "#1F3A6E"
     image: "assets/branding/splash_logo_master.png"
