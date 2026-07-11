@@ -45,6 +45,9 @@ Thumbs.db
 
 # Worktrees de agentes + overrides/insumos locales (no versionar)
 .claude/
+# Insumos/back-ups locales de branding (zips de logos entregados + respaldos)
+/_backup-logos-viejos-*
+/nuevos logos.zip
 infra/compose/docker-compose.lan.yml
 resultados_paginas/
 
