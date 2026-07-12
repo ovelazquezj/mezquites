@@ -136,16 +136,30 @@ class Copy {
       'Tu etiqueta de identidad reconoce tu trayectoria. No desbloquea '
       'funciones: todas están disponibles desde el primer día.';
 
-  // --- Mapa de calor público (CR-009) ---
+  // --- Mapa público del mezquite (CR-009 · CR-025) ---
   static const dashboardTitle = 'Mapa de observaciones';
 
   /// Título de la vista de mapa (entrada pública y pestaña "Mapa").
   static const mapTitle = 'Mapa del mezquite';
 
-  /// Nota de obfuscación (gate #5 enmendado: 1 km → 300 m).
+  /// Nota del mapa público: presenta las observaciones ciudadanas del mezquite.
   static const obfuscationNote =
-      'Las ubicaciones públicas se muestran aproximadas (celda de ~300 m) para '
-      'proteger los árboles.';
+      'El mapa muestra las observaciones ciudadanas del mezquite.';
+
+  /// Selector de vista del mapa (calor ⇄ ubicaciones exactas). Default: calor.
+  static const mapModeHeat = 'Mapa de calor';
+  static const mapModeExact = 'Ubicaciones exactas';
+
+  /// Título del popup de una celda del mapa de calor.
+  static const mapCellTitle = 'Celda del mapa de calor';
+
+  /// Popup de un árbol en el modo de ubicaciones exactas.
+  static const mapTreeTitle = 'Mezquite observado';
+  static const mapTreeNivel = 'Nivel de paxtle';
+  static const mapTreePaxtle = 'Paxtle';
+  static const mapTreeCuscuta = 'Cúscuta';
+  static const mapTreeFecha = 'Fecha';
+  static const mapTreeUbicacion = 'Ubicación';
 
   /// Entrada pública SIN login desde la Bienvenida (gate #3: abre siempre).
   static const publicMapButton = 'Ver el mapa público';
@@ -162,14 +176,12 @@ class Copy {
   static const mapInfoTooltip = 'Acerca de estos datos';
   static const mapInfoTitle = 'Acerca de estos datos';
 
-  /// Disclaimer del mapa (gates #5/#1). Ubicaciones aproximadas + dato
-  /// ciudadano sin validación experta + nivel autodeclarado.
+  /// Disclaimer del mapa (gate #1). Dato ciudadano sin validación experta +
+  /// nivel de paxtle autodeclarado + sin acciones de control ni de manejo.
   static const mapDisclaimer =
-      'Las ubicaciones son aproximadas (~300 m) para proteger a los árboles; '
-      'nunca se muestra la posición exacta. Es un dato de origen ciudadano, sin '
-      'validación por expertos, y el nivel de paxtle es autodeclarado por quien '
-      'observa. El mapa muestra presencia e impacto del paxtle, no acciones de '
-      'control ni de manejo.';
+      'Es un dato de origen ciudadano, sin validación por expertos, y el nivel '
+      'de paxtle es autodeclarado por quien observa. El mapa muestra presencia '
+      'e impacto del paxtle, no acciones de control ni de manejo.';
 
   /// Leyenda del calor (por g4_indice 0..3).
   static const mapLegendTitle = 'Nivel de paxtle (autodeclarado)';
@@ -271,8 +283,8 @@ class Copy {
       'tu nombre; solo conservamos un identificador opaco para reconocerte la '
       'próxima vez.\n\n'
       '4. Tus aportaciones. Las observaciones que registras (foto, ubicación '
-      'aproximada y tus estimaciones) se integran a un conjunto de datos de '
-      'ciencia ciudadana de uso público y abierto.\n\n'
+      'y tus estimaciones) se integran a un conjunto de datos de ciencia '
+      'ciudadana de uso público y abierto.\n\n'
       '5. Buen uso. Registra observaciones reales y de buena fe; no entres a '
       'propiedad privada sin permiso y cuida tu seguridad en campo.\n\n'
       '6. Cambios. Estos términos pueden actualizarse; te avisaremos dentro de '
@@ -293,10 +305,9 @@ class Copy {
       'del paxtle.\n\n'
       'No venta ni cesión indebida. No vendemos tus datos ni los cedemos para '
       'fines ajenos al proyecto.\n\n'
-      'Ubicación aproximada. Las ubicaciones que se muestran públicamente se '
-      'difuminan a una celda de aproximadamente 300 m para proteger los árboles. '
-      'Las coordenadas exactas solo se comparten con el aliado firmante del '
-      'sitio correspondiente.\n\n'
+      'Ubicación de las observaciones. La ubicación de cada mezquite que '
+      'registras forma parte del conjunto de datos abierto del proyecto y se '
+      'muestra públicamente en el mapa.\n\n'
       'Conservación. El identificador de tu cuenta se conserva mientras tu '
       'cuenta exista. Las observaciones (dato ecológico) se conservan de forma '
       'seudónima incluso si tu cuenta se elimina.\n\n'

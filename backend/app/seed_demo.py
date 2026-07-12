@@ -12,8 +12,9 @@ cuenta ya tiene observaciones de siembra, no se duplica nada (no inserta de nuev
 
 Notas de gates:
 - Gate #8: ``nivel_g4`` y los flags son AUTODECLARADOS (datos sintéticos de demo), nunca validados.
-- Gate #5: este script solo **inserta** las coords exactas (como cualquier submit real); la
-  obfuscación a celda la aplica la vista pública (``/public/observations`` y ``/public/grid``).
+- Binning: este script **inserta** las coords exactas (como cualquier submit real); el agrupamiento
+  a celda (binning) lo aplica el mapa de calor (``/public/grid``). ``/public/observations`` devuelve
+  la ubicación exacta.
 - Gate #6: no requiere imágenes reales ni nube; usa una **clave de storage placeholder** en
   ``image_ref`` (la columna exige NOT NULL, pero no se sube binario).
 

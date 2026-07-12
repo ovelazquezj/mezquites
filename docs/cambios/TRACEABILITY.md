@@ -15,8 +15,8 @@
 | **Q5.A** (CR-001) Calidad por **revisión humana** (confirmada/rechazada) autoritativa en backend | backend | CR-001 | `backend/tests/test_review.py` (verdict cambia `estado_revision` + log `human_review`) | ✅ |
 | **Q5.A** Existe resumen **agregado** de aportaciones (sin acusación individual) | backend + móvil | 2–CR-001 | backend `GET /me/feedback` agregado: `test_rankings_profile.py::test_feedback_is_aggregate_not_individual`; móvil: `profile_screen.dart` + `no_validation_state_test.dart` | ✅ |
 | **Q5.A** El submit no bloquea la UI | backend + móvil | 2–CR-001 | backend responde 201 sin encolar: `test_observation_create.py::test_submit_does_not_enqueue_any_job`; móvil: cola local "pendiente" de envío en `capture_screen.dart` | ✅ |
-| **Q5.B** Vista pública solo coords a 1 km | backend | 2 | `backend/tests/test_obfuscation.py` (helper `obfuscate_1km`, EPSG:6372) + `backend/tests/test_roles.py::test_public_observations_are_obfuscated_to_1km` | ✅ |
-| **Q5.B** Vista restringida exige auth de aliado firmante | backend | 2 | `backend/tests/test_roles.py::test_restricted_requires_aliado_firmante` / `test_restricted_allows_aliado_firmante_with_exact_coords` | ✅ |
+| ~~**Q5.B** Vista pública solo coords a 1 km~~ → **CR-025:** vista pública **exacta** | backend | CR-025 | `backend/tests/test_public_grid.py` (grid = binning del calor) + `test_obfuscation.py` (helper de binning) + `test_roles.py` (público devuelve coords exactas) | ✅ |
+| **Q5.B** (CR-025) Ubicación exacta disponible a público y a todos los roles de consola | backend | CR-025 | `backend/tests/test_roles.py` + `test_cr023_ubicacion_exacta.py` (`EXACT_LOCATION_ROLES` incluye `evaluador`) | ✅ |
 | **Q5.B** Toda vista muestra fecha de snapshot (Qn) | backend + clientes | 2–4 | backend `/public/*` incluye `snapshot_quarter`; móvil `SnapshotStamp`; web admin `SnapshotStamp` + `boundary_test.dart` | ✅ |
 | **Q5.B** La app NO genera PDFs (solo dashboards) | clientes | 3–4 | móvil `dashboard_boundary_test.dart` + web admin `boundary_test.dart` (sin dep pdf/printing; sin botón export) | ✅ |
 | **Q7** Disclaimer una vez tras crear cuenta; descarte 1 tap; en Ayuda | móvil | 3 | `mobile/test/disclaimer_test.dart` | ✅ |
@@ -77,7 +77,7 @@
 | **AC1** | Observación recién subida → `aceptada` y aparece en `/public/observations` | `backend/tests/test_review.py::test_ac1_new_observation_is_aceptada_and_public` | ✅ |
 | **AC2** | `verdict {rechazada}` la saca del público y escribe en `human_review` | `backend/tests/test_review.py::test_ac2_reject_removes_from_public_and_logs` | ✅ |
 | **AC3** | `analista` → 403 al emitir veredicto; `evaluador`/`administrador` → 200 | `backend/tests/test_review.py::test_ac3_analista_cannot_emit_verdict` / `::test_ac3_evaluador_and_admin_can_emit_verdict` | ✅ |
-| **AC4** (gate #5) | `/review/.../image` sin EXIF GPS para evaluador/analista; con GPS solo aliado_firmante | `backend/tests/test_review.py::test_ac4_image_gps_stripped_for_evaluador` / `::..._for_analista` / `::test_ac4_image_keeps_gps_only_for_aliado_firmante` (+ `test_original_image_actually_has_gps`) | ✅ |
+| ~~**AC4** (gate #5) `/review/.../image` sin EXIF GPS~~ → **Retirado (CR-025)** | `/review/.../image` sirve la imagen **con** su GPS a todos los roles (ubicación exacta ya es pública); `app/exif.py` ocioso | `backend/tests/test_review.py` (actualizado en CR-025) | ✅ |
 | **AC5** | Web-admin: cola + detalle con imagen + confirmar/rechazar; analista ve Monitor sin botones | `web-admin/test/widget_review_test.dart` + `review_api_test.dart` | ✅ |
 | **AC6** | App móvil muestra "registrada y aceptada"; sin estado individual | `mobile/test/no_validation_state_test.dart::AC6...` | ✅ |
 | **AC7** | El submit NO encola ningún job | `backend/tests/test_observation_create.py::test_submit_does_not_enqueue_any_job` + `test_yolo_disconnected.py` | ✅ |
@@ -407,3 +407,26 @@ es responsabilidad operativa. Decisiones del usuario en `docs/change-requests/CR
 > corridas por el orquestador el 2026-07-02. Delta sobre las 325 previas: **+9 backend** (test_cr023 +
 > ajuste de 1 test de analytics) y **+11 web-admin** (toggle exacto, getter, shell y nota CSV). Móvil,
 > contrato y mock sin cambios.
+
+## CR-025 — Ubicación EXACTA pública (retira la obfuscación del gate #5)
+
+Directo sobre `main` (backend + móvil/web-voluntario + web-admin + docs). **Retira la parte pública del
+gate #5** (obfuscación), por **decisión de gobernanza del Club** (legales del punto 5 re-aprobados). Sin
+migración. Supera los criterios de obfuscación pública de **CR-009** y la restricción de exactas de
+**CR-023** (que dejan de aplicar al público). `geo.obfuscate_to_grid` y `app/exif.py` se conservan
+**ociosos** (binning del calor / módulo sin uso). Sin mención de motivaciones externas en el código/docs.
+
+| AC (CR-025) | Implementación | Prueba |
+|---|---|---|
+| **AC1** `GET /public/observations` devuelve coords **exactas** (== guardadas) | `routers/public.py` sin `obfuscate_to_grid` | `backend/tests/test_roles.py` / `test_obfuscation.py` (público exacto) |
+| **AC2** El **mapa de calor** se conserva: `/public/grid` agrega por celda (binning) | `routers/public.py` (sin cambios funcionales) | `backend/tests/test_public_grid.py` |
+| **AC3** `EXACT_LOCATION_ROLES` incluye `evaluador` ⇒ exactas para **todos** los roles de consola; CSV exacto | `models.py` + `routers/restricted.py` + `routers/analytics.py` | `backend/tests/test_cr023_ubicacion_exacta.py` / `test_cr010_analytics.py` (actualizados) |
+| **AC4** `GET /review/.../image` sirve la imagen **con GPS** (saneo retirado) | `routers/review.py` sin `strip_gps` | `backend/tests/test_review.py` (actualizado) |
+| **AC5** Mapa **público** (móvil/web-voluntario): toggle calor⇄exacto (default calor) + pines exactos | `mobile/lib/src/ui/screens/heat_map_screen.dart` | `mobile/test/heat_map_test.dart` |
+| **AC6** Consola: se conserva el toggle; modo exacto abierto a **todos** los roles; sin banner de "uso interno" | `web-admin/.../map_screen.dart` + `session.dart` | `web-admin/test/widget_map_exact_test.dart` / `session_test.dart` |
+| **AC7** Legales (`aviso-privacidad`/`terminos` + HTML) sin promesa de obfuscación; bitácora enmendada | `docs/legal/*` + `infra/compose/legal/*` + `bitacora` (gate #5, Q5.B-D1) | revisión |
+| **AC8** Suites verdes; números reales reportados por el orquestador | — | corridas de suites |
+
+**Gate #5:** su parte pública se **retira** (público exacto). La celda de 300 m persiste **solo** como
+binning del mapa de calor. Enmienda registrada en `bitacora_sdd_mezquite.md` (gate #5, Q5.B-D1 y la
+salvaguarda EXIF de CR-001). Decisiones del usuario en `docs/change-requests/CR-025-ubicacion-exacta-publica.md`.

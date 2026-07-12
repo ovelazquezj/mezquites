@@ -145,7 +145,8 @@ class ApiClient {
 
   // --- Vistas de datos públicas ---
 
-  /// Observaciones públicas: coords obfuscadas server-side (gate #5; CR-009 = 300 m).
+  /// Observaciones públicas individuales con la ubicación del mezquite
+  /// (presentación pública, CR-025). Sin auth (endpoint `public/*`).
   Future<List<PublicObservation>> publicObservations({
     String? estado,
     int limit = 500,
@@ -162,8 +163,8 @@ class ApiClient {
         .toList();
   }
 
-  /// Mapa de calor público (CR-009): celdas de 300 m con coords obfuscadas
-  /// server-side (gate #5). Agrega solo observaciones NO RECHAZADAS. Sin auth
+  /// Mapa de calor público (CR-009): celdas de ~300 m (binning de agregación
+  /// server-side). Agrega solo observaciones NO RECHAZADAS. Sin auth
   /// (endpoint `public/*`; `_headers(json:false)` no exige token).
   Future<List<GridCell>> publicGrid({
     String? estado,

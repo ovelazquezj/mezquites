@@ -4,7 +4,7 @@
 > en **Paseo de la Asunción #305, Jardines de Aguascalientes, C.P. 20270, Aguascalientes, México**.
 > Contacto: **contacto@rescatando-el-mezquite.org**.
 
-Última actualización: 2026-06-27.
+Última actualización: 2026-07-12.
 
 ## 1. Qué es esta plataforma
 
@@ -44,27 +44,24 @@ Para evitar malentendidos sobre el alcance:
   público. Las observaciones se aceptan por defecto y quedan visibles hasta que, en su caso,
   un evaluador las retire.
 
-## 5. Privacidad de la ubicación
+## 5. Ubicación de las observaciones
 
-Para proteger los árboles frente a un uso indebido de su localización, la **ubicación que se
-muestra al público nunca es más precisa que una cuadrícula de ~300 m**. Las coordenadas
-exactas solo son accesibles para **aliados firmantes** autorizados por el Club Rotario Bosques
-Aguascalientes. Esto se
-detalla en el [Aviso de privacidad](aviso-privacidad.md).
+La ubicación es un dato del **árbol** observado, no de la persona voluntaria. Las vistas
+públicas de la plataforma muestran la **ubicación registrada del árbol**. El tratamiento de la
+ubicación se detalla en el [Aviso de privacidad](aviso-privacidad.md).
 
 ## 6. Uso aceptable
 
 Te comprometes a aportar observaciones de buena fe y a no:
 
 - subir contenido que no corresponda a la observación de mezquites y sus parásitos;
-- intentar deducir o difundir la ubicación exacta de árboles a partir de datos públicos;
 - usar la plataforma para fines comerciales no autorizados o para acosar a otras personas.
 
 ## 7. Datos abiertos y atribución
 
-El dato ecológico agregado puede publicarse como **dato abierto** para fines de
-investigación, educación y gestión ambiental, siempre respetando la obfuscación de
-ubicación del punto 5 y sin exponer datos personales.
+El dato ecológico puede publicarse como **dato abierto** para fines de
+investigación, educación y gestión ambiental, sin exponer datos personales de las
+personas voluntarias.
 
 ## 8. Derechos sobre tus datos personales (ARCO)
 
@@ -86,4 +83,5 @@ Aguascalientes** a través del administrador de la plataforma (ver el contacto d
 
 ---
 
-*Términos y Condiciones aprobados por el Club Rotario Bosques Aguascalientes (CR-006).*
+*Términos y Condiciones aprobados por el Club Rotario Bosques Aguascalientes (CR-006; punto 5
+actualizado y re-aprobado por CR-025).*

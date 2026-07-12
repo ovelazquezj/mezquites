@@ -1,9 +1,10 @@
-"""Obfuscación a la celda de obfuscación (gate #5; CR-009: 300 m). Pura, sin DB.
+"""Binning del mapa de calor a la celda métrica (CR-009: 300 m). Puro, sin DB.
 
-CR-009 baja la celda pública de 1 km a 300 m. El parámetro es conmutable por config
-(``settings.obfuscation_grid_m``, gate #6); estas pruebas validan el comportamiento con el valor
-por defecto (300 m): el centro de celda está a < 300 m del punto, vecinos a ~50 m caen en la misma
-celda, puntos lejanos caen en celdas distintas y NUNCA se devuelve la coord exacta.
+``obfuscate_to_grid`` agrupa las observaciones del heatmap (``/public/grid``) en una malla métrica
+(``settings.obfuscation_grid_m``, conmutable por config, gate #6). Estas pruebas validan el binning
+con el valor por defecto (300 m): el centro de celda está a < 300 m del punto, vecinos a ~50 m caen
+en la misma celda, puntos lejanos caen en celdas distintas y el punto se colapsa al centro de su
+celda.
 """
 
 from __future__ import annotations
@@ -26,7 +27,7 @@ def _haversine_m(a, b):
 
 
 def test_grid_default_is_300m():
-    # CR-009: la celda pública por defecto es 300 m (gate #5, más fina que antes pero nunca exacta).
+    # CR-009: la celda de binning del heatmap por defecto es 300 m (conmutable por config).
     assert get_settings().obfuscation_grid_m == 300.0
 
 
@@ -43,8 +44,7 @@ def test_obfuscation_moves_to_cell_center_within_300m():
 
 def test_obfuscation_is_deterministic_and_snaps_neighbors_together():
     # Partimos del CENTRO de una celda y tomamos un vecino a ~5 m: ambos caen en la misma celda de
-    # 300 m → coords obfuscadas idénticas (no más finas que la celda). Anclar en el centro evita la
-    # ambigüedad de frontera de celda.
+    # binning de 300 m → mismo centro de celda. Anclar en el centro evita la ambigüedad de frontera.
     center = obfuscate_to_grid(LAT, LON)
     p1 = obfuscate_to_grid(center[0], center[1])
     p2 = obfuscate_to_grid(center[0] + 0.00004, center[1] + 0.00004)  # ~5 m
@@ -65,7 +65,7 @@ def test_obfuscation_distinct_cells_for_points_one_cell_apart():
     assert _haversine_m((LAT, LON), (LAT + 0.0055, LON)) > 300.0
 
 
-def test_obfuscation_never_returns_exact_input():
-    # Nunca debe devolver la coord exacta (gate #5): siempre el centro de celda.
+def test_obfuscation_collapses_point_to_cell_center():
+    # El binning colapsa el punto al centro de su celda: nunca devuelve la coord de entrada.
     lat_o, lon_o = obfuscate_to_grid(LAT, LON)
     assert (lat_o, lon_o) != (LAT, LON)

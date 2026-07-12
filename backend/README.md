@@ -17,7 +17,7 @@ backend/
     security.py          Auth sin PII: handle + código de respaldo (PBKDF2), JWT
     deps.py              Dependencias FastAPI de auth + rol (3 roles)
     storage.py           StorageProvider: LocalFSStorage (dev/QA) | S3CompatibleStorage (stg/prod)
-    geo.py               obfuscate_1km (EPSG:6372), assign_tree (ST_DWithin 10 m), estado/municipio
+    geo.py               obfuscate_to_grid (binning del heatmap, EPSG:6372), assign_tree, estado/municipio
     queue.py             Productor de la cola §6 (make_broker, ValidationJob)
     validation_apply.py  Aplicación autoritativa e idempotente del resultado (gate #9)
     indicators.py        Indicadores Q6 (sin umbrales, U1)
@@ -41,8 +41,8 @@ backend/
 | POST | `/observations` | voluntario+ (8 etiquetas + imagen; fire-and-forget) |
 | GET  | `/observations/mine`, `/me/feedback`, `/me/profile` | voluntario+ |
 | GET  | `/gamification/rankings` | voluntario+ |
-| GET  | `/public/observations` (coords a 1 km), `/public/indicators` | público |
-| GET  | `/restricted/observations` (coords exactas) | aliado_firmante |
+| GET  | `/public/observations` (coords exactas), `/public/grid` (heatmap, binning de celda), `/public/indicators` | público |
+| GET  | `/restricted/observations` (coords exactas) | roles de consola (CR-025) |
 | POST | `/admin/indicators/organizational`, `/admin/allies`, `/admin/snapshots` | admin_consorcio |
 | GET/POST | `/admin/institutions` | admin_consorcio |
 

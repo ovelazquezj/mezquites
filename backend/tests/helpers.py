@@ -12,7 +12,7 @@ def fake_jpeg(payload: bytes = b"fake-image-bytes") -> tuple[str, io.BytesIO, st
 
 
 def jpeg_with_gps() -> bytes:
-    """JPEG real (Pillow) con tags EXIF GPS, para probar el saneo del gate #5 (CR-001)."""
+    """JPEG real (Pillow) con tags EXIF GPS, para probar el manejo de EXIF GPS (CR-025)."""
     from PIL import Image
 
     img = Image.new("RGB", (8, 8), (10, 120, 60))

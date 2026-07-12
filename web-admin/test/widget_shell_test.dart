@@ -51,7 +51,7 @@ Widget _shellAsAdmin() {
 }
 
 void main() {
-  testWidgets('admin_consorcio SÍ ve la pestaña con ubicación exacta (CR-023)',
+  testWidgets('admin_consorcio SÍ ve la pestaña con ubicación exacta (CR-025)',
       (tester) async {
     tester.view.physicalSize = const Size(1400, 1000);
     tester.view.devicePixelRatio = 1.0;
@@ -59,7 +59,7 @@ void main() {
     await tester.pumpWidget(_shellAsAdmin());
     await tester.pump();
     expect(find.text(Copy.navRestricted), findsWidgets,
-        reason: 'CR-023: los roles administrativos ven ubicación exacta');
+        reason: 'la ubicación exacta es pública: la ven los roles de consola');
     // Sí ve los módulos admin en el NavigationRail.
     expect(find.text(Copy.navInstitutions), findsOneWidget);
     expect(find.text(Copy.navAllies), findsOneWidget);
@@ -70,7 +70,7 @@ void main() {
     expect(find.text(Copy.navPublic), findsWidgets);
   });
 
-  testWidgets('evaluador NO ve la pestaña con ubicación exacta (gate #5)',
+  testWidgets('evaluador también ve la pestaña con ubicación exacta (CR-025)',
       (tester) async {
     tester.view.physicalSize = const Size(1400, 1000);
     tester.view.devicePixelRatio = 1.0;
@@ -88,7 +88,7 @@ void main() {
       child: const MaterialApp(home: HomeShell()),
     ));
     await tester.pump();
-    expect(find.text(Copy.navRestricted), findsNothing,
-        reason: 'gate #5: el evaluador no ve coords exactas');
+    expect(find.text(Copy.navRestricted), findsWidgets,
+        reason: 'CR-025: la ubicación exacta es pública; el evaluador también la ve');
   });
 }

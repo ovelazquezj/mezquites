@@ -129,7 +129,7 @@ La API lee su configuración por **variables de entorno** (Pydantic settings; no
 | `GOOGLE_OAUTH_AUDIENCE` | | (opcional) | (opcional) | si el `aud` difiere del project id |
 | `CORS_ENV` | | `prod` | `prod` | fuera de dev: solo orígenes explícitos |
 | `CORS_ALLOW_ORIGINS` | | `https://<web-voluntario-qa>,https://<web-admin-qa>` | dominios Prod | coma-separado; **nunca** `*` |
-| `OBFUSCATION_GRID_M` | | `300` | `300` | gate #5 (celda pública mínima) |
+| `OBFUSCATION_GRID_M` | | `300` | `300` | tamaño de celda del mapa de calor (binning; CR-025) |
 | `SMTP_HOST` | 🔒 | host SMTP | host SMTP | reset de contraseña del administrador |
 | `SMTP_PORT` | | `587` | `587` | |
 | `SMTP_USER` | 🔒 | usuario | usuario | |

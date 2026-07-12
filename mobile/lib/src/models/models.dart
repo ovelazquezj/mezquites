@@ -242,9 +242,9 @@ class Rankings {
       );
 }
 
-/// Observación pública con coords OBFUSCADAS a la celda pública (gate #5;
-/// CR-009 enmienda el radio de 1 km a 300 m server-side).
-/// La app NUNCA muestra coords más finas que esto.
+/// Observación pública individual con la ubicación del mezquite (presentación
+/// pública, CR-025). Alimenta el modo "ubicaciones exactas" del mapa
+/// (un marcador por árbol).
 class PublicObservation {
   const PublicObservation({
     required this.handle,
@@ -261,7 +261,7 @@ class PublicObservation {
 
   final String handle;
 
-  /// Centro de celda pública (obfuscado server-side, gate #5; CR-009 = 300 m).
+  /// Ubicación del mezquite (presentación pública, CR-025).
   final double lat;
   final double lon;
   final String nivelG4;
@@ -288,9 +288,8 @@ class PublicObservation {
 }
 
 /// Celda del mapa de calor público (CR-009). Agrega las observaciones
-/// NO RECHAZADAS por celda de 300 m; el centro de celda viene OBFUSCADO
-/// server-side (gate #5 enmendado: 1 km → 300 m). La app NUNCA recibe ni
-/// muestra coords más finas que la celda.
+/// NO RECHAZADAS por celda (~300 m) como *binning* del heatmap; el centro es
+/// el de la celda de agregación, no un árbol individual.
 class GridCell {
   const GridCell({
     required this.lat,
@@ -302,7 +301,7 @@ class GridCell {
     required this.snapshotQuarter,
   });
 
-  /// Centro de celda de 300 m (obfuscado server-side, gate #5).
+  /// Centro de la celda de binning del mapa de calor (~300 m, server-side).
   final double lat;
   final double lon;
 

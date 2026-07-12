@@ -79,7 +79,7 @@ class _SnapshotsScreenState extends ConsumerState<SnapshotsScreen> {
               children: [
                 Text(
                   'Cada trimestre se publica un corte con el estado vigente de '
-                  'los datos públicos (ubicaciones aproximadas ~300 m).',
+                  'los datos públicos (con la ubicación exacta del árbol).',
                   style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 16),

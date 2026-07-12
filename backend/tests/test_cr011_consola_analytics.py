@@ -1,7 +1,7 @@
 """CR-011 — arreglos post-CR-010 (backend).
 
 - `GET /admin/analytics/observations` devuelve la tabla JSON del analista (causa del #4: faltaba el
-  endpoint → 404), sin coords exactas (gate #5).
+  endpoint → 404), sin coords (solo estado/municipio).
 - `POST /admin/institutions/{id}/approve` aprueba una solicitada → entra al catálogo público.
 - `POST /institutions/request` **asocia** la institución a la cuenta que la registra (decisión A).
 - El `administrador` (no solo `admin_consorcio`) puede usar la consola `/admin`.
@@ -34,7 +34,7 @@ def test_analytics_observations_returns_rows_without_exact_coords(client, db_ses
         "flag_cuscuta", "flag_danio", "estado", "municipio",
     ):
         assert k in row, f"falta la clave {k}"
-    # Gate #5: la tabla NO expone coords exactas.
+    # La tabla NO incluye coords (solo estado/municipio).
     assert "lat" not in row and "lon" not in row and "geom" not in row
 
 

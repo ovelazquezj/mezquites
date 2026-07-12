@@ -204,24 +204,24 @@ void main() {
     expect(rec.hitPathContaining('/admin/analytics/observations'), isTrue);
   });
 
-  testWidgets('analista ve el aviso de CSV con coords exactas (CR-023)',
+  testWidgets('analista ve el aviso de CSV con coords exactas (CR-025)',
       (tester) async {
     big(tester);
     await tester.pumpWidget(_dataAs('analista', RequestRecorder()));
     await tester.pumpAndSettle();
-    // La nota original de privacidad sigue presente (no la rompemos).
+    // La nota introductoria de la tabla sigue presente (no la rompemos).
     expect(find.byKey(const Key('data-location-note')), findsOneWidget);
-    // Y el aviso extra de CR-023 (coords exactas en el CSV).
+    // Y el aviso de que el CSV trae las coordenadas exactas.
     expect(find.byKey(const Key('data-exact-note')), findsOneWidget);
   });
 
-  testWidgets('evaluador NO ve el aviso de coords exactas del CSV (CR-023)',
+  testWidgets('evaluador también ve el aviso de coords exactas del CSV (CR-025)',
       (tester) async {
     big(tester);
     await tester.pumpWidget(_dataAs('evaluador', RequestRecorder()));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('data-location-note')), findsOneWidget);
-    expect(find.byKey(const Key('data-exact-note')), findsNothing);
+    expect(find.byKey(const Key('data-exact-note')), findsOneWidget);
   });
 
   testWidgets('Descargar CSV baja el CSV por fetch autenticado (CR-010 #3)',
@@ -238,7 +238,7 @@ void main() {
     expect(find.text(Copy.dataDownloadDone), findsOneWidget);
   });
 
-  testWidgets('mapa: la pestaña Mapa carga la grilla pública (gate #5, ~300 m)',
+  testWidgets('mapa: la pestaña Mapa carga la grilla pública (mapa de calor)',
       (tester) async {
     big(tester);
     final rec = RequestRecorder();

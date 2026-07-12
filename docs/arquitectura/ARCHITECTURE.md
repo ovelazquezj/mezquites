@@ -78,8 +78,9 @@ Detalle en [`docs/data-model/postgis-model.md`](../data-model/postgis-model.md).
   `reviewer_account_id`, `veredicto`, `nota`, `created_at` (gate #7). El estado actual vive en
   `observation.estado_revision`; `validation_event` se conserva pero ya no se escribe.
 - **`tree`** — identidad de árbol por **radio 10 m** (R3); serie temporal con **gap > 30 días**.
-- **Obfuscación** — vista pública a **grid 1 km** (`ST_SnapToGrid`); coords exactas solo a rol
-  `aliado_firmante`.
+- **Ubicación** — **CR-025:** las vistas públicas muestran la **ubicación exacta** del árbol. El grid
+  (`geo.obfuscate_to_grid`) se conserva **solo** como *binning* del mapa de calor (agregación), no como
+  límite de privacidad.
 - **Dimensión geográfica** — `estado`/`municipio` derivables del EXIF (join espacial a límites
   administrativos); habilita filtros y escalamiento (Q8) sin re-arquitectura.
 - **Cuenta sin PII** — `account(handle, recovery_hash, role, institution_id)`.
@@ -99,7 +100,7 @@ Prefijo `/api/v1`. OpenAPI servido por FastAPI en `/api/v1/openapi.json`. **3 ro
 | `GET` | `/me/profile` | voluntario | Lifelist, etiqueta de identidad L3, insignias. |
 | `GET` | `/gamification/rankings` | voluntario | Rankings por periodo (individual + institución). |
 | `GET` | `/learning/*` | voluntario | Contenidos AU2 (sin gating). |
-| `GET` | `/public/observations` | público | Coords **obfuscadas a 1 km**; handle por observación; "última actualización Qn". |
+| `GET` | `/public/observations` | público | **CR-025:** coords **exactas**; handle por observación; "última actualización Qn". |
 | `GET` | `/public/indicators` | público | Indicadores social/educativo/ecológico (Q6). |
 | `GET` | `/restricted/observations` | aliado_firmante | Coords **exactas** (requiere auth de firmante). |
 | `POST` | `/admin/indicators/organizational` | admin_consorcio | Captura manual de indicadores organizacionales (Q6 amendment). |
@@ -108,7 +109,7 @@ Prefijo `/api/v1`. OpenAPI servido por FastAPI en `/api/v1/openapi.json`. **3 ro
 | `*` | `/admin/institutions` | admin_consorcio | Lista F3 + "solicitar agregar" (ticket a EA3). |
 | `GET` | `/review/queue` | evaluador, analista, administrador | Cola de revisión (filtros + paginación; sin coord exacta). |
 | `GET` | `/review/observations/{id}` | evaluador, analista, administrador | Detalle + historial `human_review` (sin coord exacta). |
-| `GET` | `/review/observations/{id}/image` | evaluador, analista, administrador, aliado_firmante | Sirve la imagen; **EXIF GPS saneado** salvo `aliado_firmante` (gate #5). |
+| `GET` | `/review/observations/{id}/image` | evaluador, analista, administrador, aliado_firmante | Sirve la imagen. **CR-025:** el saneo de EXIF GPS queda inactivo (ubicación exacta ya es pública). |
 | `POST` | `/review/observations/{id}/verdict` | evaluador, administrador | Veredicto humano (`confirmada`/`rechazada`); escribe `human_review` y `estado_revision`. |
 | `GET` | `/review/stats` | evaluador, analista, administrador | Conteos por `estado_revision` + throughput (Monitor). |
 
@@ -167,7 +168,7 @@ oficial de Rotary** (los actuales son provisionales y están marcados como tales
 | 2. Sin PII | `account` sin email/teléfono/nombre; `/auth/register` no pide PII |
 | 3. Sin gating | Ningún endpoint exige nivel/capacitación; gamificación sin multiplicadores |
 | 4. Captura cámara-nativa + EXIF | App fuerza cámara; galería deshabilitada; backend exige EXIF |
-| 5. Obfuscación 1 km | `/public/*` usa `ST_SnapToGrid`; exactas solo `/restricted/*`. **CR-001:** imagen de revisión con **EXIF GPS saneado** (`app/exif.py`) salvo `aliado_firmante` |
+| 5. ~~Obfuscación 1 km~~ | **Retirado (CR-025):** las vistas públicas muestran la **ubicación exacta**; `geo.obfuscate_to_grid` queda como *binning* del mapa de calor y `app/exif.py` (saneo GPS) queda ocioso |
 | 6. Paridad de entornos | `StorageProvider`, `MessageBroker`, `DATABASE_URL` conmutables |
 | 7. Trazabilidad | [`TRACEABILITY.md`](../cambios/TRACEABILITY.md): criterio → prueba; log `human_review` |
 | 8. ~~Alcance validación automática~~ | **Enmendado (CR-001):** sin validación automática; calidad por revisión humana. Backend sigue sin validar especie/G4 |

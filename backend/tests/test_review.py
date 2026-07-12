@@ -4,8 +4,8 @@ Criterios de aceptación:
 - AC1: una observación recién subida queda 'aceptada' y aparece en /public/observations.
 - AC2: POST verdict {rechazada} la saca del público y escribe en human_review.
 - AC3: analista recibe 403 al emitir veredicto; evaluador/administrador 200.
-- AC4 (gate #5, BLOQUEANTE): /review/.../image quita el GPS del EXIF para evaluador/analista;
-  con GPS solo para aliado_firmante.
+- AC4 (CR-025): /review/.../image sirve la imagen **cruda** (con su EXIF/GPS) a todos los roles de
+  revisión; el saneo de GPS quedó ocioso. ``strip_gps``/``has_gps`` se conservan como utilidad.
 """
 
 from __future__ import annotations
@@ -168,7 +168,7 @@ def test_queue_lists_and_filters(client, db_session):
     ).json()
     assert len(rows) == 1
     assert rows[0]["estado_revision"] == "aceptada"
-    # La cola NO expone lat/lon exactas (gate #5).
+    # La cola NO incluye coords (solo estado/municipio).
     assert "lat" not in rows[0] and "lon" not in rows[0]
 
     # Filtro por estado_revision.
@@ -233,11 +233,11 @@ def test_stats_counts_by_estado(client, db_session):
     assert stats["revisiones_totales"] == 2
 
 
-# --- AC4 (gate #5 BLOQUEANTE): saneo de EXIF GPS ---
+# --- AC4 (CR-025): la imagen se sirve CRUDA (con su EXIF/GPS) a todos los roles de revisión ---
 
 
-def test_ac4_image_gps_stripped_for_evaluador(client, db_session):
-    """La imagen servida a un evaluador NO debe llevar GPS en EXIF (gate #5)."""
+def test_ac4_image_served_raw_with_gps_for_evaluador(client, db_session):
+    """La imagen servida a un evaluador se entrega cruda, con su GPS en EXIF (CR-025)."""
     from backend.app.exif import has_gps
 
     volunteer = register(client)
@@ -250,10 +250,10 @@ def test_ac4_image_gps_stripped_for_evaluador(client, db_session):
     )
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("image/")
-    assert has_gps(resp.content) is False  # GPS eliminado
+    assert has_gps(resp.content) is True  # imagen cruda: conserva el GPS
 
 
-def test_ac4_image_gps_stripped_for_analista(client, db_session):
+def test_ac4_image_served_raw_with_gps_for_analista(client, db_session):
     from backend.app.exif import has_gps
 
     volunteer = register(client)
@@ -265,14 +265,13 @@ def test_ac4_image_gps_stripped_for_analista(client, db_session):
         headers=auth_header(analista["token"]),
     )
     assert resp.status_code == 200
-    assert has_gps(resp.content) is False
+    assert has_gps(resp.content) is True
 
 
-def test_ac4_image_keeps_gps_only_for_aliado_firmante(client, db_session):
-    """Solo aliado_firmante recibe la imagen con GPS (gate #5)."""
+def test_ac4_image_served_raw_with_gps_for_aliado_firmante(client, db_session):
+    """aliado_firmante también recibe la imagen cruda con GPS (CR-025)."""
     from backend.app.exif import has_gps
 
-    # La imagen original lleva GPS.
     firmante = register(client, role="aliado_firmante")
     obs_id = submit_jpeg_with_gps(client, firmante["token"])
     resp = client.get(
@@ -280,11 +279,11 @@ def test_ac4_image_keeps_gps_only_for_aliado_firmante(client, db_session):
         headers=auth_header(firmante["token"]),
     )
     assert resp.status_code == 200
-    assert has_gps(resp.content) is True  # aliado_firmante SÍ ve el GPS
+    assert has_gps(resp.content) is True
 
 
 def test_original_image_actually_has_gps(client, db_session):
-    """Sanidad: la imagen subida (en storage) sí lleva GPS — el saneo no es un falso positivo."""
+    """Sanidad: la imagen subida (en storage) sí lleva GPS."""
     from backend.app.exif import has_gps
     from backend.app.storage import get_storage
     from sqlalchemy import text
@@ -296,3 +295,31 @@ def test_original_image_actually_has_gps(client, db_session):
     ).scalar_one()
     raw = get_storage().get(key)
     assert has_gps(raw) is True
+
+
+# --- Unidad: strip_gps/has_gps siguen funcionando (módulo ocioso pero conservado, CR-025) ---
+
+
+def test_unit_strip_gps_removes_gps_tags():
+    """``strip_gps`` sigue eliminando el GPS del EXIF (ya no se usa en el endpoint, pero se conserva)."""
+    from backend.app.exif import has_gps, strip_gps
+
+    from .helpers import jpeg_with_gps
+
+    raw = jpeg_with_gps()
+    assert has_gps(raw) is True
+    cleaned = strip_gps(raw, content_type="image/jpeg")
+    assert has_gps(cleaned) is False
+
+
+def test_unit_has_gps_false_for_plain_image():
+    """``has_gps`` es False para una imagen sin tags GPS."""
+    import io as _io
+
+    from PIL import Image
+
+    from backend.app.exif import has_gps
+
+    buf = _io.BytesIO()
+    Image.new("RGB", (4, 4), (0, 0, 0)).save(buf, format="JPEG")
+    assert has_gps(buf.getvalue()) is False

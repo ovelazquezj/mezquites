@@ -7,8 +7,8 @@ import '../ui/copy.dart';
 /// (Aviso de privacidad 2026-06-25, Términos 2026-06-27; CR-020): ya no llevan
 /// sello de borrador. La fuente completa vive en `docs/legal/terminos.md` y
 /// `docs/legal/aviso-privacidad.md`; aquí se muestra un resumen accesible de las
-/// secciones clave (incluye derechos ARCO y obfuscación a 300 m del gate #5,
-/// enmendado por CR-009). No introduce PII (gate #2).
+/// secciones clave (incluye derechos ARCO y el tratamiento de la ubicación,
+/// CR-025). No introduce PII (gate #2).
 class LegalScreen extends StatelessWidget {
   const LegalScreen({super.key});
 
@@ -44,9 +44,9 @@ class LegalScreen extends StatelessWidget {
                 'Solo con la cámara del dispositivo (galería deshabilitada). La '
                     'especie y el nivel de afectación son autodeclarados. Un '
                     'evaluador humano puede confirmar o retirar una observación.'),
-            _Section('Privacidad de la ubicación',
-                'La ubicación pública nunca es más precisa que ~300 m; las '
-                    'coordenadas exactas solo las ven aliados firmantes autorizados.'),
+            _Section('Ubicación de las observaciones',
+                'La ubicación es un dato del árbol observado. Las vistas públicas '
+                    'muestran la ubicación registrada del árbol.'),
             _Section('Tus derechos (ARCO)',
                 'Puedes solicitar la cancelación de tu cuenta: tu identidad se '
                     'elimina y tus observaciones se anonimizan (el dato ecológico se '
@@ -73,8 +73,8 @@ class LegalScreen extends StatelessWidget {
                     'perfilamiento comercial.'),
             _Section('No venta ni cesión indebida',
                 'El ${Copy.orgName} no vende tus datos ni los cede con fines '
-                    'comerciales. El dato abierto va agregado, seudonimizado y con '
-                    'la ubicación obfuscada a ~300 m.'),
+                    'comerciales. El dato abierto va seudonimizado, sin datos '
+                    'personales; la ubicación es un dato del árbol.'),
             _Section('Conservación',
                 'La identidad se conserva mientras exista la cuenta; el dato '
                     'ecológico puede conservarse indefinidamente (anonimizado al '

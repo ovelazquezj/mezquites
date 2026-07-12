@@ -86,9 +86,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       if (session.canSeeProblemReports)
         _NavItem(Icons.bug_report_outlined, Copy.navProblems,
             () => const ProblemReportsScreen()),
-      // Vista restringida: SOLO si el rol autoriza coords exactas (gate #5).
+      // Panel con ubicación exacta: visible para todos los roles de la consola
+      // (la ubicación exacta es información pública, CR-025).
       if (session.canSeeRestricted)
-        _NavItem(Icons.lock_outline, Copy.navRestricted,
+        _NavItem(Icons.location_on_outlined, Copy.navRestricted,
             () => const RestrictedDashboardScreen()),
       // Legal (Términos + Aviso de privacidad): visible para toda la consola (CR-006).
       _NavItem(Icons.gavel_outlined, Copy.navLegal, () => const LegalScreen()),

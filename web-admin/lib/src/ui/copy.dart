@@ -4,8 +4,8 @@
 ///
 /// Gates: nada promete control fitosanitario/reducción de infestación (gate #1);
 /// la calidad la decide una persona en la web admin —sin validación automática—
-/// (gates #8/#9 enmendados por CR-001); las vistas públicas nunca prometen más
-/// fino que ~300 m (gate #5 enmendado por CR-009).
+/// (gates #8/#9 enmendados por CR-001). La ubicación exacta del mezquite es
+/// información pública (CR-025).
 class Copy {
   Copy._();
 
@@ -108,31 +108,26 @@ class Copy {
   static const reviewConfirmed = 'Observación confirmada.';
   static const reviewRejected = 'Observación retirada del panel público.';
   static const reviewLocationNote =
-      'Por privacidad de los árboles, aquí solo ves estado y municipio, '
-      'nunca la ubicación exacta.';
+      'En la revisión ves el estado y el municipio de cada observación.';
   static const monitorIntro =
       'Métricas de la revisión de observaciones. Solo consulta.';
 
-  // --- Mapa de calor público en la consola (CR-010 #2) ---
+  // --- Mapa de calor en la consola (CR-010 #2) ---
   static const mapIntro =
-      'Mapa de calor de las observaciones públicas (celdas aproximadas de ~300 m, '
-      'nunca la ubicación exacta del árbol). Severidad autodeclarada por quien '
+      'Mapa de calor de las observaciones. Severidad autodeclarada por quien '
       'observa; sin validación experta.';
   static const mapError = 'No se pudo cargar el mapa. Inténtalo de nuevo.';
   static const mapLegendTitle = 'Nivel de paxtle (autodeclarado)';
   static const mapLegendLevels = ['Sano', 'Leve', 'Moderado', 'Severo'];
-  static const mapCellTitle = 'Celda aproximada (~300 m)';
+  static const mapCellTitle = 'Celda del mapa de calor';
   static const mapCellObs = 'Observaciones';
   static const mapCellPaxtle = 'Con paxtle';
   static const mapCellCuscuta = 'Con cúscuta';
   static const mapCellNivel = 'Nivel de paxtle (promedio)';
 
-  // --- Mapa: modo de ubicación exacta (CR-023, uso interno para reportes) ---
-  static const mapModeHeat = 'Mapa de calor (300 m)';
+  // --- Mapa: modo de ubicación exacta (CR-025, información pública) ---
+  static const mapModeHeat = 'Mapa de calor';
   static const mapModeExact = 'Ubicaciones exactas';
-  static const mapExactBanner =
-      'Ubicaciones exactas — uso interno para reportes. No publiques capturas '
-      'sin obfuscarlas.';
   static const mapExactPopupTitle = 'Árbol (ubicación exacta)';
   static const mapExactPopupLat = 'Latitud';
   static const mapExactPopupLon = 'Longitud';
@@ -141,9 +136,8 @@ class Copy {
 
   // --- Datos y descargas del analista (CR-010 #3) ---
   static const dataIntro =
-      'Tabla de observaciones para análisis. Por privacidad de los árboles, solo '
-      'verás estado y municipio, nunca la ubicación exacta (gate #5). Severidad '
-      'autodeclarada; sin validación experta.';
+      'Tabla de observaciones para análisis. Muestra estado y municipio de cada '
+      'observación. Severidad autodeclarada; sin validación experta.';
   static const dataFilterEstadoRevision = 'Estado de revisión';
   static const dataFilterMunicipio = 'Municipio';
   static const dataFilterNivel = 'Nivel de paxtle';
@@ -159,10 +153,9 @@ class Copy {
   static const dataSummaryByRevision = 'Por estado de revisión';
   static const dataSummaryByNivel = 'Por nivel de paxtle';
   static const dataSummaryByMunicipio = 'Por municipio';
-  // Aviso extra para roles con ubicación exacta (CR-023).
+  // Aviso para roles con ubicación exacta: el CSV trae las coordenadas (CR-025).
   static const dataExactNote =
-      'El CSV que descargues incluye coordenadas exactas (uso interno para '
-      'reportes). No lo publiques sin obfuscar.';
+      'El CSV que descargues incluye la latitud y longitud exactas de cada árbol.';
 
   // --- Reportes de problemas (CR-019, admin) ---
   static const problemsTitle = 'Reportes de problemas';
@@ -227,7 +220,7 @@ class Copy {
     'distribucion_niveles': 'Distribución por nivel de paxtle',
     // organizacional (Q6 amendment)
     'mesas_formales_autoridades': 'Mesas formales con autoridades',
-    'aliados_firmantes_coords': 'Aliados firmantes con acceso a ubicación exacta',
+    'aliados_firmantes_coords': 'Aliados firmantes con convenio',
     'eventos_w3': 'Eventos realizados',
     'menciones_mediaticas': 'Menciones en medios',
   };

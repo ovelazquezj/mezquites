@@ -8,10 +8,10 @@ import '../ui/copy.dart';
 import '../widgets/paged_table.dart';
 import '../widgets/estado_filter.dart';
 
-/// Dashboard RESTRINGIDO (Q5.B): observaciones con coords **exactas**
-/// (GET /restricted/observations). Solo accesible si el token es
-/// `aliado_firmante`/autorizado; si no, esta pantalla no se ofrece en la
-/// navegación (gate #5). Aun así, defiende contra un 403 del backend.
+/// Panel con **ubicación exacta** (Q5.B): observaciones con coords exactas del
+/// árbol (GET /restricted/observations). La ubicación exacta es información
+/// pública (CR-025); en la consola la ven todos los roles. Aun así, defiende
+/// contra un 403 del backend. Vista de solo consulta.
 class RestrictedDashboardScreen extends ConsumerStatefulWidget {
   const RestrictedDashboardScreen({super.key});
 
@@ -46,10 +46,8 @@ class _RestrictedDashboardScreenState
         Text(Copy.navRestricted, style: theme.textTheme.displayLarge),
         const SizedBox(height: 8),
         Text(
-          'Ubicaciones exactas de los árboles (uso interno para reportes). '
-          'Acceso para aliados firmantes autorizados y para los roles '
-          'administrativos y de análisis; el público sigue viendo solo celdas '
-          'aproximadas de ~300 m (gate #5). Vista de solo consulta.',
+          'Ubicaciones exactas de los árboles, con su latitud y longitud. '
+          'Vista de solo consulta.',
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: 16),
@@ -75,8 +73,8 @@ class _RestrictedDashboardScreenState
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Text(
-                      'Acceso denegado: tu cuenta no tiene permiso para ver '
-                      'ubicaciones exactas (requiere ser aliado firmante).',
+                      'No se pudieron cargar las ubicaciones exactas. '
+                      'Inténtalo de nuevo más tarde.',
                       key: const Key('restricted-denied'),
                       style: theme.textTheme.bodyMedium,
                     ),

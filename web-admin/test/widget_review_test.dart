@@ -149,8 +149,8 @@ void main() {
     expect(find.text(Copy.navInstitutions), findsNothing);
     expect(find.text(Copy.navAllies), findsNothing);
     expect(find.text(Copy.navSnapshots), findsNothing);
-    // Sin coords exactas (gate #5).
-    expect(find.text(Copy.navRestricted), findsNothing);
+    // La ubicación exacta es pública: el evaluador también ve el panel (CR-025).
+    expect(find.text(Copy.navRestricted), findsWidgets);
   });
 
   testWidgets('analista ve Monitor pero NO la pestaña de Revisión (solo lectura)',

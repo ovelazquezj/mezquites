@@ -93,27 +93,25 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
   }
 
-  for (final role in ['administrador', 'analista', 'admin_consorcio']) {
-    testWidgets('el toggle de modo aparece para $role (CR-023)',
+  // CR-025: la ubicación exacta es pública → TODOS los roles de la consola
+  // (incluido evaluador) ven el toggle calor ⇄ exacto.
+  for (final role in [
+    'administrador',
+    'analista',
+    'admin_consorcio',
+    'evaluador'
+  ]) {
+    testWidgets('el toggle de modo aparece para $role (CR-025)',
         (tester) async {
       big(tester);
       await tester.pumpWidget(_mapAs(role, RequestRecorder()));
       await tester.pump();
       expect(find.byKey(const Key('map_mode_toggle')), findsOneWidget,
           reason: '$role puede conmutar a ubicaciones exactas');
-      // Por defecto arranca en modo calor: sin banner de uso interno.
-      expect(find.byKey(const Key('map_exact_banner')), findsNothing);
+      // Sí ve el mapa de calor base.
+      expect(find.byKey(const Key('heat_map')), findsOneWidget);
     });
   }
-
-  testWidgets('el toggle NO aparece para evaluador (gate #5)', (tester) async {
-    big(tester);
-    await tester.pumpWidget(_mapAs('evaluador', RequestRecorder()));
-    await tester.pump();
-    expect(find.byKey(const Key('map_mode_toggle')), findsNothing);
-    // Sí ve el mapa de calor base.
-    expect(find.byKey(const Key('heat_map')), findsOneWidget);
-  });
 
   testWidgets('el toggle NO aparece sin sesión (público)', (tester) async {
     big(tester);
@@ -127,7 +125,7 @@ void main() {
   });
 
   testWidgets(
-      'modo exacto: renderiza un marcador por observación + banner (CR-023)',
+      'modo exacto: renderiza un marcador por observación, sin banner (CR-025)',
       (tester) async {
     big(tester);
     final rec = RequestRecorder();
@@ -141,9 +139,9 @@ void main() {
 
     // Pidió las coords exactas.
     expect(rec.hitPathContaining('/restricted/observations'), isTrue);
-    // Mapa exacto montado con banner de uso interno visible (para capturas).
+    // Mapa exacto montado; sin banner de "uso interno" (la ubicación es pública).
     expect(find.byKey(const Key('exact_map')), findsOneWidget);
-    expect(find.byKey(const Key('map_exact_banner')), findsOneWidget);
+    expect(find.byKey(const Key('map_exact_banner')), findsNothing);
     // Un marcador por cada una de las 2 observaciones devueltas.
     expect(find.byKey(const Key('exact_marker_21.885_-102.291')),
         findsOneWidget);

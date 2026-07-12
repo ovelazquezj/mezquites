@@ -81,7 +81,7 @@ class Settings(BaseSettings):
     # --- Reglas de dominio (refinables por AU2, H8 — no reabren decisiones) ---
     tree_radius_m: float = 10.0              # R3: radio de agrupamiento
     revisit_gap_days: int = 30               # R3: ventana de serie temporal
-    obfuscation_grid_m: float = 300.0        # gate #5: celda pública mínima (CR-009: 300 m)
+    obfuscation_grid_m: float = 300.0        # tamaño de celda del mapa de calor (binning de agregación)
     metric_srid: int = 6372                  # EPSG:6372 (México ITRF2008 LCC) para metros
     points_base: int = 5                     # recompensa base (fire-and-forget)
     points_deferred: int = 10                # recompensa diferida (solo si válida)

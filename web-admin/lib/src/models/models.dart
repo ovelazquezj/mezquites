@@ -43,14 +43,16 @@ class AuthSession {
   /// `admin_consorcio` y `administrador` (los roles que administran el piloto).
   bool get canSeeProblemReports => isAdmin || isAdministrador;
 
-  /// CR-023: roles que ven la UBICACIÓN EXACTA en la consola (mapa exacto + tabla
-  /// restringida). Enmienda ACOTADA al gate #5 (el público sigue en celda de 300 m).
-  /// La autorización real la impone el backend.
+  /// CR-025: la ubicación exacta del mezquite es información pública. En la
+  /// consola la ven TODOS los roles (mapa exacto + panel con ubicación exacta):
+  /// `aliado_firmante`, `administrador`, `admin_consorcio`, `analista` y
+  /// `evaluador`. La autorización real la impone el backend.
   bool get canSeeExactLocation =>
       role == 'aliado_firmante' ||
       role == 'administrador' ||
       role == 'admin_consorcio' ||
-      role == 'analista';
+      role == 'analista' ||
+      role == 'evaluador';
 
   /// Roles con acceso a la consola de administración (CR-001 amplía los de revisión).
   bool get canEnterAdminConsole => isAdmin || canReview;
@@ -207,7 +209,7 @@ class SnapshotResult {
       );
 }
 
-/// Observación pública: coords YA obfuscadas a 300 m server-side (gate #5, CR-009).
+/// Observación pública: coords EXACTAS del árbol (CR-025).
 class PublicObservation {
   PublicObservation({
     required this.handle,
@@ -250,7 +252,8 @@ class PublicObservation {
       );
 }
 
-/// Observación restringida: coords EXACTAS (solo aliado_firmante; gate #5).
+/// Observación con coords EXACTAS del árbol. La ubicación exacta es pública
+/// (CR-025); en la consola la ven todos los roles.
 class RestrictedObservation {
   RestrictedObservation({
     required this.handle,
@@ -438,8 +441,8 @@ class ReviewStats {
       );
 }
 
-/// Celda del mapa de calor público (CR-009/CR-010 #2). El centro de la celda
-/// viene obfuscado a 300 m server-side (gate #5): NUNCA es un árbol exacto.
+/// Celda del mapa de calor público (CR-009/CR-010 #2). El centro es el de la
+/// celda de *binning* de agregación (~300 m), no un árbol individual.
 class GridCell {
   GridCell({
     required this.lat,
@@ -451,7 +454,7 @@ class GridCell {
     required this.snapshotQuarter,
   });
 
-  /// Centro de celda de 300 m (obfuscado server-side, gate #5).
+  /// Centro de la celda de binning del mapa de calor (~300 m, server-side).
   final double lat;
   final double lon;
 
@@ -649,7 +652,7 @@ class OrganizationalIndicatorKey {
     OrganizationalIndicatorKey(
         'mesas_formales_autoridades', 'Mesas formales con autoridades'),
     OrganizationalIndicatorKey('aliados_firmantes_coords',
-        'Aliados firmantes con acceso a ubicación exacta'),
+        'Aliados firmantes con convenio'),
     OrganizationalIndicatorKey('eventos_w3', 'Eventos realizados'),
     OrganizationalIndicatorKey(
         'menciones_mediaticas', 'Menciones en medios'),

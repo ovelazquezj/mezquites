@@ -122,7 +122,7 @@ void main() {
     });
   });
 
-  group('Obfuscación / roles (gate #5)', () {
+  group('Separación de vistas pública / restringida', () {
     test('publicObservations NUNCA llama a /restricted', () async {
       final rec = RequestRecorder();
       final api = _client(rec, responder: (req) {
@@ -146,7 +146,7 @@ void main() {
       await api.publicObservations();
       await api.publicIndicators();
       expect(rec.hitPathContaining('/restricted'), isFalse,
-          reason: 'la vista pública jamás pide coords exactas');
+          reason: 'la vista pública usa /public/*, no el endpoint restringido');
       expect(rec.hitPathContaining('/public/observations'), isTrue);
     });
 

@@ -138,6 +138,9 @@ etiquetando su grado de soporte. Etiquetas usadas en toda la bitácora:
 >   servirla a `evaluador`/`analista` (que **no** son `aliado_firmante`) el backend **elimina el GPS
 >   del EXIF** antes de responder. La UI de revisión muestra a lo más municipio/estado, nunca coord
 >   exacta, salvo rol `aliado_firmante`.
+>   > **Retirado por CR-025 (2026-07-12):** este saneo del GPS queda **inactivo** — la imagen de
+>   > revisión se sirve con su GPS a todos los roles (la ubicación exacta ya es pública). `app/exif.py`
+>   > se conserva ocioso. Ver gate #5 enmendado.
 > - **Sin PII (gate #2 intacto):** en este CR las cuentas siguen seudónimas; la identidad real es CR-002.
 > El resto de Q5.A-D1 (solo cámara nativa con EXIF; sin estado de validación individual al voluntario;
 > feedback agregado; submit no bloquea la UI) **sigue vigente**.
@@ -171,7 +174,10 @@ etiquetando su grado de soporte. Etiquetas usadas en toda la bitácora:
     > reportes**. La **vista pública sigue obfuscada a la celda (300 m)** y **ningún endpoint público**
     > expone coords exactas; `voluntario` y `evaluador` siguen sin acceso a exactas. Salvaguarda: default
     > a calor 300 m + banner de "uso interno para reportes". Ver gate #5 enmendado.
-  - **Destinatarios = todos** (autoridades estatales, CONAFOR regional, universidades, municipios,
+    > **Enmendado por CR-025 (2026-07-12):** se **retira la obfuscación pública**. La vista pública
+    > muestra la **ubicación exacta** del árbol (junto al mapa de calor, que se conserva). El acceso a
+    > coords exactas deja de estar restringido: lo ven el **público** y **todos** los roles de consola.
+    > Decisión de gobernanza del Club; legales del punto 5 re-aprobados. Ver gate #5 enmendado.
     público). Transparencia operacional.
   - **Cadencia = trimestral** (snapshots cada 3 meses).
   - **Formato = dashboards como pieza única.** NO se producen reportes técnicos narrados; los
@@ -480,6 +486,17 @@ contexto. El **sistema de validación (YOLO) NO se desarrolla aquí** — track 
    exactas (el CSV les sirve `lat_celda_300m`/`lon_celda_300m`). **Salvaguarda:** el mapa arranca por
    defecto en calor 300 m y el modo exacto muestra un banner de "uso interno para reportes — no publicar
    sin obfuscar"; qué se publica es responsabilidad operativa. Ver Q5.B-D1.
+   **Enmendado por CR-025 (2026-07-12):** se **retira la obfuscación pública**. Por **decisión de
+   gobernanza del Club Rotario Bosques Aguascalientes**, las vistas públicas (app del voluntario
+   móvil/web y `GET /public/observations`) muestran la **ubicación EXACTA** del árbol, junto al mapa de
+   calor que se **conserva** (toggle calor⇄exacto). La celda ya **no** es un límite de privacidad:
+   `geo.obfuscate_to_grid` queda **solo** como *binning* del mapa de calor (agregación de densidad), y
+   `app/exif.py`/`strip_gps` **deja de aplicarse** al servir la imagen de revisión; ambas funciones se
+   conservan **ociosas** (no se borran). La ubicación exacta pasa a estar disponible para **todos** los
+   roles de consola (se añade `evaluador` a `EXACT_LOCATION_ROLES`) **y para el público**; se retira el
+   marco de "uso interno para reportes". Legales (`aviso-privacidad`/`terminos`, punto 5) actualizados y
+   **re-aprobados** por el Club. Nota: exponer la ubicación exacta es, en la práctica, **irreversible**
+   una vez publicada. Ver Q5.B-D1.
 6. **Paridad de entornos:** dev/QA corren sin nube (storage/broker/DB conmutables).
 7. **Trazabilidad:** cada criterio de aceptación de la bitácora tiene prueba asociada.
 8. ~~**Alcance de validación:** la validación automática se limita a **es-árbol + presencia-de-parásitos**

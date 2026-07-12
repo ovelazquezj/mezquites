@@ -9,9 +9,9 @@ RBAC (``deps.require_role``):
 - ``evaluador``, ``administrador``                → emitir veredicto (POST).
 - ``analista``                                    → **solo lectura** (recibe 403 al emitir veredicto).
 
-Gate #5 (BLOQUEANTE): la imagen guardada lleva GPS en EXIF. Al servirla a un rol de revisión que
-**no** es ``aliado_firmante`` (evaluador/analista/administrador), el GPS del EXIF se **elimina**
-server-side. La UI de revisión solo ve estado/municipio, nunca coord exacta (salvo aliado_firmante).
+La imagen de revisión se sirve **cruda** (con su EXIF original, incluido el GPS de la cámara) a
+todos los roles de revisión. El saneo de GPS (``exif.strip_gps``) quedó **ocioso** (CR-025): ya no
+se aplica al servir la imagen.
 """
 
 from __future__ import annotations
@@ -24,7 +24,6 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import CurrentUser, require_role
-from ..exif import strip_gps
 from ..models import REVIEW_ROLES, REVIEW_VERDICT_ROLES, HumanReview, Observation
 from ..schemas import (
     HumanReviewEntry,
@@ -42,8 +41,8 @@ router = APIRouter(prefix="/review", tags=["review"])
 _reviewer = require_role(*REVIEW_ROLES)
 # Roles que pueden emitir veredicto (NO incluye `analista`).
 _verdict_role = require_role(*REVIEW_VERDICT_ROLES)
-# Acceso a la imagen: roles de revisión + `aliado_firmante` (autorizado a ubicación exacta, gate #5).
-# Para todos salvo `aliado_firmante` se elimina el GPS del EXIF antes de responder.
+# Acceso a la imagen: roles de revisión + `aliado_firmante`. La imagen se sirve cruda (sin saneo de
+# GPS): el saneo (`exif.strip_gps`) quedó ocioso (CR-025).
 _image_role = require_role(*REVIEW_ROLES, "aliado_firmante")
 
 
@@ -61,7 +60,7 @@ def review_queue(
     user: CurrentUser = Depends(_reviewer),
     db: Session = Depends(get_db),
 ) -> list[ReviewQueueItem]:
-    """Cola de revisión con filtros + paginación. Sin coord exacta (gate #5)."""
+    """Cola de revisión con filtros + paginación. No incluye coords (solo estado/municipio)."""
     rows = db.execute(
         text(
             """
@@ -111,7 +110,7 @@ def review_detail(
     user: CurrentUser = Depends(_reviewer),
     db: Session = Depends(get_db),
 ) -> ReviewObservationDetail:
-    """Detalle de una observación + historial de veredictos (sin coord exacta, gate #5)."""
+    """Detalle de una observación + historial de veredictos (no incluye coord)."""
     obs = db.get(Observation, observation_id)
     if obs is None:
         raise HTTPException(status_code=404, detail="observación no encontrada")
@@ -159,11 +158,10 @@ def review_image(
     user: CurrentUser = Depends(_image_role),
     db: Session = Depends(get_db),
 ) -> Response:
-    """Sirve la imagen para revisión.
+    """Sirve la imagen para revisión, **cruda** (con su EXIF original).
 
-    GATE #5 (BLOQUEANTE): para roles que NO son ``aliado_firmante`` se **elimina el GPS del EXIF**
-    antes de responder. Solo ``aliado_firmante`` (acceso a ubicación exacta, gate #5) recibe la
-    imagen cruda.
+    El saneo de GPS del EXIF (``exif.strip_gps``) quedó ocioso (CR-025): la imagen se entrega tal
+    cual a todos los roles de revisión.
     """
     obs = db.get(Observation, observation_id)
     if obs is None:
@@ -178,10 +176,6 @@ def review_image(
     content_type = "image/jpeg"
     if obs.image_ref.lower().endswith(".png"):
         content_type = "image/png"
-
-    # Salvaguarda gate #5: solo aliado_firmante ve el GPS; el resto recibe EXIF saneado.
-    if user.role != "aliado_firmante":
-        data = strip_gps(data, content_type=content_type)
 
     return Response(content=data, media_type=content_type)
 

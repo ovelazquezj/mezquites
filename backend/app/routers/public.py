@@ -1,11 +1,12 @@
 """Vistas públicas (sin auth).
 
-- ``GET /public/observations`` — coords **obfuscadas a la celda** (gate #5; CR-009: 300 m), handle
-  por observación (atribución I2), y ``snapshot_quarter`` ("Qn"). Entran al dataset público todas
-  las observaciones **no rechazadas** (``estado_revision <> 'rechazada'``): aceptadas + confirmadas
-  (revisión humana, CR-001).
-- ``GET /public/grid`` — mapa de calor agregado por celda de obfuscación (CR-009): conteos por
-  celda, NUNCA coords más finas que la celda ni listas de árboles (gate #5).
+- ``GET /public/observations`` — ubicación **EXACTA** del árbol, handle por observación (atribución
+  I2) y ``snapshot_quarter`` ("Qn"). Entran al dataset público todas las observaciones **no
+  rechazadas** (``estado_revision <> 'rechazada'``): aceptadas + confirmadas (revisión humana,
+  CR-001).
+- ``GET /public/grid`` — mapa de calor agregado: agrupa (*binning*) las observaciones no-rechazadas
+  en una malla de celdas y devuelve conteos/promedios por celda. El binning es AGREGACIÓN de
+  densidad/severidad del heatmap, no una capa de presentación de la ubicación.
 - ``GET /public/indicators`` — indicadores Q6 calculados automáticamente, **sin umbrales** (U1).
 """
 
@@ -33,10 +34,10 @@ def public_observations(
     limit: int = Query(500, le=5000),
     db: Session = Depends(get_db),
 ) -> list[PublicObservation]:
-    """Dataset público: coords NUNCA más finas que la celda (gate #5; CR-009: 300 m). No-rechazadas (CR-001).
+    """Dataset público: ubicación EXACTA del árbol. No-rechazadas (CR-001).
 
-    El backend extrae lat/lon exactas SOLO para obfuscarlas server-side; lo que sale por el wire
-    ya es el centro de celda. La query nunca devuelve coords exactas al público.
+    Devuelve la ubicación exacta capturada (``ST_Y``/``ST_X`` del ``geom``) tal cual. Especie y nivel
+    G4 son AUTODECLARADOS (gate #8); ningún umbral (U1).
     """
     quarter = latest_snapshot_label(db)
     rows = db.execute(
@@ -56,12 +57,11 @@ def public_observations(
 
     out: list[PublicObservation] = []
     for r in rows:
-        lat_obf, lon_obf = obfuscate_to_grid(float(r["lat"]), float(r["lon"]))
         out.append(
             PublicObservation(
                 handle=r["handle"],
-                lat=lat_obf,
-                lon=lon_obf,
+                lat=float(r["lat"]),
+                lon=float(r["lon"]),
                 nivel_g4=r["nivel_g4"],
                 flag_cuscuta=r["flag_cuscuta"],
                 flag_danio=r["flag_danio"],
@@ -80,12 +80,13 @@ def public_grid(
     limit: int = Query(500, le=5000),
     db: Session = Depends(get_db),
 ) -> list[PublicGridCell]:
-    """Mapa de calor agregado por celda de obfuscación (CR-009; gate #5).
+    """Mapa de calor agregado por celda (CR-009).
 
-    Toma las observaciones **no-rechazadas** (igual que ``/public/observations``), obfusca cada una
-    al centro de su celda (CR-009: 300 m), agrupa por ``(lat, lon)`` de celda y devuelve solo
-    conteos agregados. **Nunca** sale al wire una coord más fina que la celda ni una lista de
-    árboles individuales. Especie y nivel G4 son AUTODECLARADOS (gate #8); ningún umbral (U1).
+    Toma las observaciones **no-rechazadas** (igual que ``/public/observations``) y las agrupa
+    (*binning*) en celdas métricas vía ``obfuscate_to_grid`` (CR-009: 300 m), agrupando por
+    ``(lat, lon)`` de celda para devolver conteos/promedios. Aquí el snap a celda es **agregación de
+    densidad/severidad del heatmap** (reduce miles de puntos a una malla pintable), no una capa de
+    presentación de la ubicación. Especie y nivel G4 son AUTODECLARADOS (gate #8); ningún umbral (U1).
     """
     quarter = latest_snapshot_label(db)
     rows = db.execute(
@@ -103,7 +104,7 @@ def public_grid(
         {"estado": estado, "limit": limit},
     ).mappings().all()
 
-    # Agrega en memoria por celda obfuscada: el wire nunca ve la coord exacta (gate #5).
+    # Agrega en memoria: cada observación se asigna (binning) a la celda de su heatmap.
     cells: dict[tuple[float, float], dict] = {}
     for r in rows:
         key = obfuscate_to_grid(float(r["lat"]), float(r["lon"]))

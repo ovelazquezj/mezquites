@@ -1,7 +1,7 @@
 """CR-010: analítica del analista (resúmenes + CSV).
 
 - GET /admin/analytics/summary cuenta por estado_revision/municipio/nivel_g4 + total; filtros.
-- GET /admin/analytics/observations.csv exporta con celda 300 m (gate #5) — NUNCA coords exactas.
+- GET /admin/analytics/observations.csv exporta la ubicación EXACTA del árbol a la consola (CR-025).
 - RBAC: roles de revisión (incluye analista) acceden; voluntario 403; sin token 401.
 """
 
@@ -76,9 +76,8 @@ def test_summary_filter_by_municipio(client, db_session):
     assert resp.json()["total"] == 1
 
 
-def test_csv_uses_300m_cell_not_exact_coords(client, db_session):
-    """GATE #5: para un rol NO exacto (evaluador; CR-023) el CSV trae celda 300 m (obfuscada),
-    NUNCA las coords exactas."""
+def test_csv_uses_exact_coords_for_console(client, db_session):
+    """CR-025: el CSV presenta la ubicación EXACTA del árbol a la consola (aquí, un evaluador)."""
     from backend.app.geo import obfuscate_to_grid
 
     volunteer = register(client)
@@ -95,22 +94,23 @@ def test_csv_uses_300m_cell_not_exact_coords(client, db_session):
     rows = list(reader)
     assert len(rows) == 1
     row = rows[0]
-    # Columnas esperadas.
+    # Columnas esperadas (exactas).
     assert reader.fieldnames == [
         "observation_id", "captured_at", "handle", "estado", "municipio", "nivel_g4",
         "flag_cuscuta", "flag_danio", "tamanio", "contexto", "estado_revision",
-        "lat_celda_300m", "lon_celda_300m",
+        "lat", "lon",
     ]
     assert row["estado"] == "Aguascalientes"
     assert row["handle"] == volunteer["handle"]
 
-    lat_celda = float(row["lat_celda_300m"])
-    lon_celda = float(row["lon_celda_300m"])
-    exp_lat, exp_lon = obfuscate_to_grid(EXACT_LAT, EXACT_LON)
-    assert (round(lat_celda, 6), round(lon_celda, 6)) == (exp_lat, exp_lon)
-    # NO son las coords exactas (la obfuscación las movió, gate #5).
-    assert abs(lat_celda - EXACT_LAT) > 1e-7
-    assert abs(lon_celda - EXACT_LON) > 1e-7
+    lat = float(row["lat"])
+    lon = float(row["lon"])
+    # Coincide con lo sembrado (exacto).
+    assert abs(lat - EXACT_LAT) < 1e-4
+    assert abs(lon - EXACT_LON) < 1e-4
+    # NO es el centro de la celda de binning de 300 m.
+    cel_lat, cel_lon = obfuscate_to_grid(EXACT_LAT, EXACT_LON)
+    assert (round(lat, 6), round(lon, 6)) != (cel_lat, cel_lon)
 
 
 def test_csv_filter_by_nivel(client, db_session):

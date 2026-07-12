@@ -252,7 +252,7 @@ firmantes**, **Indicadores**, **Snapshots**, **Dashboard público** y (si aplica
 | **Aliados firmantes** | Promover un `handle` de voluntario a aliado firmante | Confirma éxito; ese voluntario ahora puede ver coords exactas |
 | **Indicadores organizacionales** | Capturar uno (p.ej. "mesas formales" = 2) | Se registra; no hay lógica de aprobación/umbral (solo registro) |
 | **Snapshots** | Crear snapshot | Muestra el trimestre "Qn" vigente |
-| **Dashboard público** | Abrir | Tabla/mapa con observaciones **obfuscadas a 1 km**, el **caveat de origen ciudadano** visible, sello "Qn" y **filtro por estado** |
+| **Dashboard público** | Abrir | Tabla/mapa con observaciones de **ubicación exacta**, el **caveat de origen ciudadano** visible, sello "Qn" y **filtro por estado** |
 | **Dashboard restringido** | (Solo si tu cuenta es aliado firmante) | Coordenadas **exactas**; con cuenta admin-pura la pestaña no aparece (es lo correcto, ver nota) |
 
 > **Nota de diseño (no es bug):** un `admin_consorcio` **no** ve coordenadas exactas a menos que
@@ -308,9 +308,10 @@ en serif (Fraunces) y la **paleta oficial Mezquite** (navy/dorado/verde).
    (nivel **G4**, toggles **cúscuta**/**daño**, dropdowns **tamaño**/**contexto**) y envía.
    **✓ Verifica:** el envío **no bloquea** la UI; queda **registrada y aceptada** (sin veredicto
    individual). En el backend aparece como observación nueva (`aceptada`).
-4. **Mapa (CR-009):** **mapa de calor** a pantalla completa (OSM, encuadre Aguascalientes) con celdas
-   coloreadas por severidad; **sin** indicadores ni lista en pantalla — el disclaimer + los números
-   viven tras el botón **ⓘ**. Las celdas son **~300 m** (gate #5 enmendado; nunca coord exacta).
+4. **Mapa (CR-009 + CR-025):** **mapa de calor** a pantalla completa (OSM, encuadre Aguascalientes) con
+   celdas coloreadas por severidad y un **toggle calor⇄exacto** que añade **pines en la ubicación exacta**
+   del árbol (CR-025); **sin** indicadores ni lista en pantalla — el disclaimer + los números viven tras el
+   botón **ⓘ**. Las celdas del calor son un *binning* de agregación (~300 m).
    **✓ Verifica:** desde la **Bienvenida** (sin iniciar sesión) el botón **"Ver el mapa público"** abre
    ese mismo mapa → es la **vista pública** abrible desde internet. Para ver datos, siembra con
    `docker exec compose-api-1 python -m backend.app.seed_demo` (10 obs de Aguascalientes → 9 celdas).
@@ -420,8 +421,8 @@ Con datos cargados (Parte 2), el "acceso abierto" está vivo y es verificable de
    estado — paso 3.4.
 3. **Acceso restringido** (coords exactas) solo para un **aliado firmante** autenticado — paso 3.4.
 
-Esto materializa el principio del proyecto: **dataset abierto, obfuscado para proteger el árbol, con
-la advertencia de origen ciudadano**; las coordenadas finas solo para aliados firmantes.
+Esto materializa el principio del proyecto: **dataset abierto con la advertencia de origen ciudadano**;
+las vistas públicas muestran la **ubicación exacta** del árbol (CR-025), junto a un mapa de calor agregado.
 
 ---
 

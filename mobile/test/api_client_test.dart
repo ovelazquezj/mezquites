@@ -94,7 +94,7 @@ void main() {
     tmp.deleteSync();
   });
 
-  test('publicObservations parsea coords obfuscadas + snapshot Qn', () async {
+  test('publicObservations parsea coords + snapshot Qn', () async {
     final mock = MockClient((req) async {
       expect(req.url.path, '/api/v1/public/observations');
       return http.Response(

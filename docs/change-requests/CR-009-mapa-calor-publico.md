@@ -1,5 +1,9 @@
 # CR-009 — Mapa de calor público (celdas 300 m) en la app del voluntario
 
+> **Actualizado por CR-025 (2026-07-12):** la obfuscación pública se **retira**. El **mapa de calor se
+> conserva** (las celdas de 300 m pasan a ser *binning* de agregación, no privacidad) y se **añaden pines
+> de ubicación exacta**. Ver `CR-025-ubicacion-exacta-publica.md`.
+
 | Campo | Valor |
 |---|---|
 | **ID** | CR-009 |

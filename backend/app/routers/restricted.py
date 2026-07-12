@@ -1,10 +1,8 @@
-"""Vista restringida — coords **exactas** para los roles de ``EXACT_LOCATION_ROLES`` (gate #5).
+"""Vista restringida — coords **exactas** + ``estado_revision`` para la consola autenticada.
 
-La justificación original (``aliado_firmante``) es protección del árbol (tala/vandalismo), no
-privacidad del voluntario. **CR-023** amplía este acceso INTERNO a los roles administrativos/de
-análisis (``administrador``/``admin_consorcio``/``analista``) para la presentación de reportes.
-Es una enmienda ACOTADA al gate #5: la consola autenticada ve coords exactas, pero **el público
-sigue viendo SOLO la celda de 300 m** (obfuscada). ``voluntario`` y ``evaluador`` NO acceden.
+Sirve la ubicación exacta del árbol a los roles de ``EXACT_LOCATION_ROLES``. Por decisión de
+gobernanza del Club (CR-025), todos los roles de la consola reciben las coords exactas (incluido
+``evaluador``); ``voluntario`` no tiene acceso a la consola.
 """
 
 from __future__ import annotations
@@ -29,9 +27,8 @@ def restricted_observations(
     user: CurrentUser = Depends(require_role(*EXACT_LOCATION_ROLES)),
     db: Session = Depends(get_db),
 ) -> list[RestrictedObservation]:
-    """Coords EXACTAS. Requiere un rol de ``EXACT_LOCATION_ROLES`` (gate #5, enmendado por CR-023):
-    ``aliado_firmante`` (protección del árbol) + ``administrador``/``admin_consorcio``/``analista``
-    (presentación de reportes en la consola). El público sigue restringido a la celda de 300 m."""
+    """Coords EXACTAS + ``estado_revision`` para la consola. Requiere un rol de
+    ``EXACT_LOCATION_ROLES`` (CR-025): todos los roles de la consola (incluido ``evaluador``)."""
     _ = latest_snapshot_label(db)
     rows = db.execute(
         text(

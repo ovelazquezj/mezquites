@@ -8,10 +8,9 @@ import '../widgets/paged_table.dart';
 import '../widgets/caveat_banner.dart';
 import '../widgets/estado_filter.dart';
 
-/// Dashboard PÚBLICO (Q5.B). Indicadores Q6 + observaciones con coords **ya
-/// obfuscadas a 300 m** (gate #5 enmendado por CR-009). Muestra el caveat de
-/// origen ciudadano y el
-/// sello "última actualización Qn". Filtro geográfico por estado (Q8).
+/// Dashboard PÚBLICO (Q5.B). Indicadores Q6 + observaciones abiertas. Muestra
+/// el caveat de origen ciudadano y el sello "última actualización Qn". Filtro
+/// geográfico por estado (Q8).
 ///
 /// Boundary (Q5.B / gate #1): dashboards como pieza única. NO hay botón de
 /// exportar PDF ni generación de reportes narrativos.
@@ -53,8 +52,7 @@ class _PublicDashboardScreenState
         Text(Copy.navPublic, style: theme.textTheme.displayLarge),
         const SizedBox(height: 8),
         Text(
-          'Datos abiertos con ubicaciones aproximadas (~300 m). Vista de solo '
-          'consulta.',
+          'Datos abiertos de las observaciones. Vista de solo consulta.',
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: 16),
@@ -186,15 +184,15 @@ class _ObservationsTable extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Observaciones (ubicación aproximada ~300 m)',
+            Text('Observaciones',
                 style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
             PagedTable<PublicObservation>(
               items: rows,
               columns: const [
                 DataColumn(label: Text('Usuario')),
-                DataColumn(label: Text('Latitud (~300 m)')),
-                DataColumn(label: Text('Longitud (~300 m)')),
+                DataColumn(label: Text('Latitud')),
+                DataColumn(label: Text('Longitud')),
                 DataColumn(label: Text('Nivel de paxtle')),
                 DataColumn(label: Text('Cúscuta')),
                 DataColumn(label: Text('Daño')),

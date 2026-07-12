@@ -1,4 +1,4 @@
-"""Roles (gate de roles, gate #5): restricted exige aliado_firmante; público solo 1 km."""
+"""Roles: la vista restringida exige un rol de consola; la pública muestra la ubicación exacta."""
 
 from __future__ import annotations
 
@@ -46,8 +46,8 @@ def test_admin_endpoints_require_admin_role(client, db_session):
     assert resp.status_code == 201
 
 
-def test_public_observations_are_obfuscated_to_grid(client, db_session):
-    """La vista pública NUNCA expone coords más finas que la celda (gate #5; CR-009: 300 m)."""
+def test_public_observations_return_exact_coords(client, db_session):
+    """La vista pública presenta la ubicación EXACTA del árbol (CR-025)."""
     firmante = register(client, role="aliado_firmante")
     exact_lat, exact_lon = 21.885311, -102.291622
     # CR-001: la observación nace 'aceptada' y ya es visible (no requiere validación).
@@ -55,8 +55,8 @@ def test_public_observations_are_obfuscated_to_grid(client, db_session):
 
     pub = client.get("/api/v1/public/observations").json()
     assert len(pub) == 1
-    # Las coords públicas difieren de las exactas (obfuscadas al centro de celda).
-    assert pub[0]["lat"] != exact_lat
-    assert pub[0]["lon"] != exact_lon
+    # Las coords públicas coinciden con las capturadas (exactas, no obfuscadas).
+    assert abs(pub[0]["lat"] - exact_lat) < 1e-4
+    assert abs(pub[0]["lon"] - exact_lon) < 1e-4
     assert "snapshot_quarter" in pub[0]
     assert "handle" in pub[0]  # atribución I2

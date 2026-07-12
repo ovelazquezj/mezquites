@@ -298,7 +298,7 @@ docker compose -f infra/compose/docker-compose.prod.yml down       # detiene (lo
 - **Secretos solo en `.env.prod`** (`chmod 600`, fuera de git: ya está en `.gitignore`). Nada en el repo.
 - **CORS** (`CORS_ENV=prod` + `CORS_ALLOW_ORIGINS` con los dos dominios; **nunca** `*`). Cada web es además
   mismo-origen con su API.
-- **Gate #5:** `OBFUSCATION_GRID_M=300` (celda pública mínima); coords exactas solo a `aliado_firmante`.
+- **CR-025:** la vista pública es **exacta**; `OBFUSCATION_GRID_M=300` solo fija la celda del mapa de calor (binning).
 - **Gate #2 (PII mínima):** handle seudónimo; solo el administrador guarda email. Protege la DB y sus backups.
 - **DB y API no expuestas** al exterior (la DB no publica puerto; la API solo a `127.0.0.1` para diagnóstico).
 - Mantén el SO y Docker **parchados**; considera un firewall que deje pasar solo 22/80/443.
@@ -309,7 +309,7 @@ docker compose -f infra/compose/docker-compose.prod.yml down       # detiene (lo
 
 - [ ] `https://app.<dominio>/healthz` → `{"status":"ok"}`.
 - [ ] **Voluntario:** entrar con Google · capturar una observación (cámara + GPS del navegador) · verla
-      registrada · abrir el **mapa público** (celdas ~300 m) · ver **Perfil → Acerca de** (versión `beta-2606`).
+      registrada · abrir el **mapa público** (mapa de calor + ubicaciones exactas) · ver **Perfil → Acerca de** (versión `beta-2606`).
 - [ ] **Consola** (`https://admin.<dominio>`): login del administrador · bandeja de **Revisión** (confirmar/
       retirar/volver a aceptada) · **Datos y descargas** (tabla + CSV) · **Mapa** · **Instituciones** ·
       **Acerca de**.

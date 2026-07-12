@@ -128,37 +128,37 @@ void main() {
       expect(c.state.canManageUsers, isFalse);
     });
 
-    test('canSeeRestricted es true para admin_consorcio (CR-023)', () {
+    test('canSeeRestricted es true para admin_consorcio (CR-025)', () {
       final api = _clientReturning(status: 200, body: {});
       final c = SessionController(api);
       c.loginWithToken(fakeJwt(handle: 'obs-A', role: 'admin_consorcio'));
       expect(c.state.canSeeRestricted, isTrue,
-          reason: 'CR-023: los roles administrativos ven ubicación exacta');
+          reason: 'la ubicación exacta es pública: la ven los roles de consola');
     });
 
-    test('canSeeRestricted es false para evaluador (CR-023)', () {
+    test('canSeeRestricted es true para evaluador (CR-025)', () {
       final api = _clientReturning(status: 200, body: {});
       final c = SessionController(api);
       c.loginWithToken(fakeJwt(handle: 'obs-EV', role: 'evaluador'));
-      expect(c.state.canSeeRestricted, isFalse,
-          reason: 'gate #5: el evaluador no ve coords exactas');
+      expect(c.state.canSeeRestricted, isTrue,
+          reason: 'CR-025: la ubicación exacta es pública; el evaluador también la ve');
     });
 
-    test('AuthSession.canSeeExactLocation: 4 roles sí, voluntario/evaluador no '
-        '(CR-023)', () {
+    test('AuthSession.canSeeExactLocation: los 5 roles de consola sí, '
+        'voluntario no (CR-025)', () {
       AuthSession s(String role) =>
           AuthSession(handle: 'h', role: role, token: 't');
       for (final role in [
         'aliado_firmante',
         'administrador',
         'admin_consorcio',
-        'analista'
+        'analista',
+        'evaluador'
       ]) {
         expect(s(role).canSeeExactLocation, isTrue,
-            reason: '$role debe ver ubicación exacta (CR-023)');
+            reason: '$role debe ver ubicación exacta (CR-025)');
       }
       expect(s('voluntario').canSeeExactLocation, isFalse);
-      expect(s('evaluador').canSeeExactLocation, isFalse);
     });
 
     test('el body de /auth/login lleva usuario/contraseña; sin email/nombre (gate #2 acotado)',

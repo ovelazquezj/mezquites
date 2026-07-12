@@ -1,5 +1,10 @@
 # CR-023 — Ubicación EXACTA en la consola de administración (mapa + tabla + CSV) para reportes
 
+> **Superado en parte por CR-025 (2026-07-12):** la ubicación exacta deja de ser "uso interno restringido":
+> pasa a ser **pública** y disponible para **todos** los roles de consola (`EXACT_LOCATION_ROLES` +=
+> `evaluador`). Se conserva el toggle calor⇄exacto pero se retira el banner de "uso interno". Ver
+> `CR-025-ubicacion-exacta-publica.md`.
+
 | Campo | Valor |
 |---|---|
 | **ID** | CR-023 |

@@ -1,9 +1,11 @@
-"""Lógica geoespacial (T3, gate #5, gate de escalamiento Q8).
+"""Lógica geoespacial (T3, gate de escalamiento Q8).
 
 - ``obfuscate_to_grid`` — redondea (lat, lon) al centro de la celda métrica configurable
   (``settings.obfuscation_grid_m``; CR-009: 300 m) usando una proyección métrica (EPSG:6372,
-  México) y reproyecta el centro de la celda a WGS84. Las **vistas públicas NUNCA exponen coords
-  más finas que la celda** (gate #5). ``obfuscate_1km`` se conserva como alias por compatibilidad.
+  México) y reproyecta el centro de la celda a WGS84. Se usa como **binning del mapa de calor
+  público** (``/public/grid``): agrupa las observaciones en una malla de densidad/severidad. Es
+  agregación, no una capa de presentación de la ubicación. ``obfuscate_1km`` se conserva como alias
+  por compatibilidad.
 - ``assign_tree`` — CR-022 (enmienda R3/T3): crea SIEMPRE un árbol nuevo (1:1 observación↔árbol).
   Ya NO reutiliza árboles cercanos (la consulta ``ST_DWithin`` de 10 m queda retirada); la tabla
   ``tree`` se conserva, pero cada captura registra su propio árbol.
@@ -36,12 +38,14 @@ def _transformers(metric_srid: int) -> tuple[Transformer, Transformer]:
 
 
 def obfuscate_to_grid(lat: float, lon: float) -> tuple[float, float]:
-    """Redondea (lat, lon) al centro de la celda métrica configurable (gate #5).
+    """Redondea (lat, lon) al centro de su celda métrica (binning del mapa de calor).
 
     Proyecta a EPSG:6372 (metros, México), aplica ``floor`` a la celda de
     ``settings.obfuscation_grid_m`` (CR-009: 300 m; conmutable por config, gate #6), toma el centro
-    de celda y reproyecta a WGS84. Devuelve (lat_obf, lon_obf). Idéntico en intención a
-    ``ST_SnapToGrid`` sobre proyección métrica, pero ejecutable sin DB (vistas públicas y pruebas).
+    de celda y reproyecta a WGS84. Devuelve (lat_obf, lon_obf). Se usa para **agrupar** las
+    observaciones del ``/public/grid`` en una malla pintable (agregación de densidad/severidad).
+    Idéntico en intención a ``ST_SnapToGrid`` sobre proyección métrica, pero ejecutable sin DB
+    (heatmap y pruebas).
     """
     settings = get_settings()
     grid = settings.obfuscation_grid_m
@@ -54,7 +58,7 @@ def obfuscate_to_grid(lat: float, lon: float) -> tuple[float, float]:
 
 
 # Alias por compatibilidad: lo importan `routers/public.py` y `tests/test_obfuscation.py`.
-# La celda ya NO es de 1 km (CR-009), pero conservamos el nombre para no romper imports.
+# La celda de binning ya NO es de 1 km (CR-009: 300 m), pero conservamos el nombre por los imports.
 obfuscate_1km = obfuscate_to_grid
 
 

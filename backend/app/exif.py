@@ -1,9 +1,8 @@
-"""Saneo de EXIF GPS al servir imágenes (gate #5, salvaguarda de CR-001).
+"""Saneo de EXIF GPS (``strip_gps``) — módulo presente pero **ocioso** (CR-025).
 
-La imagen se guarda con su EXIF original (incluye GPS de la cámara nativa, gate #4). Al servirla a
-roles de revisión que NO son ``aliado_firmante`` (``evaluador``/``analista``), hay que **eliminar el
-GPS del EXIF** server-side para no filtrar la coord exacta. Esta es la única salvaguarda bloqueante
-del CR-001: una imagen cruda con GPS rompería el gate #5.
+Utilidad para eliminar los tags EXIF GPS de una imagen JPEG/TIFF. Se conserva como módulo
+disponible, pero el endpoint de revisión ya **no** lo aplica (CR-025): la imagen se sirve cruda, con
+su EXIF original. ``strip_gps``/``has_gps`` siguen existiendo (utilidades + pruebas unitarias).
 
 Implementación con Pillow (ya en dependencias por uso indirecto; no requiere piexif). Para formatos
 sin EXIF (PNG) o bytes ilegibles, devuelve el original re-encodeado sin metadatos GPS (no-op seguro).
@@ -50,7 +49,7 @@ def strip_gps(data: bytes, *, content_type: str | None = None) -> bytes:
 
 
 def has_gps(data: bytes) -> bool:
-    """True si la imagen lleva tags EXIF GPS (utilidad de pruebas/aserciones, gate #5)."""
+    """True si la imagen lleva tags EXIF GPS (utilidad de pruebas/aserciones)."""
     try:
         from PIL import Image
 

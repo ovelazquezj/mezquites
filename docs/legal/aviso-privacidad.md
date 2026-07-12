@@ -5,7 +5,7 @@
 > para privacidad y ejercicio de derechos ARCO: **contacto@rescatando-el-mezquite.org**. Elaborado conforme
 > a la **Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP)**.
 
-Última actualización: 2026-06-25.
+Última actualización: 2026-07-12.
 
 ## 1. Responsable del tratamiento
 
@@ -27,7 +27,7 @@ Las contraseñas se almacenan **cifradas** (hash con argon2); nunca en texto cla
 
 Adicionalmente, cada observación incluye **datos de la observación** (fotografía del árbol,
 ubicación geográfica, fecha de captura y atributos autodeclarados del árbol). La ubicación se
-considera dato del árbol, no de la persona, y se protege según el punto 5.
+considera dato del árbol, no de la persona, y se trata según el punto 5.
 
 ## 3. Finalidad del tratamiento
 
@@ -45,14 +45,14 @@ produzcan efectos jurídicos sobre las personas.
 ## 4. No venta ni cesión indebida
 
 El Club **no vende** tus datos personales ni los cede a terceros con fines comerciales.
-El dato ecológico que se publica como dato abierto va **agregado y seudonimizado**, y la
-ubicación va **obfuscada** según el punto 5.
+El dato ecológico que se publica como dato abierto va **seudonimizado**, sin datos personales
+de las personas voluntarias; la ubicación es un dato del árbol (punto 5).
 
-## 5. Protección de la ubicación (obfuscación)
+## 5. Ubicación de las observaciones
 
-Para proteger los árboles, la **ubicación visible en el panel público nunca es más precisa
-que una cuadrícula de ~300 m**. Las **coordenadas exactas** solo son accesibles para
-**aliados firmantes** autorizados por el Club, bajo el acuerdo de aliados correspondiente.
+La ubicación de cada observación es un dato del **árbol** observado, no de la persona
+voluntaria. Las vistas públicas de la plataforma muestran la **ubicación registrada del árbol**.
+Ningún dato personal de las personas voluntarias se deriva ni se expone a partir de esa ubicación.
 
 ## 6. Conservación de los datos
 
@@ -86,8 +86,7 @@ pendientes de definición.)*
 ## 8. Seguridad
 
 La plataforma aplica medidas técnicas razonables: contraseñas cifradas (argon2), tokens de
-sesión sin datos personales, control de acceso por rol y saneamiento de los metadatos GPS de
-las imágenes salvo para aliados firmantes autorizados.
+sesión sin datos personales y control de acceso por rol.
 
 ## 9. Contacto
 
@@ -106,4 +105,5 @@ de la plataforma.
 
 ---
 
-*Aviso de privacidad aprobado por el Club Rotario Bosques Aguascalientes (CR-006).*
+*Aviso de privacidad aprobado por el Club Rotario Bosques Aguascalientes (CR-006; punto 5
+actualizado y re-aprobado por CR-025).*

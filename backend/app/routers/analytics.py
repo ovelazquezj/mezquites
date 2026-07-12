@@ -1,16 +1,15 @@
-"""Analítica para el analista (CR-010) — resúmenes y exportación CSV.
+"""Analítica para la consola (CR-010) — resúmenes y exportación CSV.
 
 - ``GET /admin/analytics/summary`` — conteos agregados por estado_revision/municipio/nivel_g4 +
   total (para tableros del analista). Descriptivo (gate #1: no promete control fitosanitario).
-- ``GET /admin/analytics/observations.csv`` — exportación CSV de observaciones con filtros.
+- ``GET /admin/analytics/observations.csv`` — exportación CSV de observaciones con filtros; presenta
+  la ubicación exacta del árbol a la consola.
 
-GATE #5 (BLOQUEANTE, ENMENDADO por CR-023): el público NUNCA ve coords más finas que la celda de
-300 m. Dentro de la consola autenticada, el CSV es **exacto** SOLO para los roles administrativos/de
-análisis (``EXACT_LOCATION_ROLES``: aliado_firmante/administrador/admin_consorcio/analista), para la
-presentación de reportes. Para el resto de roles con acceso al endpoint (p.ej. ``evaluador``) se
-conserva EXACTAMENTE el comportamiento anterior: el CSV expone SOLO la celda de obfuscación (CR-009:
-300 m) vía ``geo.obfuscate_to_grid``; el backend extrae lat/lon exactas únicamente para obfuscarlas
-server-side antes de escribir cada fila. La lógica de obfuscación NO se borra: sigue vigente.
+Por decisión de gobernanza del Club (CR-025), el CSV presenta coords **exactas** a los roles de
+``EXACT_LOCATION_ROLES``, que ahora incluye a todos los roles de revisión/analítica
+(``REVIEW_ROLES``: evaluador/analista/administrador). La rama de binning (``obfuscate_to_grid`` +
+``_CSV_COLUMNS``) queda **ociosa** — ningún rol con acceso al endpoint cae en ella hoy — pero se
+conserva presente y funcional.
 
 Gate #2 (sin PII): solo el ``handle`` seudónimo; nunca email/nombre.
 """
@@ -36,7 +35,9 @@ router = APIRouter(prefix="/admin/analytics", tags=["analytics"])
 # Roles de consola con acceso a la analítica (igual que la revisión, lectura). `analista` incluido.
 _analyst = require_role(*REVIEW_ROLES)
 
-# Columnas del CSV (gate #5: coords SOLO a celda 300 m; gate #2: handle seudónimo, sin PII).
+# Columnas del CSV con la ubicación en celda de binning (300 m). OCIOSAS hoy: la salida por defecto
+# es exacta (``_CSV_COLUMNS_EXACT``) para todos los roles con acceso; se conservan por si el binning
+# vuelve a usarse. Gate #2: handle seudónimo, sin PII.
 _CSV_COLUMNS = [
     "observation_id",
     "captured_at",
@@ -53,9 +54,8 @@ _CSV_COLUMNS = [
     "lon_celda_300m",
 ]
 
-# CR-023: columnas del CSV **exacto** (uso interno para reportes) — idénticas salvo las 2 últimas,
-# que traen la ubicación exacta (``lat``/``lon``) en vez de la celda obfuscada. Solo se emite a los
-# roles de ``EXACT_LOCATION_ROLES``.
+# Columnas del CSV con la ubicación EXACTA (``lat``/``lon``) — idénticas salvo las 2 últimas. Es la
+# salida por defecto para la consola (CR-025), emitida a los roles de ``EXACT_LOCATION_ROLES``.
 _CSV_COLUMNS_EXACT = _CSV_COLUMNS[:-2] + ["lat", "lon"]
 
 # WHERE compartido por summary y CSV (filtros opcionales). CAST a text/timestamptz para NULL-safe.
@@ -135,8 +135,8 @@ def analytics_observations(
     user: CurrentUser = Depends(_analyst),
     db: Session = Depends(get_db),
 ) -> list[dict]:
-    """Tabla de observaciones para el analista (CR-010 #3). Sin coords exactas (gate #5):
-    expone solo estado/municipio agregables; las coords NO se incluyen en esta vista."""
+    """Tabla de observaciones para el analista (CR-010 #3). No incluye coords: expone estado/municipio
+    agregables; la ubicación exacta se consulta en ``/restricted/observations`` o el CSV."""
     params = _filter_params(estado, municipio, nivel_g4, estado_revision, desde, hasta)
     params["limit"] = limit
     rows = db.execute(
@@ -179,14 +179,12 @@ def analytics_csv(
     user: CurrentUser = Depends(_analyst),
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
-    """Exportación CSV (CR-010; enmendado por CR-023).
+    """Exportación CSV (CR-010; CR-025).
 
-    GATE #5 (BLOQUEANTE): el público NUNCA ve coords más finas que la celda de 300 m. Aquí, dentro
-    de la consola autenticada, el CSV es **exacto** SOLO si ``user.role`` está en
-    ``EXACT_LOCATION_ROLES`` (uso interno para reportes) — termina en columnas ``lat``/``lon``. Para
-    el resto (p.ej. ``evaluador``) se conserva el comportamiento anterior: coords a celda de
-    obfuscación (300 m) vía ``obfuscate_to_grid``, columnas ``lat_celda_300m``/``lon_celda_300m``; el
-    backend extrae lat/lon exactas solo para obfuscarlas antes de escribir.
+    Presenta la ubicación **exacta** del árbol (columnas ``lat``/``lon``) a los roles de la consola en
+    ``EXACT_LOCATION_ROLES`` — hoy, todos los que pueden llamar el endpoint. La rama de binning
+    (``obfuscate_to_grid`` → columnas ``lat_celda_300m``/``lon_celda_300m``) se conserva ociosa: ningún
+    rol con acceso cae en ella hoy. Gate #2: solo ``handle`` seudónimo, sin PII.
     """
     params = _filter_params(estado, municipio, nivel_g4, estado_revision, desde, hasta)
     rows = db.execute(
@@ -203,7 +201,8 @@ def analytics_csv(
         params,
     ).mappings().all()
 
-    # CR-023: exacto para roles administrativos/de análisis; obfuscado (300 m) para el resto.
+    # CR-025: exacto para los roles de la consola. La rama de binning (obfuscado 300 m) queda ociosa
+    # (ningún rol con acceso cae en ella hoy) pero se conserva.
     exact = user.role in EXACT_LOCATION_ROLES
 
     buf = io.StringIO()

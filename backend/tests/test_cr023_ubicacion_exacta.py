@@ -1,12 +1,13 @@
-"""CR-023: ubicación EXACTA en la consola para roles administrativos/de análisis (reportes).
+"""CR-025: ubicación EXACTA en la consola para todos los roles de consola.
 
-Enmienda ACOTADA al gate #5: la consola autenticada de ``EXACT_LOCATION_ROLES`` (aliado_firmante/
-administrador/admin_consorcio/analista) ve coords exactas; el público sigue a 300 m (obfuscado).
+Por decisión de gobernanza del Club, la consola autenticada de ``EXACT_LOCATION_ROLES``
+(aliado_firmante/administrador/admin_consorcio/analista/evaluador) ve coords exactas; el único rol
+sin acceso a la consola es ``voluntario``.
 
-- ``GET /restricted/observations``: administrador/analista/aliado_firmante → 200; evaluador/
+- ``GET /restricted/observations``: administrador/analista/aliado_firmante/evaluador → 200;
   voluntario → 403.
-- ``GET /admin/analytics/observations.csv``: administrador/analista → CSV exacto (columnas lat/lon
-  con las coords sembradas); evaluador → CSV obfuscado (columnas lat_celda_300m/lon_celda_300m).
+- ``GET /admin/analytics/observations.csv``: administrador/analista/evaluador → CSV exacto (columnas
+  lat/lon con las coords sembradas).
 """
 
 from __future__ import annotations
@@ -28,12 +29,12 @@ EXACT_LON = -102.291987
         ("administrador", 200),
         ("analista", 200),
         ("aliado_firmante", 200),
-        ("evaluador", 403),
+        ("evaluador", 200),
         ("voluntario", 403),
     ],
 )
 def test_restricted_access_by_role(client, db_session, role, expected):
-    """Los roles de EXACT_LOCATION_ROLES acceden a la tabla restringida; evaluador/voluntario no."""
+    """Los roles de EXACT_LOCATION_ROLES acceden a la tabla restringida; voluntario no."""
     user = register(client, role=role)
     resp = client.get(
         "/api/v1/restricted/observations", headers=auth_header(user["token"])
@@ -42,7 +43,7 @@ def test_restricted_access_by_role(client, db_session, role, expected):
 
 
 def test_restricted_admin_sees_exact_coords(client, db_session):
-    """El administrador (CR-023) ve las coords EXACTAS, no la celda obfuscada."""
+    """El administrador (CR-025) ve las coords EXACTAS del árbol."""
     firmante = register(client, role="aliado_firmante")
     submit_observation(client, firmante["token"], lat=EXACT_LAT, lon=EXACT_LON)
 
@@ -67,10 +68,10 @@ def _read_csv(client, token):
     return reader, list(reader)
 
 
-@pytest.mark.parametrize("role", ["administrador", "analista"])
-def test_csv_exact_for_admin_and_analyst(client, db_session, role):
-    """CR-023: para administrador/analista el CSV trae columnas exactas ``lat``/``lon`` con las
-    coords sembradas (uso interno para reportes), NO la celda obfuscada."""
+@pytest.mark.parametrize("role", ["administrador", "analista", "evaluador"])
+def test_csv_exact_for_console_roles(client, db_session, role):
+    """CR-025: para los roles de consola el CSV trae columnas exactas ``lat``/``lon`` con las coords
+    sembradas, NO la celda de binning."""
     from backend.app.geo import obfuscate_to_grid
 
     volunteer = register(client)
@@ -85,26 +86,6 @@ def test_csv_exact_for_admin_and_analyst(client, db_session, role):
     # Coincide con lo sembrado (exacto).
     assert abs(lat - EXACT_LAT) < 1e-4
     assert abs(lon - EXACT_LON) < 1e-4
-    # NO es el centro de la celda de 300 m (no fue obfuscado).
+    # NO es el centro de la celda de binning de 300 m.
     cel_lat, cel_lon = obfuscate_to_grid(EXACT_LAT, EXACT_LON)
     assert (round(lat, 6), round(lon, 6)) != (cel_lat, cel_lon)
-
-
-def test_csv_obfuscated_for_evaluador(client, db_session):
-    """GATE #5 conservado: para evaluador el CSV mantiene la celda de 300 m (obfuscada)."""
-    from backend.app.geo import obfuscate_to_grid
-
-    volunteer = register(client)
-    submit_observation(client, volunteer["token"], lat=EXACT_LAT, lon=EXACT_LON)
-
-    evaluador = register(client, role="evaluador")
-    reader, rows = _read_csv(client, evaluador["token"])
-    assert reader.fieldnames[-2:] == ["lat_celda_300m", "lon_celda_300m"]
-    assert len(rows) == 1
-    cel_lat = float(rows[0]["lat_celda_300m"])
-    cel_lon = float(rows[0]["lon_celda_300m"])
-    exp_lat, exp_lon = obfuscate_to_grid(EXACT_LAT, EXACT_LON)
-    assert (round(cel_lat, 6), round(cel_lon, 6)) == (exp_lat, exp_lon)
-    # Se movió respecto a lo sembrado (obfuscado, gate #5).
-    assert abs(cel_lat - EXACT_LAT) > 1e-7
-    assert abs(cel_lon - EXACT_LON) > 1e-7

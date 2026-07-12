@@ -16,8 +16,7 @@ certificación ni gating).
   químico/mecánico (límite de alcance del proyecto).
 - **Identidad con PII mínima:** el voluntario entra con Google y solo se guarda un identificador opaco
   (sin nombre ni correo); únicamente el rol administrador conserva correo (para recuperar acceso).
-- La **ubicación pública** nunca es más fina que una celda de **~300 m**; las coordenadas exactas solo
-  las ve un aliado firmante autorizado.
+- Las vistas públicas muestran la **ubicación exacta** del árbol (junto a un mapa de calor agregado).
 
 ## Componentes
 
@@ -25,7 +24,7 @@ certificación ni gating).
 |---|---|---|
 | **App del voluntario** | Flutter (móvil **y** web) | captura con cámara + EXIF, mapa de calor público, "Aprender", perfil/evidencia |
 | **Consola (web-admin)** | Flutter Web | revisión humana de observaciones, datos/CSV, mapa, instituciones, indicadores |
-| **Backend** | FastAPI + PostgreSQL/PostGIS | API REST, auth por roles, agregación/obfuscación, analítica |
+| **Backend** | FastAPI + PostgreSQL/PostGIS | API REST, auth por roles, agregación (mapa de calor), analítica |
 | **Frontera de validación §6** | contrato + mock (cola) | integración con un validador de imágenes externo (YOLO) — **hoy inactiva**, conservada para reactivar |
 
 ## Arranque rápido
@@ -50,7 +49,7 @@ curl http://localhost:8000/healthz          # -> {"status":"ok"}
 |---|---|
 | [`contract/`](contract/README.md) | `mezquite_contract` — frontera §6 (schemas, modelos, broker conmutable) |
 | [`mock-validator/`](mock-validator/README.md) | Worker que cumple §6 mientras no exista el YOLO real |
-| [`backend/`](backend/README.md) | FastAPI + PostGIS: API, auth por roles, obfuscación, analítica |
+| [`backend/`](backend/README.md) | FastAPI + PostGIS: API, auth por roles, agregación (mapa de calor), analítica |
 | [`mobile/`](mobile/) | App Flutter del voluntario (móvil + web) |
 | [`web-admin/`](web-admin/) | Consola del Club (Flutter Web) |
 | [`infra/`](infra/) | Compose (dev + prod single-host) + manifiestos K8s |
@@ -68,8 +67,8 @@ curl http://localhost:8000/healthz          # -> {"status":"ok"}
 ## Principios innegociables (gates)
 
 Límite de alcance (sin control fitosanitario) · PII mínima (identidad opaca; solo admin con correo) ·
-sin gating (todo abierto desde el día 1) · captura solo con cámara nativa + EXIF · obfuscación pública
-**300 m** · paridad de entornos (DB/storage/broker conmutables por config, dev/QA sin nube) ·
+sin gating (todo abierto desde el día 1) · captura solo con cámara nativa + EXIF · **ubicación pública
+exacta** (con mapa de calor agregado) · paridad de entornos (DB/storage/broker conmutables por config, dev/QA sin nube) ·
 trazabilidad (cada criterio con prueba) · revisión **humana** de la calidad (sin validación automática).
 
 ## Cómo correr las pruebas

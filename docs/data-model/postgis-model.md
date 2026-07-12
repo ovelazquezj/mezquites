@@ -139,15 +139,17 @@ HAVING count(*) >= 2
    AND (max(captured_at) - min(captured_at)) > interval '30 days';
 ```
 
-### Coordenada obfuscada a celda de 1 km (Q5.B-D1, gate #5)
+### Agregación por celda para el mapa de calor (binning)
 ```sql
--- Vista pública: NUNCA expone coords más finas que 1 km.
-SELECT ST_SnapToGrid(geom::geometry, 0.01)::geography AS celda_1km   -- ~1 km en lat; ver nota
+-- Binning del mapa de calor: agrupa observaciones por celda (densidad/severidad).
+SELECT ST_SnapToGrid(geom::geometry, 0.01)::geography AS celda   -- ~1 km en lat; ver nota
 FROM   observation;
 ```
-> Nota: 0.01° ≈ 1.11 km en latitud y varía en longitud. Para una celda métrica exacta de 1 km se
-> usa `ST_SnapToGrid` sobre una proyección métrica (p.ej. UTM/EPSG:6372 México) y se reproyecta. El
-> Incremento 2 implementa el helper `obfuscate_1km(geom)` con la proyección métrica y su prueba.
+> Nota: 0.01° ≈ 1.11 km en latitud y varía en longitud. Para una celda métrica se usa `ST_SnapToGrid`
+> sobre una proyección métrica (p.ej. EPSG:6372 México) y se reproyecta; el backend implementa el helper
+> `geo.obfuscate_to_grid` con la proyección métrica.
+> **CR-025 (2026-07-12):** las vistas públicas muestran la **ubicación exacta** del árbol; esta
+> agregación se conserva **solo** como *binning* del mapa de calor (no es un límite de privacidad).
 
 ### Dimensión estado/municipio desde EXIF (Q8, gate de escalamiento)
 ```sql
@@ -162,4 +164,5 @@ LIMIT  1;
 - Radio de agrupamiento: **10 m** (R3).
 - Ventana de revisita / serie temporal: **30 días** (R3).
 - Cortes % de la escala G4: sano 0 / leve ≤25 / moderado ≤50 / severo >50 (Q3, A2).
-- Tamaño de celda de obfuscación: **1 km** (Q5.B-D1) — mínimo público, no afinable a la baja.
+- Tamaño de celda del **mapa de calor** (binning): **300 m** (`obfuscation_grid_m`). **CR-025:** ya no
+  es un mínimo de privacidad público (la vista pública es exacta); solo controla la agregación del calor.

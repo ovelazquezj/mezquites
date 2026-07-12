@@ -14,8 +14,8 @@ import '../widgets/paged_table.dart';
 /// y botones Confirmar/Retirar. Acceso para `evaluador`/`administrador` (emiten
 /// veredicto) y `analista` (solo lectura: ve la cola pero sin botones de veredicto).
 ///
-/// Gate #5: nunca muestra coords exactas (solo estado/municipio); la imagen la
-/// sirve el backend con el GPS del EXIF saneado.
+/// La vista de revisión muestra estado/municipio (no lat/lon) en los campos; la
+/// imagen la sirve el backend con su EXIF (CR-025: el saneo de GPS quedó ocioso).
 class ReviewScreen extends ConsumerStatefulWidget {
   const ReviewScreen({super.key});
 

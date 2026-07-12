@@ -1,9 +1,11 @@
-"""Mapa de calor público agregado por celda (CR-009, §4.1; gate #5).
+"""Mapa de calor público agregado por celda (CR-009, §4.1).
 
 ``GET /public/grid``:
-- agrega las observaciones **no-rechazadas** por celda de obfuscación (CR-009: 300 m);
-- devuelve por celda: lat/lon (centro obfuscado), n, n_paxtle, n_cuscuta, g4_indice, snapshot;
-- NUNCA expone coords más finas que la celda ni listas de árboles individuales (gate #5).
+- agrupa (*binning*) las observaciones **no-rechazadas** en celdas métricas (CR-009: 300 m);
+- devuelve por celda: lat/lon (centro de la celda del heatmap), n, n_paxtle, n_cuscuta, g4_indice,
+  snapshot;
+- el heatmap devuelve conteos por celda, no puntos individuales (el binning es agregación de
+  densidad/severidad).
 """
 
 from __future__ import annotations
@@ -18,7 +20,7 @@ LAT, LON = 21.8853, -102.2916
 
 
 def test_grid_aggregates_neighbors_into_one_cell(client, db_session):
-    """Dos observaciones a ~5 m del centro de una celda se agregan en UNA celda (gate #5)."""
+    """Dos observaciones a ~5 m del centro de una celda se agrupan (binning) en UNA celda."""
     reg = register(client)
     # Ancla en el centro de la celda para evitar ambigüedad de frontera.
     center = obfuscate_to_grid(LAT, LON)
@@ -42,7 +44,7 @@ def test_grid_aggregates_neighbors_into_one_cell(client, db_session):
     assert cell["n_cuscuta"] == 1  # solo una con flag_cuscuta
     # severo=3 en ambas ⇒ promedio 3.0
     assert cell["g4_indice"] == 3.0
-    # El centro de celda obfuscado, NO la coord exacta.
+    # El centro de la celda del heatmap (binning), no un punto individual.
     assert (cell["lat"], cell["lon"]) == center
     assert "snapshot_quarter" in cell
 
@@ -78,8 +80,8 @@ def test_grid_excludes_rejected_observations(client, db_session):
     assert grid[0]["n"] == 1
 
 
-def test_grid_never_exposes_finer_than_cell(client, db_session):
-    """Gate #5: la respuesta agregada nunca devuelve la coord exacta capturada."""
+def test_grid_returns_binned_cell_not_individual_points(client, db_session):
+    """El heatmap agrega por celda (binning): devuelve el centro de celda, no el punto capturado."""
     reg = register(client)
     exact_lat, exact_lon = 21.885311, -102.291622
     submit_observation(client, reg["token"], lat=exact_lat, lon=exact_lon)
@@ -87,10 +89,10 @@ def test_grid_never_exposes_finer_than_cell(client, db_session):
     grid = client.get("/api/v1/public/grid").json()
     assert len(grid) == 1
     cell = grid[0]
-    # La celda nunca coincide con la coord exacta; es el centro de celda obfuscado.
+    # La celda del heatmap es el centro de celda del binning, no el punto individual.
     assert (cell["lat"], cell["lon"]) != (exact_lat, exact_lon)
     assert (cell["lat"], cell["lon"]) == obfuscate_to_grid(exact_lat, exact_lon)
-    # No expone listas de árboles ni ids individuales.
+    # No expone listas de árboles ni ids individuales: solo conteos agregados.
     assert set(cell.keys()) == {
         "lat",
         "lon",

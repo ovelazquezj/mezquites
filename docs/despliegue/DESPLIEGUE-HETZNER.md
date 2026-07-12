@@ -374,7 +374,7 @@ Valores clave a editar (nombres exactos = `backend/app/config.py`):
 | `AUTH_SECRET` | `openssl rand -hex 32` 🔒 |
 | `AUTH_PROVIDER` / `FIREBASE_PROJECT_ID` | `firebase` / `<PROJECT_ID>` (o `mock` en piloto cerrado) |
 | `CORS_ALLOW_ORIGINS` | `https://app.<dominio>,https://admin.<dominio>` |
-| `OBFUSCATION_GRID_M` | `300` (gate #5) |
+| `OBFUSCATION_GRID_M` | `300` (celda del mapa de calor; CR-025) |
 | `BOOTSTRAP_ADMIN_*` | usuario/contraseña/email del primer admin 🔒 |
 
 ---
@@ -412,7 +412,7 @@ docker compose -f infra/compose/docker-compose.prod.yml exec api \
 
 - [ ] `https://app.<dominio>/healthz` → `{"status":"ok"}`.
 - [ ] **Voluntario:** entrar con Google · capturar (cámara + GPS del navegador) · verla registrada ·
-      abrir el **mapa público** (celdas ~300 m) · **Perfil → Acerca de** (versión `beta-2606`).
+      abrir el **mapa público** (mapa de calor + ubicaciones exactas) · **Perfil → Acerca de** (versión `beta-2606`).
 - [ ] **Consola** (`https://admin.<dominio>`): login del administrador · **Revisión** (confirmar/retirar/
       volver a aceptada) · **Datos y descargas** (tabla + CSV) · **Mapa** · **Instituciones** · **Acerca de**.
 - [ ] La imagen de revisión **no expone GPS** salvo a `aliado_firmante` (gate #5).

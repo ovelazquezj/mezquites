@@ -121,8 +121,8 @@ expertos**; se difunde siempre con ese caveat y requiere preproceso para uso en 
 - **Comité ético mixto (Rotary + universidad + asesor externo):** autoridad sobre incidentes
   operativos, exigencias de borrado de cuenta, conflictos con propietarios, y gobierno de la lista de
   instituciones. **No** es un comité de investigación académica. `[supuesto del autor]`
-- **Aliados firmantes:** instituciones/autoridades que firman un acuerdo de uso y acceden a
-  **coordenadas exactas**; el público accede a datos con coordenadas obfuscadas (ver §10).
+- **Aliados firmantes:** instituciones/autoridades que firman un acuerdo de uso. **CR-025:** las vistas
+  públicas muestran la **ubicación exacta** del árbol (ver §10).
 - **Consorcio (Rotary + universidad):** sostiene la operación, las mesas formales con autoridades y
   el reconocimiento off-app. **El actor sustentador de largo plazo es decisión humana pendiente.**
 
@@ -170,8 +170,9 @@ monitorea y comunica, no se autoevalúa contra targets. `[supuesto del autor]`
   benchmark eBird]`
 - **Disclaimer de campo** al primer uso (descartable, consultable después): no entrar a propiedad
   privada sin permiso; atención a fauna (abejas, víboras, alacranes); hidratación.
-- **Protección del árbol:** las coordenadas exactas se restringen a aliados firmantes **por
-  protección del recurso** (tala oportunista, vandalismo), no por privacidad del voluntario.
+- ~~**Protección del árbol:** las coordenadas exactas se restringen a aliados firmantes.~~ **Retirado por
+  CR-025 (2026-07-12):** por decisión de gobernanza del Club, las vistas públicas muestran la ubicación
+  exacta del árbol.
 
 ---
 
@@ -180,8 +181,9 @@ monitorea y comunica, no se autoevalúa contra targets. `[supuesto del autor]`
 - **Custodia híbrida:** dataset vivo en infraestructura del consorcio (Rotary + universidad), con
   **snapshots públicos**. Institución concreta = decisión humana pendiente. `[supuesto del autor]`
 - **Acceso por vista:**
-  - **Pública:** coordenadas **obfuscadas a grid de 1 km × 1 km**; abierta a todos.
-  - **Restringida (aliados firmantes):** coordenadas exactas, bajo acuerdo de uso.
+  - **Pública:** **CR-025:** ubicación **exacta** del árbol (con mapa de calor agregado); abierta a todos.
+  - **Restringida (aliados firmantes):** coordenadas exactas, bajo acuerdo de uso (histórico; CR-025 abre
+    la ubicación exacta también al público y a todos los roles de consola).
 - **Publicación:** **dashboards** como pieza única, **actualización trimestral**. No se producen
   reportes técnicos narrados por el piloto; los datasets quedan abiertos para que terceros produzcan
   sus análisis, siempre con el caveat de origen ciudadano.

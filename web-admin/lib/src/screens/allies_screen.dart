@@ -77,10 +77,9 @@ class _AlliesScreenState extends ConsumerState<AlliesScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Un aliado firmante es la ÚNICA cuenta (además del ${Copy.orgName}) '
-                    'que puede ver la ubicación EXACTA de los árboles. El resto '
-                    'del público solo ve ubicaciones aproximadas (~300 m). '
-                    'Autorizar a alguien le da ese acceso.',
+                    'Un aliado firmante es una institución o autoridad con convenio '
+                    'de uso del dato del ${Copy.orgName}. Las vistas públicas muestran '
+                    'la ubicación registrada del árbol.',
                     key: const Key('allies-coords-explainer'),
                     style: theme.textTheme.bodyMedium,
                   ),

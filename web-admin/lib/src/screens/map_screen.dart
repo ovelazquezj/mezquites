@@ -26,19 +26,18 @@ Color heatColor(BuildContext context, double g4Indice) {
 int _nivelIndex(String nivel) =>
     const {'sano': 0, 'leve': 1, 'moderado': 2, 'severo': 3}[nivel] ?? 0;
 
-/// Modo del mapa (CR-023): calor público (300 m) o ubicaciones exactas.
+/// Modo del mapa: mapa de calor o ubicaciones exactas.
 enum _MapMode { heat, exact }
 
 /// Pantalla **Mapa** de la consola (CR-010 #2): mapa de calor de `/public/grid`
-/// (celdas de 300 m, tiles OSM, leyenda por severidad). Visible para TODOS los
-/// roles de la consola. Gate #5: por defecto nunca pide ni muestra coords
-/// exactas (el centro de cada celda viene obfuscado a ~300 m server-side).
+/// (tiles OSM, leyenda por severidad). Visible para TODOS los roles de la
+/// consola.
 ///
-/// CR-023 (enmienda ACOTADA al gate #5): los roles con `canSeeExactLocation`
-/// (aliado_firmante + administrativos/analista) pueden **conmutar** a un mapa de
-/// **ubicaciones exactas** (`/restricted/observations`) para preparar reportes.
-/// El toggle NO se muestra a los demás roles y la autorización real la impone el
-/// backend. Gate #1: muestra presencia/impacto, no control/manejo.
+/// CR-025: la ubicación exacta del mezquite es información pública. Los roles de
+/// la consola (con `canSeeExactLocation`) pueden **conmutar** a un mapa de
+/// **ubicaciones exactas** (`/restricted/observations`) con un marcador por
+/// árbol. La autorización real la impone el backend. Gate #1: muestra
+/// presencia/impacto, no control/manejo.
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
 
@@ -49,8 +48,8 @@ class MapScreen extends ConsumerStatefulWidget {
 class _MapScreenState extends ConsumerState<MapScreen> {
   _MapMode _mode = _MapMode.heat;
   late Future<List<GridCell>> _gridFuture;
-  // Se crea perezosamente al conmutar a "exacto" (evita pedir coords exactas
-  // salvo que el usuario lo solicite explícitamente).
+  // Se crea perezosamente al conmutar a "exacto" (solo se piden las coords
+  // exactas cuando el usuario lo solicita).
   Future<List<RestrictedObservation>>? _exactFuture;
 
   @override
@@ -234,9 +233,9 @@ class _HeatCell extends StatelessWidget {
   }
 }
 
-/// El `FlutterMap` en modo **ubicaciones exactas** (CR-023): un marcador por
-/// árbol en su coord real, banner fijo de "uso interno" y la misma leyenda de
-/// severidad. Solo se monta para roles con `canSeeExactLocation`.
+/// El `FlutterMap` en modo **ubicaciones exactas** (CR-025): un marcador por
+/// árbol en su coord real y la misma leyenda de severidad. La ubicación exacta
+/// es información pública; la ven todos los roles de la consola.
 class _MapWithExact extends StatelessWidget {
   const _MapWithExact({required this.observations});
 
@@ -280,15 +279,13 @@ class _MapWithExact extends StatelessWidget {
           ),
         ),
         const Positioned(left: 12, bottom: 16, child: _HeatLegend()),
-        // Banner fijo de "uso interno": debe verse en capturas (CR-023).
-        const Positioned(top: 12, left: 12, right: 12, child: _ExactBanner()),
       ],
     );
   }
 }
 
-/// Un árbol en su ubicación exacta (CR-023): círculo pequeño coloreado por su
-/// nivel de paxtle, con borde blanco. Tappable → popup con lat/lon exactas.
+/// Un árbol en su ubicación exacta: círculo pequeño coloreado por su nivel de
+/// paxtle, con borde blanco. Tappable → popup con lat/lon exactas.
 class _ExactMarker extends StatelessWidget {
   const _ExactMarker({required this.obs});
 
@@ -311,46 +308,8 @@ class _ExactMarker extends StatelessWidget {
   }
 }
 
-/// Banner fijo del modo exacto: recuerda que es uso interno para reportes.
-class _ExactBanner extends StatelessWidget {
-  const _ExactBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Align(
-      alignment: Alignment.topCenter,
-      child: Card(
-        key: const Key('map_exact_banner'),
-        color: scheme.errorContainer,
-        elevation: 3,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.warning_amber_rounded,
-                  size: 20, color: scheme.onErrorContainer),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  Copy.mapExactBanner,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onErrorContainer,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Popup de una celda: `n`, paxtle, cúscuta y la severidad media.
-/// NUNCA coords exactas ni lista de árboles (gate #5).
+/// Popup de una celda del mapa de calor: `n`, paxtle, cúscuta y la severidad
+/// media (agregado por celda; las coords exactas viven en el modo exacto).
 void _showCellPopup(BuildContext context, GridCell cell) {
   final level = cell.g4Indice.round().clamp(0, 3);
   showDialog<void>(
@@ -562,8 +521,8 @@ class _MapErrorState extends StatelessWidget {
   }
 }
 
-/// Estado de error del modo exacto (p. ej. 403): mantiene el mapa base y el
-/// banner de uso interno, y muestra el aviso sin volver a calor.
+/// Estado de error del modo exacto (p. ej. 403): mantiene el mapa base y
+/// muestra el aviso sin volver a calor.
 class _MapExactErrorState extends StatelessWidget {
   const _MapExactErrorState();
 
@@ -573,7 +532,7 @@ class _MapExactErrorState extends StatelessWidget {
       children: [
         const Positioned.fill(child: _MapWithExact(observations: [])),
         Positioned(
-          top: 64,
+          top: 24,
           left: 0,
           right: 0,
           child: Center(

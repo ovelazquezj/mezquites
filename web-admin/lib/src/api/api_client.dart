@@ -244,7 +244,7 @@ class ApiClient {
 
   // --- Vistas de datos ---
 
-  /// Dashboard PÚBLICO: coords obfuscadas a 300 m server-side (gate #5, CR-009).
+  /// Dashboard PÚBLICO: coords EXACTAS del árbol (CR-025).
   /// Sin auth. Filtro geográfico por estado (Q8).
   Future<List<PublicObservation>> publicObservations({
     String? estado,
@@ -262,8 +262,8 @@ class ApiClient {
         .toList();
   }
 
-  /// Mapa de calor público (CR-009/CR-010 #2): celdas de 300 m con coords
-  /// obfuscadas server-side (gate #5). Agrega solo observaciones no-rechazadas.
+  /// Mapa de calor público (CR-009/CR-010 #2): celdas de ~300 m (binning de
+  /// agregación server-side). Agrega solo observaciones no-rechazadas.
   /// Sin auth (endpoint `public/*`).
   Future<List<GridCell>> publicGrid({String? estado, int limit = 2000}) async {
     final r = await _http.get(
