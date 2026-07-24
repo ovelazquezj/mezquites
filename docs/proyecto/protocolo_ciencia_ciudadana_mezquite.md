@@ -1,6 +1,6 @@
 # Protocolo de Ciencia Ciudadana — Monitoreo del Mezquite y sus Parásitos
 
-**Proyecto piloto (24 meses) · Aguascalientes · Club Rotario + universidades aliadas**
+**Proyecto piloto (24 meses) · Aguascalientes · Club Rotario Bosques Aguascalientes + universidades aliadas**
 
 > Documento de método. Define **qué se observa, cómo se captura, cómo se valida, quién hace qué, cómo
 > se mide el éxito y bajo qué salvaguardas**. Es entregable separado de la bitácora del software

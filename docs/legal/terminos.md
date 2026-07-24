@@ -63,6 +63,15 @@ El dato ecológico puede publicarse como **dato abierto** para fines de
 investigación, educación y gestión ambiental, sin exponer datos personales de las
 personas voluntarias.
 
+Ese dato abierto se publica bajo la licencia **Creative Commons Atribución 4.0 Internacional
+(CC BY 4.0)**: cualquiera puede usarlo, redistribuirlo y transformarlo, incluso con fines
+comerciales, siempre que **dé atribución** al Club Rotario Bosques Aguascalientes y a las
+personas observadoras (que aparecen con su seudónimo, nunca con datos personales).
+
+Al publicar una observación aceptas que el dato ecológico que generas —ubicación del árbol,
+nivel de afectación autodeclarado y fecha— se difunda bajo esa licencia. Tus **fotografías no**
+forman parte del dato abierto.
+
 ## 8. Derechos sobre tus datos personales (ARCO)
 
 Tienes derecho a solicitar la **cancelación** de tu cuenta. Al ejecutarla, tu identidad se

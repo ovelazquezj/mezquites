@@ -1,10 +1,11 @@
 # El mezquite que nos sostiene
 ### Una propuesta de ciencia ciudadana para proteger un árbol estratégico de nuestras tierras
 
-**Presentado al Club Rotario · Aguascalientes**
+**Presentado al Club Rotario Bosques Aguascalientes**
 
-> *Documento de concientización y presentación de proyecto. Diseñado para presentarse ante el club
-> Rotario y como base reutilizable para material dirigido a instituciones educativas y autoridades.*
+> *Documento de concientización y presentación de proyecto. Diseñado para presentarse ante el Club
+> Rotario Bosques Aguascalientes y como base reutilizable para material dirigido a instituciones
+> educativas y autoridades.*
 
 ---
 

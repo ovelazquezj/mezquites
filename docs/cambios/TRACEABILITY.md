@@ -454,6 +454,16 @@ son diagnóstico fitosanitario). #2 mejora: sale un correo personal de ambas app
 institucional. #5 (parte pública, ya retirada por CR-025) se documenta como decisión de gobernanza,
 sin motivaciones externas, en `LICENSE-DATOS.md` y `SECURITY.md`. #7 es esta entrada.
 
-**Pendiente de decisión humana:** nombrar CC BY 4.0 en el punto de datos abiertos de
-`docs/legal/terminos.md` (§ "dato abierto") exige **re-aprobación del Club**, porque el texto legal
-está aprobado. Hasta entonces, `LICENSE-DATOS.md` es la declaración de licencia vigente.
+**CC BY 4.0 en los Términos — RESUELTO (2026-07-24):** el Club **aprobó** la licencia, así que el §7
+("Datos abiertos y atribución") de `docs/legal/terminos.md` y su página pública
+`infra/compose/legal/terminos.html` ya **nombran CC BY 4.0**, con la obligación de atribuir al Club y a
+las personas observadoras (por seudónimo) y la exclusión explícita de las **fotografías**. md y html
+sincronizados. **Pendiente menor (no bloquea):** los resúmenes legales *dentro de las apps*
+(`mobile/lib/src/ui/copy.dart`, `web-admin/.../legal_screen.dart`) siguen diciendo "dato abierto" sin
+nombrar la licencia — no contradicen los Términos; se alinean en el próximo build, porque cambiarlos
+obliga a recompilar y redesplegar.
+
+**Nombre del Club — corregido (2026-07-24):** `documento_presentacion_mezquite.md` decía "Club Rotario ·
+Aguascalientes" y `protocolo_ciencia_ciudadana_mezquite.md` "Club Rotario + universidades aliadas"; ambos
+usan ya el nombre completo **Club Rotario Bosques Aguascalientes**. El resto de apariciones "cortas" del
+repo eran saltos de línea de markdown, no errores.
