@@ -57,7 +57,8 @@ resultados_paginas/
 /prompt.txt
 /docs/change-requests/PLAN-EJECUCION-AGENTES.md
 
-# Runbooks operativos con valores reales del servidor del piloto (IP, rutas,
-# panel del registrador): SOLO local, fuera del repo público. La versión
-# reproducible y sin datos del host vive en docs/despliegue/.
+# Red de seguridad. El material operativo con valores reales del servidor (IP, rutas,
+# panel del registrador, DNS) NO vive aquí: está FUERA del árbol del repositorio.
+# Esta regla solo existe por si alguien lo vuelve a copiar dentro por error.
+# La versión reproducible y sin datos del host vive en docs/despliegue/.
 /.local-docs/
