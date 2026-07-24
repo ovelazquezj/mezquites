@@ -33,7 +33,7 @@ void main() {
     // Autoría: nombre + correo de contacto del autor.
     expect(find.text('Omar Velázquez'), findsOneWidget);
     expect(find.byKey(const Key('about-author-email')), findsOneWidget);
-    expect(find.text('ovelazquezj@gmail.com'), findsOneWidget);
+    expect(find.text('contacto@rescatando-el-mezquite.org'), findsOneWidget);
 
     // Licencia MIT declarada.
     expect(find.text('MIT'), findsOneWidget);

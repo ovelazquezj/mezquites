@@ -6,7 +6,10 @@ con foto + ubicación, y al equipo del **Club Rotario Bosques Aguascalientes** r
 publicar el dato ecológico abierto. Plataforma de referencia: **eBird** (participación abierta, sin
 certificación ni gating).
 
-**Estado:** `beta-2606` · **303 pruebas verdes** (21 contrato · 9 mock · 136 backend · 62 móvil · 75 web-admin).
+**Estado:** `beta-2606`, piloto en producción · **350 pruebas verdes** (21 contrato · 9 mock ·
+155 backend · 69 móvil · 96 web-admin).
+
+**Código MIT** ([`LICENSE`](LICENSE)) · **datos CC BY 4.0** ([`LICENSE-DATOS.md`](LICENSE-DATOS.md)).
 
 ## Qué es y qué no es
 
@@ -42,6 +45,13 @@ curl http://localhost:8000/healthz          # -> {"status":"ok"}
 - Runbook paso a paso (levantar y revisar las dos UIs): [`docs/despliegue/QUICKSTART.md`](docs/despliegue/QUICKSTART.md).
 - **Despliegue en un solo servidor** (cloud o propio, con Docker + Caddy/TLS): [`docs/despliegue/DESPLIEGUE-SERVIDOR-UNICO.md`](docs/despliegue/DESPLIEGUE-SERVIDOR-UNICO.md).
 - Despliegue gestionado (K8s / Azure): [`docs/despliegue/DESPLIEGUE.md`](docs/despliegue/DESPLIEGUE.md).
+
+## Ramas
+
+- **`main`** — el código fuente. Es la rama de trabajo.
+- **`deploy`** — artefactos: los bundles web ya compilados que sirve el servidor del piloto. Se
+  genera con `scripts/preparar-rama-deploy.ps1` porque la VM no compila Flutter. **No edites nada
+  ahí**; se regenera.
 
 ## Estructura del repositorio
 
@@ -86,7 +96,23 @@ cd web-admin        && flutter test
 - Idioma del repo: **español** (código, documentación y commits).
 - Commits estilo `feat(...)` / `fix(...)` / `docs:` / `chore(...)`.
 
+## Contribuir y reportar
+
+- **Contribuciones:** [`CONTRIBUTING.md`](CONTRIBUTING.md). Hoy no aceptamos PRs no solicitados
+  (equipo pequeño); los issues y el uso del dataset sí son muy bienvenidos.
+- **Vulnerabilidades:** [`SECURITY.md`](SECURITY.md) — por correo, **no** por issue público.
+
 ## Licencia
 
-**MIT** — © 2026 **Club Rotario Bosques Aguascalientes** (titular). Autoría: **Omar Velázquez**
-<ovelazquezj@gmail.com>. Ver [`LICENSE`](LICENSE).
+- **Código:** **MIT** — © 2026 **Club Rotario Bosques Aguascalientes** (titular). Autoría:
+  **Omar Velázquez** <contacto@rescatando-el-mezquite.org>. Ver [`LICENSE`](LICENSE).
+- **Datos:** **CC BY 4.0** — ver [`LICENSE-DATOS.md`](LICENSE-DATOS.md), que incluye cómo citar y la
+  advertencia de origen ciudadano (especie y nivel **autodeclarados**, sin validación por expertos).
+- **Identidad gráfica:** los logotipos y el emblema del Club **no** están cubiertos por estas
+  licencias; son marcas de su titular.
+
+## Atribución de terceros
+
+Los mapas usan datos de **[OpenStreetMap](https://www.openstreetmap.org/copyright)**, © sus
+colaboradores, bajo **ODbL**. Los *tiles* del piloto se sirven desde la infraestructura pública de
+OSM: para un despliegue con tráfico real, usa un proveedor cuyos términos lo permitan.

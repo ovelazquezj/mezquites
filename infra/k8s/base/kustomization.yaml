@@ -13,7 +13,7 @@ labels:
 resources:
   - namespace.yaml
   - config.yaml
-  - secret.yaml
+  - secret.example.yaml
   - redis.yaml
   - postgres.yaml
   - api.yaml

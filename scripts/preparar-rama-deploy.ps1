@@ -93,4 +93,4 @@ Write-Host "[OK] Rama '$Rama' publicada en origin con los bundles ya compilados.
 Write-Host "  En la VM, el agente hace:" -ForegroundColor Green
 Write-Host "    git clone https://github.com/ovelazquezj/mezquites.git mezquite && cd mezquite" -ForegroundColor Green
 Write-Host "    git checkout $Rama" -ForegroundColor Green
-Write-Host "  (No se compila Flutter en la VM; ver docs/despliegue/DESPLIEGUE-AGENTE.md)" -ForegroundColor Green
+Write-Host "  (No se compila Flutter en la VM; ver docs/despliegue/DESPLIEGUE-HETZNER.md)" -ForegroundColor Green

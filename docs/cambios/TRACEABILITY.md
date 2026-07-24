@@ -263,7 +263,7 @@ Directo sobre `main`. **Total tras CR-013: 303 pruebas verdes** (`contract` 21 �
 
 | Requisito (usuario) | Implementación | Prueba |
 |---|---|---|
-| Licencia tipo MIT | `LICENSE` (raíz): `Copyright (c) 2026 Club Rotario Bosques Aguascalientes` + `Autor: Omar Velázquez <ovelazquezj@gmail.com>` | — (archivo) |
+| Licencia tipo MIT | `LICENSE` (raíz): `Copyright (c) 2026 Club Rotario Bosques Aguascalientes` + `Autor: Omar Velázquez <contacto@rescatando-el-mezquite.org>` | — (archivo) |
 | "Acerca de" — voluntario | `mobile/.../about_screen.dart` desde **Perfil**; proyecto, `beta-2606`, copyright del Club, autoría + correo, MIT | `mobile/test/about_test.dart` |
 | "Acerca de" — web-admin | `web-admin/.../about_screen.dart`, entrada del NavigationRail (todos los roles) | `web-admin/test/widget_about_test.dart` |
 | Gate #2 (sin PII) | autoría/copyright = metadato del proyecto, no dato de usuario ni cambio al modelo | aserciones de copyright/autoría en ambos tests |
@@ -430,3 +430,30 @@ migración. Supera los criterios de obfuscación pública de **CR-009** y la res
 **Gate #5:** su parte pública se **retira** (público exacto). La celda de 300 m persiste **solo** como
 binning del mapa de calor. Enmienda registrada en `bitacora_sdd_mezquite.md` (gate #5, Q5.B-D1 y la
 salvaguarda EXIF de CR-001). Decisiones del usuario en `docs/change-requests/CR-025-ubicacion-exacta-publica.md`.
+
+## Apertura del repositorio — repo público, licencia de datos CC BY 4.0
+
+Directo sobre `main` (docs + metadatos + 2 constantes de copy). **No cambia el producto**: ninguna
+regla de negocio, endpoint, modelo ni gate. Autorizada por el usuario y por el titular del copyright
+(Club Rotario Bosques Aguascalientes). **350 pruebas verdes** (`contract` 21 · `mock` 9 ·
+`backend` 155 · `mobile` 69 · `web-admin` 96).
+
+| Criterio | Implementación | Prueba |
+|---|---|---|
+| Correo de contacto institucional en vez del personal, en licencia, docs y ambas apps | `LICENSE`, `README.md`, `TRACEABILITY.md`, `CR-013`, `mobile/lib/src/ui/copy.dart`, `web-admin/lib/src/ui/copy.dart` | `mobile/test/about_test.dart` · `web-admin/test/widget_about_test.dart` (asertan el correo nuevo) |
+| Runbooks con valores reales del host (IP, rutas, panel del registrador) fuera del repo | eliminados de `docs/despliegue/`; copia local en `.local-docs/` (gitignored). La versión reproducible sin datos del host permanece en `DESPLIEGUE-HETZNER.md`/`DESPLIEGUE-SERVIDOR-UNICO.md` | `git grep` sin coincidencias de la IP ni de los archivos |
+| Placeholders de dev no confundibles con secretos reales | `infra/k8s/base/secret.yaml` → `secret.example.yaml` (+ referencias en `kustomization.yaml`, `config.yaml`, `infra/k8s/README.md`) | `kubectl kustomize infra/k8s/base` construye |
+| **Licencia de datos CC BY 4.0** con cita, esquema publicado y advertencia de origen ciudadano | `LICENSE-DATOS.md`; alcance = dataset de `/public/*`; excluye fotografías, identidad gráfica y código | revisión |
+| Atribución al observador en el dato abierto | `handle` por observación ya viaja en `PublicObservation` (atribución I2); documentado en `LICENSE-DATOS.md` | `backend/tests/test_roles.py` (forma de la respuesta pública) |
+| Canal de reporte de vulnerabilidades (servicio en producción) | `SECURITY.md`: correo, alcance, plazos, y qué **no** es vulnerabilidad (ubicación pública por CR-025; placeholders de dev) | revisión |
+| Expectativas de contribución explícitas | `CONTRIBUTING.md`: sin PRs no solicitados; issues y uso del dataset bienvenidos; gates innegociables listados | revisión |
+| Atribución de terceros | README: **OpenStreetMap** © colaboradores, **ODbL**, con la advertencia de proveedor de *tiles* para tráfico real | revisión |
+
+**Gates:** ninguno se enmienda. #1 se refuerza (`LICENSE-DATOS.md` declara que especie y nivel **no**
+son diagnóstico fitosanitario). #2 mejora: sale un correo personal de ambas apps y entra uno
+institucional. #5 (parte pública, ya retirada por CR-025) se documenta como decisión de gobernanza,
+sin motivaciones externas, en `LICENSE-DATOS.md` y `SECURITY.md`. #7 es esta entrada.
+
+**Pendiente de decisión humana:** nombrar CC BY 4.0 en el punto de datos abiertos de
+`docs/legal/terminos.md` (§ "dato abierto") exige **re-aprobación del Club**, porque el texto legal
+está aprobado. Hasta entonces, `LICENSE-DATOS.md` es la declaración de licencia vigente.

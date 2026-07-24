@@ -25,7 +25,7 @@ class Copy {
   /// (desarrollo) se acredita aparte a su autor, con su correo de contacto.
   static const copyrightNotice = '© 2026 $orgName';
   static const authorName = 'Omar Velázquez';
-  static const authorEmail = 'ovelazquezj@gmail.com';
+  static const authorEmail = 'contacto@rescatando-el-mezquite.org';
 
   /// Pantalla "Acerca de".
   static const aboutTitle = 'Acerca de';

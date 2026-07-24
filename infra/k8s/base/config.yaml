@@ -1,7 +1,7 @@
 # Configuración NO secreta compartida por api y result-worker (paridad de entornos, gate #6).
 # Espeja las env del compose (infra/compose/docker-compose.dev.yml). Los overlays sobreescriben
 # los valores que cambian por entorno (STORAGE_BACKEND, DATABASE_URL host, REDIS_URL) vía
-# configMapGenerator con `behavior: merge`. NUNCA pongas secretos aquí (ver secret.yaml).
+# configMapGenerator con `behavior: merge`. NUNCA pongas secretos aquí (ver secret.example.yaml).
 apiVersion: v1
 kind: ConfigMap
 metadata:

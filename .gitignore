@@ -56,3 +56,8 @@ resultados_paginas/
 /CLAUDE.md
 /prompt.txt
 /docs/change-requests/PLAN-EJECUCION-AGENTES.md
+
+# Runbooks operativos con valores reales del servidor del piloto (IP, rutas,
+# panel del registrador): SOLO local, fuera del repo público. La versión
+# reproducible y sin datos del host vive en docs/despliegue/.
+/.local-docs/

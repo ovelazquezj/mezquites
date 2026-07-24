@@ -31,7 +31,7 @@ versionada**.
 |---|---|
 | `docker-compose.prod.yml` | Montajes **parametrizados**: `- ${OBSDATA_HOST_DIR:-obsdata}:/data/storage` y `- ${PGDATA_HOST_DIR:-pgdata}:/var/lib/postgresql/data`. Sin variables ⇒ volúmenes nombrados (dev); con ruta ⇒ bind al Cloud Volume (prod). |
 | `.env.prod.example` | Nuevas variables `OBSDATA_HOST_DIR` / `PGDATA_HOST_DIR` con guía (vacías = named volume). |
-| Runbooks | `DESPLIEGUE-HETZNER.md §5.2`, `DESPLIEGUE-AGENTE.md §6`, `DESPLIEGUE-SERVIDOR-UNICO.md`: documentan las variables, exigen **`--env-file infra/compose/.env.prod`** (para que la interpolación tome los valores) y **quitan** el paso manual de re-bind tras cada deploy. Incluyen el procedimiento de **migración** de datos existentes (con el stack detenido, `cp -a` del contenido de los volúmenes nombrados). |
+| Runbooks | `DESPLIEGUE-HETZNER.md §5.2`, `DESPLIEGUE-SERVIDOR-UNICO.md`: documentan las variables, exigen **`--env-file infra/compose/.env.prod`** (para que la interpolación tome los valores) y **quitan** el paso manual de re-bind tras cada deploy. Incluyen el procedimiento de **migración** de datos existentes (con el stack detenido, `cp -a` del contenido de los volúmenes nombrados). |
 | VM del piloto | `.env.prod` con `OBSDATA_HOST_DIR=/mnt/HC_Volume_106165488/obsdata` y `PGDATA_HOST_DIR=/mnt/HC_Volume_106165488/pgdata`; `pgdata` migrado (preservando el admin sembrado); stack levantado con `--env-file`. |
 
 ## 4. Gates

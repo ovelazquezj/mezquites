@@ -46,11 +46,10 @@ compartidos `app.dart`/`pubspec.yaml`/`copy.dart`).
 6. **Definition of Done** del CR: todas las pruebas verdes (números reales reportados), gates
    verificados, trazabilidad actualizada, bitácora enmendada.
 
-## Convenciones (de CLAUDE.md)
+## Convenciones
 
 - **Idioma:** español (código, docs y commits).
-- **Commits:** `feat(...)`/`chore(...)`/`docs:`; terminar con
-  `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`. **No push** salvo que el usuario lo pida.
+- **Commits:** `feat(...)`/`chore(...)`/`docs:`.
 - **Gates innegociables:** se respetan los que NO cambia el CR; los que el CR enmienda se documentan
   explícitamente en la bitácora con fecha y motivo.
 - **Antes de "hecho":** correr pruebas y verificar gates; reportar números reales.

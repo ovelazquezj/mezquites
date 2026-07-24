@@ -17,7 +17,7 @@ infra/k8s/
 │   ├── kustomization.yaml
 │   ├── namespace.yaml       # namespace `mezquite` (los overlays fijan su propio namespace)
 │   ├── config.yaml          # ConfigMap (no secretos): BROKER, REDIS_URL, STORAGE_*, DATABASE_URL host
-│   ├── secret.yaml          # Secret: AUTH_SECRET + credenciales DB (placeholders dev)
+│   ├── secret.example.yaml  # Secret: AUTH_SECRET + credenciales DB (PLACEHOLDERS de dev, nunca prod)
 │   ├── redis.yaml           # Deployment + Service (redis:7-alpine), probe redis-cli ping
 │   ├── postgres.yaml        # StatefulSet + PVC + Service (postgis/postgis:16-3.4), probe pg_isready
 │   ├── api.yaml             # Deployment + Service (FastAPI 8000) + PVC obsdata

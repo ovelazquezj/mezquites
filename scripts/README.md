@@ -69,7 +69,7 @@ Python 3 (sirve el web y el proxy). PIDs/logs en `.logs\` (ignorado por git).
 
 La VM del piloto (CX22, 4 GB) **no compila Flutter**. Este script, en tu **PC (Windows)**, compila los dos
 bundles web y publica la rama **`deploy`** en GitHub con los compilados, lista para que el agente la
-despliegue en la VM **sin Flutter** (ver `docs/despliegue/DESPLIEGUE-AGENTE.md` y `DESPLIEGUE-HETZNER.md §9`).
+despliegue en la VM **sin Flutter** (ver `docs/despliegue/DESPLIEGUE-HETZNER.md §9`).
 
 ```powershell
 .\scripts\preparar-rama-deploy.ps1                 # dominio del piloto, AUTH_MODE=firebase

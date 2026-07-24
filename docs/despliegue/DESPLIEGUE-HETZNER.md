@@ -177,8 +177,8 @@ prod. **Siempre** levanta con `--env-file infra/compose/.env.prod` para que las 
 > instantáneos. Los creas en el panel de **donde administras el DNS** del dominio (tu registrador, o
 > Cloudflare, o el DNS de Hetzner si delegas los *nameservers*).
 >
-> **Guía concreta para este proyecto (DNS en Hostinger, con la IP real):**
-> [`DNS-HOSTINGER.md`](DNS-HOSTINGER.md) — paso a paso en hPanel.
+> El procedimiento exacto depende del panel de tu registrador; los pasos de abajo son los mismos en
+> todos (crear dos registros A hacia la IP del servidor).
 
 Crea **dos registros A** apuntando ambos a la **misma IP pública** del servidor (la de §3):
 
