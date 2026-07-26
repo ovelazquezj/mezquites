@@ -37,6 +37,9 @@ def prod_client(monkeypatch):
     monkeypatch.setenv("CORS_ENV", "prod")
     monkeypatch.setenv("CORS_ALLOW_ORIGINS", "https://app.mezquite.org,https://admin.mezquite.org")
     monkeypatch.delenv("CORS_ALLOW_ORIGIN_REGEX", raising=False)
+    # CR-027: fuera de dev, arrancar con el AUTH_SECRET por defecto es un error de configuración y
+    # `create_app()` se niega. Esta prueba es de CORS, así que se le da un secreto propio.
+    monkeypatch.setenv("AUTH_SECRET", "secreto-de-prueba-no-usado-para-firmar-nada")
     get_settings.cache_clear()
     client = TestClient(create_app())
     yield client

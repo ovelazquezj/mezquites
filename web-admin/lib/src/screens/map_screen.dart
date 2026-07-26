@@ -29,6 +29,31 @@ int _nivelIndex(String nivel) =>
 /// Modo del mapa: mapa de calor o ubicaciones exactas.
 enum _MapMode { heat, exact }
 
+/// Filtro de estado de revisión del modo exacto (CR-026).
+///
+/// El default es [confirmadas] para que la consola muestre, de entrada, lo mismo
+/// que ve el público. Los otros valores existen porque esta es la vista de
+/// trabajo del evaluador: si solo pudiera ver lo confirmado, perdería de vista
+/// justo la cola que le falta revisar.
+enum _ReviewFilter { confirmadas, pendientes, rechazadas, todas }
+
+extension _ReviewFilterQuery on _ReviewFilter {
+  /// Valor de `estado_revision` para el API; `null` = todos los estados.
+  String? get query => switch (this) {
+        _ReviewFilter.confirmadas => 'confirmada',
+        _ReviewFilter.pendientes => 'aceptada',
+        _ReviewFilter.rechazadas => 'rechazada',
+        _ReviewFilter.todas => null,
+      };
+
+  String get label => switch (this) {
+        _ReviewFilter.confirmadas => Copy.mapFilterConfirmadas,
+        _ReviewFilter.pendientes => Copy.mapFilterPendientes,
+        _ReviewFilter.rechazadas => Copy.mapFilterRechazadas,
+        _ReviewFilter.todas => Copy.mapFilterTodas,
+      };
+}
+
 /// Pantalla **Mapa** de la consola (CR-010 #2): mapa de calor de `/public/grid`
 /// (tiles OSM, leyenda por severidad). Visible para TODOS los roles de la
 /// consola.
@@ -47,6 +72,8 @@ class MapScreen extends ConsumerStatefulWidget {
 
 class _MapScreenState extends ConsumerState<MapScreen> {
   _MapMode _mode = _MapMode.heat;
+  // CR-026: de entrada, la consola muestra lo mismo que el público.
+  _ReviewFilter _filter = _ReviewFilter.confirmadas;
   late Future<List<GridCell>> _gridFuture;
   // Se crea perezosamente al conmutar a "exacto" (solo se piden las coords
   // exactas cuando el usuario lo solicita).
@@ -58,13 +85,25 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _gridFuture = ref.read(apiClientProvider).publicGrid();
   }
 
+  Future<List<RestrictedObservation>> _fetchExact() =>
+      ref.read(apiClientProvider).restrictedObservations(
+            estadoRevision: _filter.query,
+            limit: 2000,
+          );
+
   void _setMode(_MapMode mode) {
     setState(() {
       _mode = mode;
       if (mode == _MapMode.exact) {
-        _exactFuture ??=
-            ref.read(apiClientProvider).restrictedObservations(limit: 2000);
+        _exactFuture ??= _fetchExact();
       }
+    });
+  }
+
+  void _setFilter(_ReviewFilter filter) {
+    setState(() {
+      _filter = filter;
+      _exactFuture = _fetchExact();
     });
   }
 
@@ -103,6 +142,32 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ],
                   selected: {_mode},
                   onSelectionChanged: (s) => _setMode(s.first),
+                ),
+              ],
+              // CR-026: el filtro solo aplica al modo exacto (el mapa de calor
+              // sale de /public/grid, que ya viene restringido a confirmadas).
+              if (exactActive) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Text(Copy.mapFilterLabel, style: theme.textTheme.bodyMedium),
+                    const SizedBox(width: 12),
+                    DropdownButton<_ReviewFilter>(
+                      key: const Key('map_review_filter'),
+                      value: _filter,
+                      items: [
+                        for (final f in _ReviewFilter.values)
+                          DropdownMenuItem(value: f, child: Text(f.label)),
+                      ],
+                      onChanged: (f) => f == null ? null : _setFilter(f),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  Copy.mapFilterNote,
+                  key: const Key('map_filter_note'),
+                  style: theme.textTheme.bodySmall,
                 ),
               ],
             ],

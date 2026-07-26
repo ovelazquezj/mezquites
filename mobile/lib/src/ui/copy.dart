@@ -110,9 +110,9 @@ class Copy {
   // --- Resumen agregado de aportaciones (CR-001) ---
   static const feedbackTitle = 'Tu aporte';
   static const feedbackNote =
-      'Tus observaciones se aceptan al registrarlas. El equipo del $orgName '
-      'las revisa después; aquí ves un resumen de tus aportaciones, nunca el '
-      'resultado de una foto en particular.';
+      'Tus observaciones se registran al instante y el equipo del $orgName las '
+      'revisa después; cuentan como válidas una vez confirmadas. Aquí ves un '
+      'resumen de tus aportaciones, nunca el resultado de una foto en particular.';
 
   // --- Aprendizaje (Q5.C; sin gating, gate #3) ---
   static const learningTitle = 'Aprendizaje';
@@ -223,13 +223,23 @@ class Copy {
   static const institutionRequestError =
       'No se pudo enviar la solicitud. Intenta de nuevo.';
 
-  // --- Evidencia / comprobante de participación (CR-010 #7) ---
+  // --- Evidencia / comprobante de participación (CR-010 #7; CR-026) ---
   static const evidenceTitle = 'Mi participación';
   static const evidenceNote =
       'Este es un resumen de tu participación, útil como comprobante. Es '
-      'descriptivo: cuenta tus aportaciones y tu tiempo, sin acciones de manejo.';
-  static const evidenceCapturas = 'Observaciones registradas';
-  static const evidenceHoras = 'Horas de participación';
+      'descriptivo: cuenta tus aportaciones, sin acciones de manejo.';
+  static const evidenceCapturas = 'Observaciones válidas registradas';
+
+  /// CR-026: la diferencia entre lo subido y lo válido es, casi siempre, cola de
+  /// revisión. Sin esta línea el voluntario lee "me rechazaron" y no es cierto.
+  static const evidenceCapturasNota =
+      'Solo se cuentan las observaciones que el equipo del $orgName ya revisó y '
+      'confirmó. Las que subiste hace poco pueden seguir en revisión.';
+
+  /// Pie con el total subido, para que el número confirmado tenga denominador.
+  static String evidencePendientes(int pendientes, int totales) =>
+      'Subiste $totales en total; $pendientes siguen en revisión.';
+
   static const evidenceSesiones = 'Sesiones';
   static const evidenceRango = 'Periodo de actividad';
   static const evidenceSinRango = 'Aún sin actividad registrada.';

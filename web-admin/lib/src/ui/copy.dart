@@ -114,8 +114,8 @@ class Copy {
 
   // --- Mapa de calor en la consola (CR-010 #2) ---
   static const mapIntro =
-      'Mapa de calor de las observaciones. Severidad autodeclarada por quien '
-      'observa; sin validación experta.';
+      'Mapa de calor de las observaciones confirmadas. Severidad autodeclarada '
+      'por quien observa; sin validación experta.';
   static const mapError = 'No se pudo cargar el mapa. Inténtalo de nuevo.';
   static const mapLegendTitle = 'Nivel de paxtle (autodeclarado)';
   static const mapLegendLevels = ['Sano', 'Leve', 'Moderado', 'Severo'];
@@ -134,6 +134,16 @@ class Copy {
   static const mapExactError =
       'No se pudieron cargar las ubicaciones exactas. Inténtalo de nuevo.';
 
+  // --- Mapa: filtro por estado de revisión (CR-026) ---
+  static const mapFilterLabel = 'Mostrar';
+  static const mapFilterConfirmadas = 'Confirmadas (lo que ve el público)';
+  static const mapFilterPendientes = 'Pendientes de revisión';
+  static const mapFilterRechazadas = 'Rechazadas';
+  static const mapFilterTodas = 'Todas';
+  static const mapFilterNote =
+      'El mapa público solo muestra observaciones confirmadas. Aquí puedes ver '
+      'además las que siguen en revisión o fueron rechazadas.';
+
   // --- Datos y descargas del analista (CR-010 #3) ---
   static const dataIntro =
       'Tabla de observaciones para análisis. Muestra estado y municipio de cada '
@@ -146,6 +156,14 @@ class Copy {
   static const dataApplyFilters = 'Aplicar filtros';
   static const dataClearFilters = 'Limpiar';
   static const dataDownloadCsv = 'Descargar CSV';
+
+  // --- Reporte de participación por día (CR-026, para las universidades) ---
+  static const dataDownloadParticipationCsv = 'Descargar participación por día';
+  static const dataParticipationNote =
+      'El reporte de participación trae, por día y voluntario, sus sesiones y '
+      'horas junto a cuántas observaciones quedaron confirmadas, rechazadas o '
+      'pendientes de revisión. Las horas miden tiempo con la app abierta, no '
+      'trabajo en campo: úsalas como referencia, no como constancia.';
   static const dataDownloadDone = 'CSV descargado.';
   static const dataDownloadError = 'No se pudo descargar el CSV. Inténtalo de nuevo.';
   static const dataEmpty = 'No hay observaciones para estos filtros.';

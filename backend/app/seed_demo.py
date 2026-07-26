@@ -122,7 +122,10 @@ def seed_demo(db: Session) -> tuple[int, bool]:
             observation_seq=seq,
             estado=estado,
             municipio=municipio,
-            estado_revision="aceptada",  # aceptación por defecto (CR-001)
+            # CR-026: la siembra existe para que el mapa público tenga algo que mostrar, y el mapa
+            # solo publica confirmadas. Se siembran ya confirmadas, como si un evaluador las hubiera
+            # revisado; el flujo real sigue naciendo en 'aceptada' (ver routers/observations.py).
+            estado_revision="confirmada",
         )
         db.add(obs)
         db.flush()

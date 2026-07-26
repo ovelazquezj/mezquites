@@ -5,8 +5,11 @@
   2. Sube la imagen vía StorageProvider (la DB guarda solo la clave).
   3. Asigna ``tree_id`` (ST_DWithin 10 m, R3) y ``observation_seq`` (serie temporal).
   4. Deriva estado/municipio del EXIF (join admin_boundary, Q8).
-  5. Otorga recompensa **base y diferida al instante** (ya no hay validador asíncrono; un
-     rechazo humano posterior NO revierte puntos).
+  5. Registra la recompensa **base y diferida al instante** en ``points_ledger`` (ya no hay
+     validador asíncrono). **CR-026:** ese registro es la bitácora cruda; los puntos solo se
+     *cuentan* cuando la observación queda ``confirmada`` (el filtro vive en
+     ``gamification.account_points``, al leer). Así un rechazo —o revertir una confirmación— ajusta
+     el total sin tener que compensar filas.
   6. Responde de inmediato. **NO encola** ningún job (la frontera §6/YOLO quedó inactiva, gate #10
      superado); sin estado de validación individual al voluntario (Q5.A-D1 intacto).
 """
@@ -100,7 +103,8 @@ async def submit_observation(
     db.add(obs)
 
     # (5) recompensa al subir: BASE + DIFERIDA en el mismo submit (CR-001).
-    # Ya no hay validador asíncrono; un rechazo humano posterior NO revierte estos puntos.
+    # CR-026: estas filas son el registro crudo; no se suman al total del voluntario hasta que la
+    # observación esté `confirmada`. No hay que revertirlas ante un rechazo: el filtro es al leer.
     db.add(
         PointsLedger(
             account_id=user.account_id,

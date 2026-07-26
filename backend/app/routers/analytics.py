@@ -4,6 +4,9 @@
   total (para tableros del analista). Descriptivo (gate #1: no promete control fitosanitario).
 - ``GET /admin/analytics/observations.csv`` — exportación CSV de observaciones con filtros; presenta
   la ubicación exacta del árbol a la consola.
+- ``GET /admin/analytics/participation.csv`` (CR-026) — participación **por día y voluntario**:
+  sesiones y horas frente al resultado de revisión (aceptadas / confirmadas / rechazadas), para que
+  la institución pueda cruzar tiempo dedicado contra observaciones que sobrevivieron la revisión.
 
 Por decisión de gobernanza del Club (CR-025), el CSV presenta coords **exactas** a los roles de
 ``EXACT_LOCATION_ROLES``, que ahora incluye a todos los roles de revisión/analítica
@@ -24,6 +27,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from ..config import get_settings
 from ..db import get_db
 from ..deps import CurrentUser, require_role
 from ..geo import obfuscate_to_grid
@@ -236,4 +240,127 @@ def analytics_csv(
         iter([buf.getvalue()]),
         media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="observations.csv"'},
+    )
+
+
+# Columnas del reporte de participación por día (CR-026). Gate #2: `handle` seudónimo, sin PII.
+_PARTICIPATION_COLUMNS = [
+    "fecha",
+    "handle",
+    "institucion",
+    "sesiones",
+    "horas",
+    "obs_total",
+    "obs_aceptadas",
+    "obs_confirmadas",
+    "obs_rechazadas",
+]
+
+# Participación por día × voluntario. Las dos mitades se agregan por separado y se cruzan con FULL
+# OUTER JOIN: hay días con sesiones sin capturas (abrió la app y no subió nada) y días con capturas
+# cuya sesión no llegó a registrarse (el envío es fire-and-forget). Perder cualquiera de los dos
+# lados falsearía justo la comparación que la institución quiere hacer.
+_PARTICIPATION_SQL = """
+    WITH ses AS (
+        SELECT account_id,
+               (started_at AT TIME ZONE :tz)::date AS dia,
+               count(*) AS sesiones,
+               COALESCE(sum(duration_seconds), 0) AS segundos
+        FROM participation_session
+        WHERE (CAST(:desde AS timestamptz) IS NULL OR started_at >= CAST(:desde AS timestamptz))
+          AND (CAST(:hasta AS timestamptz) IS NULL OR started_at <= CAST(:hasta AS timestamptz))
+        GROUP BY account_id, dia
+    ),
+    obs AS (
+        SELECT account_id,
+               (captured_at AT TIME ZONE :tz)::date AS dia,
+               count(*) AS total,
+               count(*) FILTER (WHERE estado_revision = 'aceptada') AS aceptadas,
+               count(*) FILTER (WHERE estado_revision = 'confirmada') AS confirmadas,
+               count(*) FILTER (WHERE estado_revision = 'rechazada') AS rechazadas
+        FROM observation
+        WHERE (CAST(:estado AS text) IS NULL OR estado = :estado)
+          AND (CAST(:municipio AS text) IS NULL OR municipio = :municipio)
+          AND (CAST(:desde AS timestamptz) IS NULL OR captured_at >= CAST(:desde AS timestamptz))
+          AND (CAST(:hasta AS timestamptz) IS NULL OR captured_at <= CAST(:hasta AS timestamptz))
+        GROUP BY account_id, dia
+    )
+    SELECT COALESCE(s.dia, o.dia) AS dia,
+           a.handle AS handle,
+           i.name AS institucion,
+           COALESCE(s.sesiones, 0) AS sesiones,
+           COALESCE(s.segundos, 0) AS segundos,
+           COALESCE(o.total, 0) AS obs_total,
+           COALESCE(o.aceptadas, 0) AS obs_aceptadas,
+           COALESCE(o.confirmadas, 0) AS obs_confirmadas,
+           COALESCE(o.rechazadas, 0) AS obs_rechazadas
+    FROM ses s
+    FULL OUTER JOIN obs o ON o.account_id = s.account_id AND o.dia = s.dia
+    JOIN account a ON a.id = COALESCE(s.account_id, o.account_id)
+    LEFT JOIN institution i ON i.id = a.institution_id
+    ORDER BY dia DESC, a.handle
+"""
+
+
+@router.get("/participation.csv")
+def participation_csv(
+    estado: str | None = Query(None),
+    municipio: str | None = Query(None),
+    desde: str | None = Query(None, description="ISO date/datetime: >= desde."),
+    hasta: str | None = Query(None, description="ISO date/datetime: <= hasta."),
+    user: CurrentUser = Depends(_analyst),
+    db: Session = Depends(get_db),
+) -> StreamingResponse:
+    """Participación por día y voluntario (CR-026, solicitud de las universidades participantes).
+
+    Una fila por (día × voluntario) con **sesiones y horas** de un lado y el **resultado de la
+    revisión** del otro (``aceptada`` = pendiente de revisión, ``confirmada``, ``rechazada``), para
+    que la institución pueda comparar tiempo dedicado contra observaciones que sobrevivieron la
+    revisión, sin tener que consultar la base a mano.
+
+    El día se calcula en el huso de ``report_timezone`` (América/México por defecto): las marcas se
+    guardan en UTC y agrupar en UTC empujaría al día siguiente toda la actividad de la tarde.
+
+    ⚠️ Las horas miden **tiempo con la app en primer plano**, no trabajo en campo — es la razón por
+    la que CR-026 las retiró de la pantalla del voluntario. Se exportan como dato de análisis, no
+    como constancia de servicio; quien lea el reporte debe saberlo.
+
+    Los filtros ``estado``/``municipio`` aplican a las observaciones (las sesiones no tienen
+    ubicación): con uno de ellos activo, un día de sesión sin capturas en ese municipio aparece con
+    los conteos de observación en cero. Gate #2: solo ``handle`` seudónimo, nunca PII.
+    """
+    rows = db.execute(
+        text(_PARTICIPATION_SQL),
+        {
+            "tz": get_settings().report_timezone,
+            "estado": estado,
+            "municipio": municipio,
+            "desde": desde,
+            "hasta": hasta,
+        },
+    ).mappings().all()
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(_PARTICIPATION_COLUMNS)
+    for r in rows:
+        writer.writerow(
+            [
+                r["dia"].isoformat() if r["dia"] is not None else "",
+                r["handle"],
+                r["institucion"] or "",
+                int(r["sesiones"]),
+                round(float(r["segundos"]) / 3600.0, 4),
+                int(r["obs_total"]),
+                int(r["obs_aceptadas"]),
+                int(r["obs_confirmadas"]),
+                int(r["obs_rechazadas"]),
+            ]
+        )
+
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="participation.csv"'},
     )

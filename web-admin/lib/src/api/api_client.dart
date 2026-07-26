@@ -290,13 +290,20 @@ class ApiClient {
 
   /// Dashboard RESTRINGIDO: coords EXACTAS. Requiere rol aliado_firmante/admin
   /// autorizado (gate #5). Lanza [ApiException] 403 si el rol no es suficiente.
+  /// CR-026: [estadoRevision] filtra por estado de revisión. Omitirlo devuelve
+  /// TODOS los estados — la consola es la vista de trabajo y no debe esconderle
+  /// al evaluador lo que le falta revisar, aunque el mapa público solo publique
+  /// las confirmadas.
   Future<List<RestrictedObservation>> restrictedObservations({
     String? estado,
+    String? estadoRevision,
     int limit = 2000,
   }) async {
     final r = await _http.get(
       _uri('/restricted/observations', {
         if (estado != null && estado.isNotEmpty) 'estado': estado,
+        if (estadoRevision != null && estadoRevision.isNotEmpty)
+          'estado_revision': estadoRevision,
         'limit': '$limit',
       }),
       headers: _headers(json: false),
@@ -467,6 +474,30 @@ class ApiClient {
             desde: desde,
             hasta: hasta,
           )),
+      headers: _headers(json: false),
+    );
+    if (r.statusCode >= 200 && r.statusCode < 300) return r.bodyBytes;
+    throw ApiException(r.statusCode, 'No se pudo descargar el CSV', body: r.body);
+  }
+
+  /// Bytes del CSV de **participación por día** (CR-026,
+  /// `GET /admin/analytics/participation.csv`): una fila por (día × voluntario)
+  /// con sesiones y horas frente al desglose de revisión de ese día. Es lo que
+  /// la institución necesita para evaluar sin pedir acceso a la base.
+  ///
+  /// Ojo al leerlo: las horas miden tiempo con la app abierta, no trabajo en
+  /// campo — por eso CR-026 las quitó de la pantalla del voluntario.
+  Future<List<int>> participationCsvBytes({
+    String? municipio,
+    String? desde,
+    String? hasta,
+  }) async {
+    final r = await _http.get(
+      _uri('/admin/analytics/participation.csv', {
+        if (municipio != null && municipio.isNotEmpty) 'municipio': municipio,
+        if (desde != null && desde.isNotEmpty) 'desde': desde,
+        if (hasta != null && hasta.isNotEmpty) 'hasta': hasta,
+      }),
       headers: _headers(json: false),
     );
     if (r.statusCode >= 200 && r.statusCode < 300) return r.bodyBytes;

@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import CurrentUser, require_role
+from ..gamification import refresh_identity_label
 from ..models import REVIEW_ROLES, REVIEW_VERDICT_ROLES, HumanReview, Observation
 from ..schemas import (
     HumanReviewEntry,
@@ -190,8 +191,13 @@ def review_verdict(
     """Emite un veredicto humano (aceptada|confirmada|rechazada). Autoritativo en backend (CR-001).
 
     Inserta una fila en ``human_review`` (log append-only, gate #7) y actualiza
-    ``observation.estado_revision``. Un rechazo NO revierte puntos ya otorgados. CR-010: ``aceptada``
-    revierte la observación a "pendiente de revisión" (deshace una confirmación/rechazo previo).
+    ``observation.estado_revision``. CR-010: ``aceptada`` revierte la observación a "pendiente de
+    revisión" (deshace una confirmación/rechazo previo).
+
+    **CR-026:** el veredicto es lo que hace contar (o dejar de contar) la observación en el perfil
+    del voluntario, en sus insignias, en sus puntos y en el mapa público. Las filas de
+    ``points_ledger`` no se tocan —el filtro se aplica al leer—, pero sí hay que recomputar la
+    etiqueta de identidad L3, que está persistida en ``account``.
     """
     obs = db.get(Observation, observation_id)
     if obs is None:
@@ -206,6 +212,10 @@ def review_verdict(
         )
     )
     obs.estado_revision = body.veredicto
+    db.flush()
+    # La L3 depende del nº de confirmadas (CR-026): sin esto quedaría congelada en el valor que
+    # tenía al subir la observación.
+    refresh_identity_label(db, obs.account_id)
     db.commit()
 
     if body.veredicto == "rechazada":

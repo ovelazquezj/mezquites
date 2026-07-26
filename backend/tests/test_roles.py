@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from .helpers import auth_header, register, submit_observation
+from .helpers import (
+    auth_header,
+    register,
+    submit_confirmed_observation,
+    submit_observation,
+)
 
 
 def test_restricted_requires_aliado_firmante(client, db_session):
@@ -50,8 +55,8 @@ def test_public_observations_return_exact_coords(client, db_session):
     """La vista pública presenta la ubicación EXACTA del árbol (CR-025)."""
     firmante = register(client, role="aliado_firmante")
     exact_lat, exact_lon = 21.885311, -102.291622
-    # CR-001: la observación nace 'aceptada' y ya es visible (no requiere validación).
-    submit_observation(client, firmante["token"], lat=exact_lat, lon=exact_lon)
+    # CR-026: la observación nace 'aceptada' (pendiente) y solo se publica al confirmarse.
+    submit_confirmed_observation(client, firmante["token"], lat=exact_lat, lon=exact_lon)
 
     pub = client.get("/api/v1/public/observations").json()
     assert len(pub) == 1

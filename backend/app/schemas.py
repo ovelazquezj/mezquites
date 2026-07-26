@@ -200,12 +200,13 @@ class FeedbackAggregate(BaseModel):
     """Feedback AGREGADO de aportaciones (Q5.A-D1). NUNCA acusación individual.
 
     Revisión humana (CR-001): toda observación se acepta al subir, así que el resumen pasa a
-    "aceptadas / contadas" sobre las últimas N. ``validas`` = no-rechazadas (compatibilidad de campo).
+    "aceptadas / contadas" sobre las últimas N. CR-026: ``validas`` = **confirmadas** en la ventana
+    (se conserva el nombre del campo por compatibilidad).
     """
 
     window: int
     total_considered: int
-    validas: int  # no-rechazadas (aceptadas + confirmadas) en la ventana
+    validas: int  # confirmadas en la ventana (CR-026)
     message: str
 
 
@@ -428,9 +429,15 @@ class SessionResponse(BaseModel):
 
 
 class EvidenceResponse(BaseModel):
-    """Evidencia de participación del voluntario (en pantalla). Descriptiva (gate #1), sin PII."""
+    """Evidencia de participación del voluntario (en pantalla). Descriptiva (gate #1), sin PII.
 
-    capturas: int
+    CR-026: ``capturas`` pasó a contar solo observaciones **confirmadas** (es lo que la app
+    presenta) y se agregó ``capturas_totales`` con el total crudo subido. ``horas_totales`` sigue
+    calculándose y viajando aunque la app ya no la pinte: es dato de análisis, no evidencia de campo.
+    """
+
+    capturas: int  # confirmadas (CR-026)
+    capturas_totales: int  # total subido, sin filtrar por revisión
     horas_totales: float
     sesiones: int
     primera: datetime | None

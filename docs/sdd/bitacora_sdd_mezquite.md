@@ -129,8 +129,13 @@ etiquetando su grado de soporte. Etiquetas usadas en toda la bitácora:
 >   en un **log append-only `human_review`** (gate #7, trazabilidad).
 > - **Un rechazo NO revierte puntos.** Los puntos ya otorgados al subir se conservan; el rechazo solo
 >   saca a la observación del dataset público.
+>   > **Enmendado por CR-026 (2026-07-25):** los puntos **solo se cuentan si la observación está
+>   > `confirmada`**. El ledger sigue registrando al subir; el filtro se aplica al leer, así que un
+>   > rechazo —o revertir una confirmación— los descuenta sin necesidad de compensar filas.
 > - **Visibilidad pública = todo lo no-rechazado** (`estado_revision <> 'rechazada'`): tanto
 >   `aceptada` como `confirmada` aparecen en las vistas públicas.
+>   > **Enmendado por CR-026 (2026-07-25), a solicitud de las universidades participantes:** el público
+>   > ve **solo `confirmada`**. Ver el gate #9 enmendado.
 > - **Roles nuevos de backend (CR-001), sin tocar los existentes:** `administrador` (gestión + puede
 >   emitir veredicto), `evaluador` (puede emitir veredicto) y `analista` (**solo lectura**: monitorea
 >   métricas, sin veredicto). Son roles de **acceso a vistas**, nunca gating funcional (gate #3 intacto).
@@ -510,6 +515,23 @@ contexto. El **sistema de validación (YOLO) NO se desarrolla aquí** — track 
    humano. Toda observación nace `aceptada`, otorga puntos al subir (base + diferida) y es visible;
    un revisor la **confirma** o **rechaza** (log `human_review`, autoritativo en backend). Público =
    `estado_revision <> 'rechazada'`. Un rechazo no revierte puntos.
+   > **ENMENDADO por decisión humana del 2026-07-25 (CR-026), a solicitud de las universidades
+   > participantes:** el criterio público pasa de "no-rechazada" a **`estado_revision = 'confirmada'`**.
+   > Motivo: publicar lo que nadie ha revisado significaba publicar fotos que podían no ser un mezquite;
+   > con "no-rechazada" el valor por defecto era *contar y publicar*, y ahora es *esperar la revisión*.
+   > Alcance: `/public/observations`, `/public/grid`, `/public/indicators` y, por herencia, los mapas de
+   > la app y de la consola.
+   > - **La observación sigue naciendo `aceptada`** (el aporte se acepta al subir; gate #3 intacto: nada
+   >   se bloquea ni se le pide al voluntario esperar aprobación para participar).
+   > - **Los puntos ya no se cuentan hasta la confirmación.** Las filas de `points_ledger` se siguen
+   >   escribiendo al subir (bitácora cruda); el filtro se aplica **al leer**, de modo que revertir o
+   >   rechazar ajusta el total solo, sin filas de compensación. Esto sustituye a "un rechazo no revierte
+   >   puntos": ahora sí deja de sumarlos.
+   > - **Conteos, insignias y etiqueta L3** cuentan solo confirmadas.
+   > - **Consecuencia operativa asumida:** el mapa público y la participación visible del voluntario
+   >   quedan supeditados al **ritmo de revisión de la consola**.
+   > - La **consola** conserva acceso a todos los estados (`/restricted/observations?estado_revision=`),
+   >   para no esconderle al evaluador la cola que le toca revisar.
 10. ~~**Contrato §6:** la integración con el validador se hace exclusivamente por la cola y el contrato
     de la §6; el software debe funcionar contra el **mock** sin cambios de cliente al pasar al real.~~
     **INACTIVO por decisión humana del 2026-06-15 (CR-001):** la frontera §6 (cola + contrato + mock)

@@ -8,10 +8,20 @@ import '../widgets/branded_app_bar.dart';
 import '../widgets/common.dart';
 
 /// Comprobante de participación (CR-010 #7). Muestra, como evidencia para el
-/// alumno, un resumen AGREGADO de su actividad: nº de capturas, horas
-/// acumuladas, nº de sesiones y rango de fechas. Solo pantalla (sin PDF).
+/// alumno, un resumen AGREGADO de su actividad: observaciones válidas, nº de
+/// sesiones y rango de fechas. Solo pantalla (sin PDF).
 ///
-/// Gate #1: descriptivo (cuenta aportaciones/tiempo; sin acciones de manejo).
+/// CR-026 (solicitud de las universidades participantes):
+/// - Se retiró **"Horas de participación"**: el rastreador mide tiempo con la
+///   app en primer plano, no trabajo en campo, así que como evidencia era
+///   engañoso. El backend las sigue calculando y enviando (dato de análisis);
+///   esta pantalla simplemente ya no las pinta.
+/// - "Observaciones registradas" pasó a **"Observaciones válidas registradas"**:
+///   cuenta solo lo confirmado por revisión humana, porque una foto puede no ser
+///   un mezquite. Se acompaña del total subido para que el número tenga
+///   denominador y no se lea como un rechazo.
+///
+/// Gate #1: descriptivo (cuenta aportaciones; sin acciones de manejo).
 /// Gate #2: sin PII (solo conteos y fechas). Gate #3: no bloquea nada.
 class EvidenceScreen extends ConsumerWidget {
   const EvidenceScreen({super.key});
@@ -72,13 +82,36 @@ class _EvidenceBody extends StatelessWidget {
       child: Column(
         children: [
           StatTile(
+            key: const Key('evidence_capturas'),
             label: Copy.evidenceCapturas,
             value: '${evidence.capturas}',
           ),
-          StatTile(
-            label: Copy.evidenceHoras,
-            value: evidence.horasTotales.toStringAsFixed(1),
+          // CR-026: sin esta aclaración, un voluntario con muchas capturas y
+          // pocas confirmadas lee un rechazo donde solo hay cola de revisión.
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              Copy.evidenceCapturasNota,
+              key: const Key('evidence_capturas_nota'),
+              style: theme.textTheme.bodySmall,
+            ),
           ),
+          if (evidence.pendientes > 0)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  Copy.evidencePendientes(
+                    evidence.pendientes,
+                    evidence.capturasTotales,
+                  ),
+                  key: const Key('evidence_pendientes'),
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
           StatTile(
             label: Copy.evidenceSesiones,
             value: '${evidence.sesiones}',

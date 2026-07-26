@@ -33,6 +33,7 @@ class _DataScreenState extends ConsumerState<DataScreen> {
   final _hastaCtrl = TextEditingController();
 
   bool _downloading = false;
+  bool _downloadingParticipation = false; // CR-026
   late Future<_DataBundle> _future;
 
   static const _estadoRevisionItems = <String, String>{
@@ -127,6 +128,32 @@ class _DataScreenState extends ConsumerState<DataScreen> {
     }
   }
 
+  /// CR-026: descarga la participación por día × voluntario (sesiones y horas
+  /// frente al resultado de revisión). Usa solo los filtros que ese reporte
+  /// entiende: municipio y rango de fechas.
+  Future<void> _downloadParticipationCsv() async {
+    setState(() => _downloadingParticipation = true);
+    try {
+      final bytes = await ref.read(apiClientProvider).participationCsvBytes(
+            municipio: _municipioCtrl.text.trim(),
+            desde: _desdeCtrl.text.trim(),
+            hasta: _hastaCtrl.text.trim(),
+          );
+      downloadBytes(bytes, 'participacion_mezquite.csv');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(Copy.dataDownloadDone)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(Copy.dataDownloadError)),
+      );
+    } finally {
+      if (mounted) setState(() => _downloadingParticipation = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -183,20 +210,43 @@ class _DataScreenState extends ConsumerState<DataScreen> {
           onClear: _clearFilters,
         ),
         const SizedBox(height: 16),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: FilledButton.icon(
-            key: const Key('data-download-csv'),
-            onPressed: _downloading ? null : _downloadCsv,
-            icon: _downloading
-                ? const SizedBox(
-                    height: 18,
-                    width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.download),
-            label: const Text(Copy.dataDownloadCsv),
-          ),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            FilledButton.icon(
+              key: const Key('data-download-csv'),
+              onPressed: _downloading ? null : _downloadCsv,
+              icon: _downloading
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.download),
+              label: const Text(Copy.dataDownloadCsv),
+            ),
+            // CR-026: segundo reporte, pedido por las universidades.
+            OutlinedButton.icon(
+              key: const Key('data-download-participation-csv'),
+              onPressed:
+                  _downloadingParticipation ? null : _downloadParticipationCsv,
+              icon: _downloadingParticipation
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.groups_outlined),
+              label: const Text(Copy.dataDownloadParticipationCsv),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          Copy.dataParticipationNote,
+          key: const Key('data-participation-note'),
+          style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 16),
         FutureBuilder<_DataBundle>(

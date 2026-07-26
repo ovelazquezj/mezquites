@@ -1,11 +1,16 @@
 """Perfil y feedback del voluntario.
 
-- ``GET /me/feedback`` — resumen **agregado** de aportaciones ("de tus últimas N, M aceptadas").
+- ``GET /me/feedback`` — resumen **agregado** de aportaciones ("de tus últimas N, M confirmadas").
   Revisión humana (CR-001): toda observación se acepta al subir; un rechazo humano no se expone de
   forma individual. NUNCA acusación individual (gate Q5.A-D1).
 - ``GET /me/profile`` — lifelist, etiqueta de identidad L3, insignias (sin desbloquear funciones).
 - ``POST /me/sessions`` / ``GET /me/evidence`` (CR-010, #7) — evidencia por tiempo de sesión: el
   cliente reporta inicio/fin de sesión; la evidencia agrega capturas + horas (descriptiva, gate #1).
+
+**CR-026 (solicitud de las universidades participantes):** lo que se *presenta* como participación
+son las observaciones **confirmadas**; las horas de sesión se retiran de la pantalla de la app por
+medir tiempo de app abierta y no trabajo de campo. Nada se deja de capturar: ``horas_totales``,
+``sesiones`` y el total crudo de capturas se siguen calculando y viajando en la respuesta.
 """
 
 from __future__ import annotations
@@ -18,6 +23,7 @@ from ..config import get_settings
 from ..db import get_db
 from ..deps import CurrentUser, get_current_user, require_role
 from ..gamification import (
+    account_confirmed_count,
     account_lifelist,
     account_observation_count,
     account_points,
@@ -44,7 +50,10 @@ def feedback(
 ) -> FeedbackAggregate:
     """Resumen AGREGADO sobre las últimas N observaciones (sin acusación individual, CR-001).
 
-    Toda observación se acepta al subir; ``validas`` cuenta las **no-rechazadas** en la ventana.
+    CR-026: ``validas`` cuenta las **confirmadas** por revisión humana. El mensaje nombra además las
+    que siguen en revisión, para que la diferencia entre lo subido y lo confirmado no se lea como un
+    rechazo: la mayor parte de esa brecha es cola de revisión, no calidad. Nunca se expone el
+    resultado de una foto en particular (gate Q5.A-D1).
     """
     settings = get_settings()
     window = settings.feedback_window
@@ -60,11 +69,15 @@ def feedback(
         {"a": user.account_id, "n": window},
     ).all()
     total = len(rows)
-    validas = sum(1 for r in rows if r[0] != "rechazada")
+    validas = sum(1 for r in rows if r[0] == "confirmada")
+    en_revision = sum(1 for r in rows if r[0] == "aceptada")
     if total == 0:
         message = "Aún no tienes observaciones para mostrar tu resumen."
     else:
-        message = f"De tus últimas {total} observaciones, {validas} siguen aceptadas."
+        message = (
+            f"De tus últimas {total} observaciones, {validas} ya están confirmadas "
+            f"y {en_revision} siguen en revisión."
+        )
     return FeedbackAggregate(
         window=window, total_considered=total, validas=validas, message=message
     )
@@ -76,15 +89,16 @@ def profile(
 ) -> ProfileResponse:
     account = db.get(Account, user.account_id)
     institution = account.institution.name if account and account.institution else None
-    obs_count = account_observation_count(db, user.account_id)
+    # CR-026: el perfil presenta lo confirmado (conteo, insignias, lifelist y puntos).
+    confirmed = account_confirmed_count(db, user.account_id)
     return ProfileResponse(
         handle=user.handle,
         identity_label=account.identity_label if account else "nuevo_observador",
         institution=institution,
         lifelist_trees=account_lifelist(db, user.account_id),
-        total_observations=obs_count,
+        total_observations=confirmed,
         total_points=account_points(db, user.account_id),
-        badges=compute_badges(obs_count),
+        badges=compute_badges(confirmed),
     )
 
 
@@ -129,10 +143,16 @@ def evidence(
 ) -> EvidenceResponse:
     """Evidencia de participación del voluntario (CR-010, #7) — en pantalla, descriptiva (gate #1).
 
-    ``capturas`` = nº de observaciones propias; ``horas_totales`` = Σ ``duration_seconds`` / 3600;
-    ``sesiones`` = nº de sesiones; ``primera``/``ultima`` = rango de inicio de sesión.
+    ``capturas`` = observaciones **confirmadas** (CR-026: es lo que la app presenta como
+    participación); ``capturas_totales`` = total crudo subido, que se conserva como denominador del
+    avance de revisión; ``horas_totales`` = Σ ``duration_seconds`` / 3600; ``sesiones`` = nº de
+    sesiones; ``primera``/``ultima`` = rango de inicio de sesión.
+
+    Las horas se siguen calculando y devolviendo aunque la app ya no las pinte (CR-026): son dato de
+    análisis para la institución, no evidencia de trabajo de campo.
     """
-    capturas = account_observation_count(db, user.account_id)
+    capturas = account_confirmed_count(db, user.account_id)
+    capturas_totales = account_observation_count(db, user.account_id)
     row = db.execute(
         text(
             """
@@ -149,6 +169,7 @@ def evidence(
     horas = round(float(row["total_seg"]) / 3600.0, 4)
     return EvidenceResponse(
         capturas=capturas,
+        capturas_totales=capturas_totales,
         horas_totales=horas,
         sesiones=int(row["n_sesiones"]),
         primera=row["primera"],

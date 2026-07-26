@@ -1,13 +1,18 @@
 """Vistas públicas (sin auth).
 
 - ``GET /public/observations`` — ubicación **EXACTA** del árbol, handle por observación (atribución
-  I2) y ``snapshot_quarter`` ("Qn"). Entran al dataset público todas las observaciones **no
-  rechazadas** (``estado_revision <> 'rechazada'``): aceptadas + confirmadas (revisión humana,
-  CR-001).
-- ``GET /public/grid`` — mapa de calor agregado: agrupa (*binning*) las observaciones no-rechazadas
+  I2) y ``snapshot_quarter`` ("Qn"). Entran al dataset público **solo las observaciones
+  confirmadas** por revisión humana (``estado_revision = 'confirmada'``).
+- ``GET /public/grid`` — mapa de calor agregado: agrupa (*binning*) las observaciones confirmadas
   en una malla de celdas y devuelve conteos/promedios por celda. El binning es AGREGACIÓN de
   densidad/severidad del heatmap, no una capa de presentación de la ubicación.
 - ``GET /public/indicators`` — indicadores Q6 calculados automáticamente, **sin umbrales** (U1).
+
+⚠️ **CR-026 (solicitud de las universidades participantes) ENMIENDA el criterio público del
+gate #9.** CR-001 lo fijó en "no-rechazada" (aceptadas + confirmadas), lo que publicaba también lo
+que nadie había revisado todavía — incluida una foto que podía no ser un mezquite. El criterio pasa
+a **confirmada**: al mapa público solo llega lo que una persona revisó y confirmó. Consecuencia
+operativa asumida: el mapa refleja el ritmo de revisión de la consola, no el de captura.
 """
 
 from __future__ import annotations
@@ -34,10 +39,11 @@ def public_observations(
     limit: int = Query(500, le=5000),
     db: Session = Depends(get_db),
 ) -> list[PublicObservation]:
-    """Dataset público: ubicación EXACTA del árbol. No-rechazadas (CR-001).
+    """Dataset público: ubicación EXACTA del árbol. Solo CONFIRMADAS (CR-026).
 
     Devuelve la ubicación exacta capturada (``ST_Y``/``ST_X`` del ``geom``) tal cual. Especie y nivel
-    G4 son AUTODECLARADOS (gate #8); ningún umbral (U1).
+    G4 siguen siendo AUTODECLARADOS (gate #8) — la confirmación humana avala que la foto corresponde
+    a un mezquite observado, no el nivel declarado. Ningún umbral (U1).
     """
     quarter = latest_snapshot_label(db)
     rows = db.execute(
@@ -46,7 +52,7 @@ def public_observations(
             SELECT handle, ST_Y(geom::geometry) AS lat, ST_X(geom::geometry) AS lon,
                    nivel_g4, flag_cuscuta, flag_danio, estado, municipio, captured_at
             FROM observation
-            WHERE estado_revision <> 'rechazada'
+            WHERE estado_revision = 'confirmada'
               AND (CAST(:estado AS text) IS NULL OR estado = :estado)
             ORDER BY captured_at DESC
             LIMIT :limit
@@ -82,7 +88,7 @@ def public_grid(
 ) -> list[PublicGridCell]:
     """Mapa de calor agregado por celda (CR-009).
 
-    Toma las observaciones **no-rechazadas** (igual que ``/public/observations``) y las agrupa
+    Toma las observaciones **confirmadas** (igual que ``/public/observations``, CR-026) y las agrupa
     (*binning*) en celdas métricas vía ``obfuscate_to_grid`` (CR-009: 300 m), agrupando por
     ``(lat, lon)`` de celda para devolver conteos/promedios. Aquí el snap a celda es **agregación de
     densidad/severidad del heatmap** (reduce miles de puntos a una malla pintable), no una capa de
@@ -95,7 +101,7 @@ def public_grid(
             SELECT ST_Y(geom::geometry) AS lat, ST_X(geom::geometry) AS lon,
                    nivel_g4, flag_cuscuta, flag_danio
             FROM observation
-            WHERE estado_revision <> 'rechazada'
+            WHERE estado_revision = 'confirmada'
               AND (CAST(:estado AS text) IS NULL OR estado = :estado)
             ORDER BY captured_at DESC
             LIMIT :limit

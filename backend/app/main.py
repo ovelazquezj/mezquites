@@ -31,6 +31,10 @@ API_PREFIX = "/api/v1"
 
 
 def create_app() -> FastAPI:
+    # CR-027: falla al arrancar si el entorno no-dev conserva configuración insegura (hoy, el
+    # AUTH_SECRET por defecto, que es público).
+    get_settings().validate_for_environment()
+
     app = FastAPI(
         title="Mezquite — API de ciencia ciudadana",
         version="0.1.0",
@@ -72,8 +76,15 @@ def create_app() -> FastAPI:
         return JSONResponse({"status": "ok"})
 
     # En dev/QA con storage local, servir las imágenes desde el filesystem (S3 usa presigned URLs).
+    #
+    # ⚠️ CR-027: esta ruta NO exige token — sirve la foto a quien tenga la clave. Nació como
+    # comodidad de dev/QA, pero quedaba montada también en producción, donde el Caddyfile la
+    # publicaba en ambos dominios: los mismos bytes que `/review/observations/{id}/image` protege
+    # por rol salían por aquí sin rol alguno, sin caducidad y sin forma de revocarlos. Ningún
+    # cliente la consume (las apps usan el endpoint autenticado), así que se restringe a dev y se
+    # retira del Caddyfile. Ambas medidas son independientes a propósito.
     settings = get_settings()
-    if settings.storage_backend.lower() == "local":
+    if settings.storage_backend.lower() == "local" and settings.is_dev:
         from pathlib import Path
 
         base_url = settings.storage_public_base_url.rstrip("/")

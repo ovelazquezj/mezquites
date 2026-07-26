@@ -99,6 +99,44 @@ def auth_header(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
+def confirm_observation(observation_id: str) -> None:
+    """Marca una observación como ``confirmada`` (CR-026).
+
+    Atajo equivalente a un veredicto humano desde la consola: escribe ``estado_revision`` y recomputa
+    la etiqueta L3, igual que ``POST /review/observations/{id}/verdict``. Evita montar una cuenta de
+    evaluador en cada prueba que solo necesita datos publicables.
+    """
+    import uuid as _uuid
+
+    from sqlalchemy import text
+
+    from backend.app import db as db_module
+    from backend.app.gamification import refresh_identity_label
+
+    session = db_module.get_sessionmaker()()
+    try:
+        row = session.execute(
+            text(
+                "UPDATE observation SET estado_revision = 'confirmada' "
+                "WHERE id = :oid RETURNING account_id"
+            ),
+            {"oid": _uuid.UUID(str(observation_id))},
+        ).first()
+        if row is not None:
+            refresh_identity_label(session, row[0])
+        session.commit()
+    finally:
+        session.close()
+
+
+def submit_confirmed_observation(client, token: str, **kwargs):
+    """Sube una observación y la deja ``confirmada``: es lo que hoy exige el dataset público."""
+    resp = submit_observation(client, token, **kwargs)
+    assert resp.status_code == 201, resp.text
+    confirm_observation(resp.json()["observation_id"])
+    return resp
+
+
 def submit_observation(
     client,
     token: str,

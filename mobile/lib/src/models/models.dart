@@ -358,19 +358,29 @@ class Indicators {
 /// Comprobante de participación (CR-010 #7). Resumen AGREGADO de la actividad
 /// propia para mostrarlo como evidencia al alumno (en pantalla, sin PDF).
 /// Gate #2: solo conteos y rango de fechas; nada de PII. Gate #1: descriptivo.
+///
+/// CR-026 (solicitud de las universidades): [capturas] pasó a contar solo las
+/// observaciones **confirmadas** por revisión humana y [capturasTotales] guarda
+/// el total subido. [horasTotales] se sigue recibiendo pero **ya no se muestra**:
+/// medía tiempo con la app abierta, no trabajo en campo. Se conserva en el
+/// modelo porque el backend la sigue enviando y es dato de análisis.
 class Evidence {
   const Evidence({
     required this.capturas,
+    required this.capturasTotales,
     required this.horasTotales,
     required this.sesiones,
     this.primera,
     this.ultima,
   });
 
-  /// Nº de observaciones propias.
+  /// Nº de observaciones propias **confirmadas** (CR-026).
   final int capturas;
 
-  /// Horas acumuladas de sesión (Σ duración / 3600).
+  /// Nº total de observaciones subidas, revisadas o no (CR-026).
+  final int capturasTotales;
+
+  /// Horas acumuladas de sesión (Σ duración / 3600). NO se pinta (CR-026).
   final double horasTotales;
 
   /// Nº de sesiones de participación registradas.
@@ -380,8 +390,14 @@ class Evidence {
   final DateTime? primera;
   final DateTime? ultima;
 
+  /// Observaciones subidas que aún esperan revisión (o fueron rechazadas).
+  int get pendientes =>
+      capturasTotales - capturas < 0 ? 0 : capturasTotales - capturas;
+
   factory Evidence.fromJson(Map<String, dynamic> j) => Evidence(
         capturas: (j['capturas'] as num).toInt(),
+        capturasTotales: (j['capturas_totales'] as num?)?.toInt() ??
+            (j['capturas'] as num).toInt(),
         horasTotales: (j['horas_totales'] as num).toDouble(),
         sesiones: (j['sesiones'] as num).toInt(),
         primera: (j['primera'] as String?) != null

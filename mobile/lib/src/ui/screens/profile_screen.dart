@@ -159,12 +159,15 @@ class _ProfileBody extends StatelessWidget {
           title: 'Tu actividad',
           child: Column(
             children: [
+              // CR-026: ambos contadores presentan lo confirmado por revisión
+              // humana, igual que "Mi participación". Las etiquetas lo dicen
+              // para que el número cuadre entre pantallas.
               StatTile(
-                label: 'Árboles distintos registrados',
+                label: 'Árboles distintos validados',
                 value: '${profile.lifelistTrees}',
               ),
               StatTile(
-                label: 'Observaciones',
+                label: 'Observaciones válidas',
                 value: '${profile.totalObservations}',
               ),
               StatTile(label: 'Puntos', value: '${profile.totalPoints}'),

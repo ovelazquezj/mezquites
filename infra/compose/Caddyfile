@@ -1,8 +1,14 @@
 # Caddy — reverse proxy + servidor estático para el despliegue de UN SOLO SERVIDOR (CR-014).
 #
-# Cada app web queda en su propio subdominio y, en ese MISMO origen, proxyea /api, /files y /healthz
-# al contenedor `api`. Al ser mismo-origen, el navegador no dispara CORS (la API igual lo aplica por
+# Cada app web queda en su propio subdominio y, en ese MISMO origen, proxyea /api y /healthz al
+# contenedor `api`. Al ser mismo-origen, el navegador no dispara CORS (la API igual lo aplica por
 # CORS_ALLOW_ORIGINS como defensa en profundidad). TLS automático vía Let's Encrypt.
+#
+# ⚠️ CR-027: /files/* YA NO se proxyea. Esa ruta servía las fotos de las observaciones sin token,
+# sin caducidad y sin revocación posible, mientras el mismo contenido por /api/v1/review/... está
+# restringido por rol. Ningún cliente la usa: las apps piden las imágenes por el endpoint
+# autenticado. El contenedor `api` solo escucha en 127.0.0.1 del host, así que al quitarla de aquí
+# deja de ser alcanzable desde fuera; además el backend ya solo la monta en dev.
 #
 # Variables (desde .env.prod):
 #   APP_DOMAIN    p.ej. app.mezquite.org    (web del voluntario)
@@ -16,11 +22,8 @@
 {$APP_DOMAIN} {
 	encode gzip zstd
 
-	# Backend (mismo origen): API REST, imágenes locales y health.
+	# Backend (mismo origen): API REST y health. Sin /files/* (CR-027).
 	handle /api/* {
-		reverse_proxy api:8000
-	}
-	handle /files/* {
 		reverse_proxy api:8000
 	}
 	handle /healthz {
@@ -54,9 +57,6 @@
 	encode gzip zstd
 
 	handle /api/* {
-		reverse_proxy api:8000
-	}
-	handle /files/* {
 		reverse_proxy api:8000
 	}
 	handle /healthz {

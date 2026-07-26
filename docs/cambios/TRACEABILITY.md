@@ -467,3 +467,67 @@ obliga a recompilar y redesplegar.
 Aguascalientes" y `protocolo_ciencia_ciudadana_mezquite.md` "Club Rotario + universidades aliadas"; ambos
 usan ya el nombre completo **Club Rotario Bosques Aguascalientes**. El resto de apariciones "cortas" del
 repo eran saltos de línea de markdown, no errores.
+
+---
+
+## CR-026 — Participación válida, sin horas, y mapas solo de observaciones confirmadas (2026-07-25)
+
+**Origen:** solicitud de las **universidades participantes**. Detalle:
+[`CR-026`](../change-requests/CR-026-participacion-valida-y-mapas-confirmados.md).
+
+| Criterio | Implementación | Prueba |
+|---|---|---|
+| **AC1** La app del voluntario ya NO muestra "Horas de participación" | `mobile/lib/src/ui/screens/evidence_screen.dart` (se retira el `StatTile`), `copy.dart` | `mobile/test/cr010_movil_test.dart` (`find.text('3.5')` → `findsNothing` aunque el API la envíe) |
+| **AC2** Las horas se siguen capturando y almacenando (dato, no UI) | `SessionTracker` y `POST /me/sessions` intactos; `horas_totales`/`sesiones` siguen en `EvidenceResponse` | `backend/tests/test_cr010_sessions_evidence.py` (horas y sesiones siguen agregándose) |
+| **AC3** "Observaciones válidas registradas" = solo `confirmada` | `gamification.account_confirmed_count`; `routers/me.py::evidence` | `test_cr010_sessions_evidence.py::test_evidence_aggregates_captures_and_hours` (2 subidas, 1 confirmada ⇒ `capturas=1`, `capturas_totales=2`) |
+| **AC4** El total crudo no se pierde | `capturas_totales` en `/me/evidence`; `account_observation_count` sin filtrar | misma prueba que AC3 |
+| **AC5** La brecha se explica como revisión pendiente, nunca como rechazo (Q5.A-D1) | `Copy.evidenceCapturasNota` / `evidencePendientes`; mensaje de `/me/feedback` | `mobile/test/cr010_movil_test.dart` (claves `evidence_capturas_nota`, `evidence_pendientes`) · `test_rankings_profile.py::test_feedback_is_aggregate_not_individual` (el mensaje no dice "rechaz") |
+| **AC6** Conteo, lifelist e insignias cuentan solo confirmadas | `account_lifelist`, `compute_badges`, `routers/me.py::profile` | `test_rankings_profile.py::test_profile_counts_only_confirmed` |
+| **AC7** Los puntos solo cuentan confirmadas, en ambos sentidos | `account_points` con `JOIN observation ... = 'confirmada'` (filtro al leer; el ledger no se toca) | `test_rankings_profile.py::test_points_follow_the_verdict_both_ways` (confirmar suma, rechazar descuenta) |
+| **AC8** La etiqueta L3 se recomputa al emitir veredicto | `routers/review.py::review_verdict` → `refresh_identity_label` | `test_rankings_profile.py::test_points_follow_the_verdict_both_ways` (perfil tras el veredicto) |
+| **AC9 (gate #9 ENMENDADO)** El público solo ve `confirmada` | `routers/public.py` (`/observations` y `/grid`) | `test_public_grid.py::test_grid_excludes_observations_pending_review` · `test_review.py::test_ac1_new_observation_is_aceptada_but_not_public` |
+| **AC10** Revertir a `aceptada` despublica | sin cambio de código (consecuencia de AC9) | `test_cr010_verdict_aceptada.py::test_aceptada_reverts_rejected_observation` |
+| **AC11 (G2)** Los indicadores públicos describen el mismo universo que el mapa | `indicators.py` (`obs_filter` con `= 'confirmada'`; `arboles_unicos` por observación confirmada) | `test_indicators.py::test_indicators_describe_only_confirmed` |
+| **AC12** El denominador crudo sigue visible | `observaciones_capturadas` + `proporcion_confirmada` (sobre TODAS) | misma prueba que AC11 |
+| **AC13** El `CAVEAT` ya no afirma que lo publicado carece de revisión | `indicators.CAVEAT` | `test_indicators.py::test_indicators_describe_only_confirmed` (`"confirmadas" in caveat`) |
+| **AC14 (G1)** El mapa de la consola arranca en confirmadas pero alcanza todos los estados | `routers/restricted.py` (`estado_revision` opcional); `web-admin/.../map_screen.dart` (`_ReviewFilter`) | `web-admin/test/widget_cr026_consola_test.dart` (default `confirmada`; "Pendientes" → `aceptada`; "Todas" → sin filtro) |
+| **AC15 (F)** Reporte de participación por día × voluntario | `routers/analytics.py::participation_csv` | `backend/tests/test_cr026_participacion_csv.py::test_participation_crosses_sessions_with_review_outcome` |
+| **AC16 (F)** El día se agrupa en `America/Mexico_City` | `Settings.report_timezone` + `AT TIME ZONE :tz` | `test_cr026_participacion_csv.py::test_day_is_grouped_in_mexico_city_not_utc` (02:00Z ⇒ día anterior) |
+| **AC17 (F)** No se pierden días de solo-sesión ni de solo-captura | `FULL OUTER JOIN` entre las dos CTEs | `test_cr026_participacion_csv.py::test_session_without_captures_still_appears` |
+| **AC18 (F)** Authz del reporte + gate #2 | `Depends(_analyst)` (`REVIEW_ROLES`) | `test_cr026_participacion_csv.py::test_participation_authz` · `::test_participation_has_no_pii` |
+| **AC19 (F)** La consola descarga el reporte y advierte qué miden las horas | `data_screen.dart` + `Copy.dataParticipationNote`; `api_client.participationCsvBytes` | `web-admin/test/widget_cr026_consola_test.dart` (grupo "CR-026 F") |
+| **AC20** Corrección incidental: `sum(points)` de rankings ya no se infla | `gamification.rankings` reescrito con subconsultas por cuenta | `test_rankings_profile.py::test_rankings_individual_and_by_institution` |
+
+**Gates:** **#9 ENMENDADO** (público = `confirmada`, antes `<> 'rechazada'`); anotado en la bitácora
+con fecha y motivo. **#3 intacto**: la observación sigue naciendo `aceptada` y nada se bloquea por
+nivel. **#1**, **#2**, **#4**, **#5**, **#6**, **#8** sin cambio. **#7** es esta entrada.
+
+**Dependencia operativa nueva:** la participación visible del voluntario y el mapa público quedan
+supeditados al **ritmo de revisión de la consola**. Si nadie revisa, el piloto se ve vacío hacia fuera.
+
+**Pendiente de aprobación humana:** el texto del `CAVEAT` público (§6 del CR) es texto de cara al
+público; queda redactado y desplegado, sujeto a tu visto bueno.
+
+---
+
+## CR-027 — Endurecimiento de la superficie expuesta del backend (2026-07-25)
+
+**Origen:** auditoría de autenticación endpoint por endpoint. Detalle:
+[`CR-027`](../change-requests/CR-027-endurecimiento-superficie-expuesta.md).
+
+| Criterio | Implementación | Prueba |
+|---|---|---|
+| **AC1** Fuera de dev, la API no arranca con el `AUTH_SECRET` por defecto | `config.Settings.validate_for_environment()`, invocada en `create_app()` | `backend/tests/test_cr027_endurecimiento.py::test_prod_refuses_to_start_with_default_secret` |
+| **AC2** Con un secreto real, prod arranca normal | mismo | `::test_prod_starts_with_a_real_secret` |
+| **AC3** Dev conserva el default (paridad de entornos, gate #6) | `Settings.is_dev` | `::test_dev_still_allows_the_default_secret` |
+| **AC4** `/files/{key}` (imágenes sin token) no se monta fuera de dev | `main.py` (`storage_backend == 'local' and is_dev`) | `::test_files_route_is_not_mounted_outside_dev` |
+| **AC5** En dev se conserva (el runbook local sirve las fotos sin S3) | mismo | `::test_files_route_stays_available_in_dev` |
+| **AC6** Caddy ya no publica `/files/*` en ninguno de los dos dominios | `infra/compose/Caddyfile` | `::test_caddyfile_does_not_proxy_files` (y verifica que `/api/*` sigue proxyado) |
+| **AC7** El TTL del token baja de 30 a 7 días | `Settings.auth_token_ttl_seconds` | `::test_token_ttl_is_at_most_seven_days` |
+
+**Gates:** ninguno se enmienda; refuerza el **#2** (las fotos dejan de ser alcanzables sin sesión) y el
+modelo de roles. **#6 intacto:** dev sigue corriendo sin nube y con el default.
+
+**Deuda anotada (no incluida en este CR):** (a) no hay **revocación de tokens** — cerrar sesión no
+invalida nada del lado del servidor; (b) la **cancelación ARCO no borra las fotografías**, solo
+anonimiza la observación.

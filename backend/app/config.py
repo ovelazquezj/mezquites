@@ -17,6 +17,11 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Secreto de firma por defecto: SOLO válido en dev/test. `Settings.validate_for_environment()`
+# impide arrancar con él fuera de dev (CR-027) — con un secreto conocido, cualquiera puede firmarse
+# un token con `role: administrador`.
+INSECURE_DEFAULT_SECRET = "dev-insecure-secret-change-me"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -53,9 +58,11 @@ class Settings(BaseSettings):
     cors_env: str = "dev"               # dev | prod — en dev se relaja a localhost por regex
 
     # --- Auth (gate #2 acotado por CR-002: identidad real con mínima PII) ---
-    auth_secret: str = "dev-insecure-secret-change-me"
+    auth_secret: str = INSECURE_DEFAULT_SECRET
     auth_algorithm: str = "HS256"
-    auth_token_ttl_seconds: int = 60 * 60 * 24 * 30  # 30 días
+    # CR-027: 7 días. Con 30, un token filtrado servía un mes y cerrar sesión no lo invalidaba
+    # (no hay lista de revocación); acortar la ventana es la mitigación barata disponible.
+    auth_token_ttl_seconds: int = 60 * 60 * 24 * 7  # 7 días
 
     # Proveedor de auth conmutable (gate #6): mock en dev/QA/test (sin red), firebase en prod.
     auth_provider: str = "mock"              # mock | firebase
@@ -86,7 +93,31 @@ class Settings(BaseSettings):
     points_base: int = 5                     # recompensa base (fire-and-forget)
     points_deferred: int = 10                # recompensa diferida (solo si válida)
     feedback_window: int = 20                # "de tus últimas N observaciones"
+    # Huso con el que se agrupa "por día" en los reportes (CR-026). Las marcas de tiempo se guardan
+    # en UTC; agrupar en UTC correría al día siguiente toda la actividad vespertina de México.
+    report_timezone: str = "America/Mexico_City"
 
+
+    @property
+    def is_dev(self) -> bool:
+        """Entorno de desarrollo/pruebas. ``cors_env`` es la señal de entorno que ya existía."""
+        return self.cors_env.lower() == "dev"
+
+    def validate_for_environment(self) -> None:
+        """Rechaza arrancar con configuración insegura fuera de dev (CR-027).
+
+        El único chequeo hoy es el secreto de firma: ``AUTH_SECRET`` con su valor por defecto es
+        público (está en el repo), así que cualquiera podría emitirse un token con el rol que
+        quisiera. El ``.env.prod.example`` pedía cambiarlo, pero nada lo obligaba: un despliegue que
+        olvidara la variable arrancaba feliz y con la puerta abierta. Fallar al arranque convierte
+        ese olvido silencioso en un error ruidoso.
+        """
+        if not self.is_dev and self.auth_secret == INSECURE_DEFAULT_SECRET:
+            raise RuntimeError(
+                "AUTH_SECRET conserva el valor por defecto de desarrollo, que es público. "
+                "Genera uno con `openssl rand -hex 32` y ponlo en .env.prod antes de arrancar "
+                f"con CORS_ENV={self.cors_env}."
+            )
 
     def cors_kwargs(self) -> dict:
         """Argumentos para ``CORSMiddleware`` derivados por entorno (CR-004 W3).

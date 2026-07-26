@@ -2,8 +2,11 @@
 
 - Tras confirmar/rechazar, un veredicto 'aceptada' devuelve la observación al estado aceptada.
 - Mensaje específico "Observación devuelta a aceptada (pendiente de revisión).".
-- Vuelve a aparecer en el dataset público (no-rechazada). Queda fila en human_review (gate #7).
+- Queda fila en human_review (gate #7).
 - analista sigue sin poder emitir veredicto (solo lectura, CR-001).
+
+CR-026: revertir a 'aceptada' ya **no** la devuelve al dataset público — 'aceptada' significa
+pendiente de revisión, y el público solo ve 'confirmada'. Revertir es, en efecto, despublicar.
 """
 
 from __future__ import annotations
@@ -39,8 +42,8 @@ def test_aceptada_reverts_rejected_observation(client, db_session):
     assert body["estado_revision"] == "aceptada"
     assert body["message"] == "Observación devuelta a aceptada (pendiente de revisión)."
 
-    # Vuelve al dataset público (no-rechazada).
-    assert len(client.get("/api/v1/public/observations").json()) == 1
+    # CR-026: 'aceptada' = pendiente de revisión ⇒ sigue FUERA del público (antes reaparecía).
+    assert client.get("/api/v1/public/observations").json() == []
 
     # Estado en DB = aceptada; hay 2 filas en human_review (rechazada + aceptada), gate #7.
     estado = db_session.execute(
@@ -51,6 +54,10 @@ def test_aceptada_reverts_rejected_observation(client, db_session):
         text("SELECT count(*) FROM human_review WHERE observation_id=:i"), {"i": obs_id}
     ).scalar_one()
     assert n == 2
+
+    # Solo un veredicto de confirmación la publica (CR-026).
+    assert _verdict(client, evaluador["token"], obs_id, "confirmada").status_code == 200
+    assert len(client.get("/api/v1/public/observations").json()) == 1
 
 
 def test_aceptada_reverts_confirmed_observation(client, db_session):

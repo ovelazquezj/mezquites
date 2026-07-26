@@ -23,7 +23,12 @@ from backend.app.models import (
     Observation,
 )
 
-from .helpers import auth_header, register, submit_observation
+from .helpers import (
+    auth_header,
+    register,
+    submit_confirmed_observation,
+    submit_observation,
+)
 
 
 def _admin_account_id(handle: str) -> uuid.UUID:
@@ -41,9 +46,9 @@ def test_delete_account_anonymizes_and_removes_identity(client, db_session):
     vol_handle = voluntario["handle"]
     vol_id = _admin_account_id(vol_handle)
 
-    # El voluntario sube dos observaciones (nacen 'aceptada' ⇒ visibles, CR-001).
-    submit_observation(client, voluntario["token"], lat=21.88, lon=-102.29)
-    submit_observation(client, voluntario["token"], lat=21.90, lon=-102.30)
+    # El voluntario sube dos observaciones, ya confirmadas ⇒ visibles en el público (CR-026).
+    submit_confirmed_observation(client, voluntario["token"], lat=21.88, lon=-102.29)
+    submit_confirmed_observation(client, voluntario["token"], lat=21.90, lon=-102.30)
 
     pub_before = client.get("/api/v1/public/observations").json()
     assert len(pub_before) == 2

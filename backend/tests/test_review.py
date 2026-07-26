@@ -1,7 +1,8 @@
 """Revisión humana en el backend (CR-001): cola, detalle, veredicto, stats e imagen sin GPS.
 
 Criterios de aceptación:
-- AC1: una observación recién subida queda 'aceptada' y aparece en /public/observations.
+- AC1: una observación recién subida queda 'aceptada'. **CR-026 enmienda la segunda mitad de este
+  criterio**: ya NO aparece en /public/observations hasta que un humano la confirma.
 - AC2: POST verdict {rechazada} la saca del público y escribe en human_review.
 - AC3: analista recibe 403 al emitir veredicto; evaluador/administrador 200.
 - AC4 (CR-025): /review/.../image sirve la imagen **cruda** (con su EXIF/GPS) a todos los roles de
@@ -13,6 +14,7 @@ from __future__ import annotations
 from .helpers import (
     auth_header,
     register,
+    submit_confirmed_observation,
     submit_jpeg_with_gps,
     submit_observation,
 )
@@ -22,12 +24,31 @@ def _public_ids(client) -> set[str]:
     return {o["handle"] for o in client.get("/api/v1/public/observations").json()}
 
 
-# --- AC1: aceptación por defecto + visible ---
+# --- AC1: aceptación por defecto, publicación solo tras confirmar (CR-026) ---
 
 
-def test_ac1_new_observation_is_aceptada_and_public(client, db_session):
+def test_ac1_new_observation_is_aceptada_but_not_public(client, db_session):
+    """Nace 'aceptada' (se acepta el aporte al subir) pero NO se publica sin revisión (CR-026)."""
+    from sqlalchemy import text
+
     reg = register(client)
-    submit_observation(client, reg["token"], lat=21.88, lon=-102.29)
+    obs_id = submit_observation(
+        client, reg["token"], lat=21.88, lon=-102.29
+    ).json()["observation_id"]
+
+    estado = db_session.execute(
+        text("SELECT estado_revision FROM observation WHERE id=:i"), {"i": obs_id}
+    ).scalar_one()
+    assert estado == "aceptada"
+    assert client.get("/api/v1/public/observations").json() == []
+
+    # Tras el veredicto humano de confirmación, sí aparece y se atribuye a su handle (I2).
+    evaluador = register(client, role="evaluador")
+    client.post(
+        f"/api/v1/review/observations/{obs_id}/verdict",
+        headers=auth_header(evaluador["token"]),
+        json={"veredicto": "confirmada", "nota": None},
+    )
     pub = client.get("/api/v1/public/observations").json()
     assert len(pub) == 1
     assert pub[0]["handle"] == reg["handle"]
@@ -40,9 +61,10 @@ def test_ac2_reject_removes_from_public_and_logs(client, db_session):
     from sqlalchemy import text
 
     volunteer = register(client)
-    obs_id = submit_observation(
+    obs_id = submit_confirmed_observation(
         client, volunteer["token"], lat=21.88, lon=-102.29
     ).json()["observation_id"]
+    # Parte de una observación ya publicada (confirmada) para comprobar que el rechazo la retira.
     assert len(client.get("/api/v1/public/observations").json()) == 1
 
     evaluador = register(client, role="evaluador")

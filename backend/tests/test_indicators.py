@@ -7,12 +7,14 @@ import inspect
 from sqlalchemy import text
 
 from backend.app import indicators as indicators_module
-from .helpers import register, submit_observation
+from .helpers import register, submit_confirmed_observation
 
 
 def test_indicators_compute_automatically(client, db_session):
     reg = register(client)
-    submit_observation(client, reg["token"], lat=21.88, lon=-102.29, nivel_g4="moderado")
+    submit_confirmed_observation(
+        client, reg["token"], lat=21.88, lon=-102.29, nivel_g4="moderado"
+    )
     resp = client.get("/api/v1/public/indicators")
     assert resp.status_code == 200
     data = resp.json()
@@ -22,6 +24,27 @@ def test_indicators_compute_automatically(client, db_session):
     assert data["ecologico"]["distribucion_niveles"].get("moderado") == 1
     # Caveat de origen ciudadano presente.
     assert "ciudadano" in data["caveat"].lower()
+
+
+def test_indicators_describe_only_confirmed(client, db_session):
+    """CR-026: los indicadores públicos describen el mismo universo que el mapa (confirmadas).
+
+    El total crudo no se pierde: queda en ``observaciones_capturadas`` y el avance de revisión en
+    ``proporcion_confirmada``, ambos sobre TODAS las observaciones.
+    """
+    from .helpers import submit_observation
+
+    reg = register(client)
+    submit_confirmed_observation(client, reg["token"], lat=21.88, lon=-102.29)
+    submit_observation(client, reg["token"], lat=21.89, lon=-102.30)  # queda pendiente
+
+    data = client.get("/api/v1/public/indicators").json()
+    assert data["social"]["observaciones_totales"] == 1  # solo la confirmada
+    assert data["social"]["observaciones_capturadas"] == 2  # denominador crudo
+    assert data["ecologico"]["arboles_unicos"] == 1
+    assert data["educativo"]["proporcion_confirmada"] == 0.5
+    # El caveat ya no afirma que lo publicado carece de revisión (CR-026).
+    assert "confirmadas" in data["caveat"].lower()
 
 
 def test_indicators_have_no_threshold_logic():
@@ -53,7 +76,7 @@ def test_indicators_have_no_threshold_logic():
 def test_indicators_filter_by_estado(client, db_session):
     # Insertar dos observaciones con estado distinto directamente (sin admin_boundary cargado).
     reg = register(client)
-    submit_observation(client, reg["token"], lat=21.88, lon=-102.29)
+    submit_confirmed_observation(client, reg["token"], lat=21.88, lon=-102.29)
     db_session.execute(text("UPDATE observation SET estado='Aguascalientes'"))
     db_session.commit()
 

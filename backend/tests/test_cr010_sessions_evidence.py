@@ -1,16 +1,19 @@
 """CR-010 (#7): sesiones de participación + evidencia (capturas + horas).
 
 - POST /me/sessions calcula duration_seconds y persiste (auth voluntario).
-- GET /me/evidence devuelve capturas (nº observaciones propias), horas (Σ duration/3600),
-  sesiones, primera y ultima.
+- GET /me/evidence devuelve capturas (**confirmadas**, CR-026), capturas_totales (crudo), horas
+  (Σ duration/3600), sesiones, primera y ultima.
 - ended_at < started_at ⇒ 422. Sin token ⇒ 401.
+
+CR-026: la evidencia presenta observaciones confirmadas, pero **sigue calculando y devolviendo**
+horas y sesiones — la app dejó de pintarlas, el backend no dejó de capturarlas.
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from .helpers import auth_header, register, submit_observation
+from .helpers import auth_header, confirm_observation, register, submit_observation
 
 
 def test_create_session_computes_duration(client, db_session):
@@ -28,9 +31,10 @@ def test_create_session_computes_duration(client, db_session):
 
 def test_evidence_aggregates_captures_and_hours(client, db_session):
     reg = register(client)
-    # 2 capturas.
-    submit_observation(client, reg["token"], lat=21.88, lon=-102.29)
+    # 2 capturas, de las cuales solo 1 llega a confirmarse (CR-026).
+    r1 = submit_observation(client, reg["token"], lat=21.88, lon=-102.29)
     submit_observation(client, reg["token"], lat=21.89, lon=-102.30)
+    confirm_observation(r1.json()["observation_id"])
 
     # 2 sesiones: 1 h + 30 min = 1.5 h.
     base = datetime(2026, 6, 17, 9, 0, 0, tzinfo=timezone.utc)
@@ -55,7 +59,10 @@ def test_evidence_aggregates_captures_and_hours(client, db_session):
     resp = client.get("/api/v1/me/evidence", headers=auth_header(reg["token"]))
     assert resp.status_code == 200, resp.text
     ev = resp.json()
-    assert ev["capturas"] == 2
+    # CR-026: `capturas` presenta lo confirmado; el crudo sigue disponible aparte.
+    assert ev["capturas"] == 1
+    assert ev["capturas_totales"] == 2
+    # Horas y sesiones se siguen calculando aunque la app ya no las muestre.
     assert ev["sesiones"] == 2
     assert abs(ev["horas_totales"] - 1.5) < 1e-6
     assert ev["primera"] is not None
@@ -68,6 +75,7 @@ def test_evidence_empty_for_new_account(client, db_session):
     reg = register(client)
     ev = client.get("/api/v1/me/evidence", headers=auth_header(reg["token"])).json()
     assert ev["capturas"] == 0
+    assert ev["capturas_totales"] == 0
     assert ev["horas_totales"] == 0.0
     assert ev["sesiones"] == 0
     assert ev["primera"] is None

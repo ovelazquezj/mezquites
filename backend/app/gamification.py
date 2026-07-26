@@ -6,6 +6,13 @@
   TBD/H7; aquí una progresión mínima derivable, marcada como provisional).
 - Rankings por periodo (individual + por institución), filtrables por estado (Q8).
 
+**CR-026 (solicitud de las universidades participantes):** todo lo que este módulo *cuenta y
+presenta* — lifelist, conteo de observaciones, insignias, etiqueta L3 y rankings — considera
+únicamente las observaciones **confirmadas** por revisión humana (``estado_revision =
+'confirmada'``). Una foto que nadie ha revisado todavía, o que resultó no ser un mezquite, no
+suma. El dato crudo NO se toca: ``account_observation_count`` sigue devolviendo el total sin
+filtrar y ``points_ledger`` sigue registrando cada alta; el criterio se aplica **al leer**.
+
 Gate #3 / Q5.C-D1: NO hay multiplicadores por capacitación, NI certificados/tier que bloqueen.
 """
 
@@ -25,8 +32,8 @@ _BADGE_THRESHOLDS = [
     (100, "centinela_del_mezquite"),
 ]
 
-# Etiqueta de identidad L3 por observaciones no-rechazadas (provisional; fórmula concreta = H7).
-# Revisión humana (CR-001): ya no hay "válidas" automáticas; se cuenta lo no-rechazado.
+# Etiqueta de identidad L3 por observaciones CONFIRMADAS (provisional; fórmula concreta = H7).
+# CR-001 la movió de "válidas automáticas" a "no-rechazadas"; CR-026 la ajusta a "confirmadas".
 _IDENTITY_LEVELS = [
     (0, "nuevo_observador"),
     (5, "observador"),
@@ -36,20 +43,35 @@ _IDENTITY_LEVELS = [
 
 
 def account_points(db: Session, account_id: uuid.UUID) -> int:
+    """Puntos de la cuenta contando SOLO los de observaciones confirmadas (CR-026).
+
+    El ledger sigue registrando la recompensa al subir (bitácora cruda, append-only); el filtro se
+    aplica aquí, al leer. Así, si un veredicto se revierte (``confirmada`` → ``aceptada``, CR-010) o
+    la observación se rechaza, el total se ajusta solo, sin lógica de compensación.
+    """
     return int(
         db.execute(
-            text("SELECT COALESCE(sum(points), 0) FROM points_ledger WHERE account_id = :a"),
+            text(
+                """
+                SELECT COALESCE(sum(pl.points), 0)
+                FROM points_ledger pl
+                JOIN observation o ON o.id = pl.observation_id
+                WHERE pl.account_id = :a AND o.estado_revision = 'confirmada'
+                """
+            ),
             {"a": account_id},
         ).scalar_one()
     )
 
 
 def account_lifelist(db: Session, account_id: uuid.UUID) -> int:
+    """Árboles distintos con al menos una observación CONFIRMADA de la cuenta (CR-026)."""
     return int(
         db.execute(
             text(
                 "SELECT count(DISTINCT tree_id) FROM observation "
-                "WHERE account_id = :a AND tree_id IS NOT NULL"
+                "WHERE account_id = :a AND tree_id IS NOT NULL "
+                "AND estado_revision = 'confirmada'"
             ),
             {"a": account_id},
         ).scalar_one()
@@ -57,6 +79,11 @@ def account_lifelist(db: Session, account_id: uuid.UUID) -> int:
 
 
 def account_observation_count(db: Session, account_id: uuid.UUID) -> int:
+    """Total CRUDO de observaciones de la cuenta, sin filtrar por revisión.
+
+    CR-026 dejó de presentarlo como "observaciones registradas" en la app, pero se conserva: es el
+    denominador del avance de revisión y viaja en ``/me/evidence`` como ``capturas_totales``.
+    """
     return int(
         db.execute(
             text("SELECT count(*) FROM observation WHERE account_id = :a"),
@@ -65,35 +92,45 @@ def account_observation_count(db: Session, account_id: uuid.UUID) -> int:
     )
 
 
-def account_valid_count(db: Session, account_id: uuid.UUID) -> int:
-    """Observaciones NO-rechazadas de la cuenta (revisión humana, CR-001)."""
+def account_confirmed_count(db: Session, account_id: uuid.UUID) -> int:
+    """Observaciones CONFIRMADAS por revisión humana (CR-026).
+
+    Es el contador que la app presenta como "observaciones válidas registradas" y el que alimenta
+    insignias y etiqueta L3. Sustituye al criterio "no-rechazada" de CR-001, que contaba también lo
+    que nadie había revisado todavía.
+    """
     return int(
         db.execute(
             text(
                 "SELECT count(*) FROM observation "
-                "WHERE account_id = :a AND estado_revision <> 'rechazada'"
+                "WHERE account_id = :a AND estado_revision = 'confirmada'"
             ),
             {"a": account_id},
         ).scalar_one()
     )
 
 
-def compute_badges(observation_count: int) -> list[str]:
-    return [name for threshold, name in _BADGE_THRESHOLDS if observation_count >= threshold]
+def compute_badges(confirmed_count: int) -> list[str]:
+    """Insignias por milestones. CR-026: sobre observaciones CONFIRMADAS, no sobre las subidas."""
+    return [name for threshold, name in _BADGE_THRESHOLDS if confirmed_count >= threshold]
 
 
-def compute_identity_label(valid_count: int) -> str:
+def compute_identity_label(confirmed_count: int) -> str:
     label = _IDENTITY_LEVELS[0][1]
     for threshold, name in _IDENTITY_LEVELS:
-        if valid_count >= threshold:
+        if confirmed_count >= threshold:
             label = name
     return label
 
 
 def refresh_identity_label(db: Session, account_id: uuid.UUID) -> str:
-    """Recomputa y persiste la etiqueta L3 de la cuenta (llamado tras otorgar puntos diferidos)."""
-    valid = account_valid_count(db, account_id)
-    label = compute_identity_label(valid)
+    """Recomputa y persiste la etiqueta L3 de la cuenta sobre sus observaciones confirmadas.
+
+    Se llama al subir (para que la etiqueta exista) y debe llamarse tras cada veredicto humano: con
+    CR-026 la etiqueta solo cambia cuando una observación pasa a ``confirmada`` o deja de serlo.
+    """
+    confirmed = account_confirmed_count(db, account_id)
+    label = compute_identity_label(confirmed)
     db.execute(
         text("UPDATE account SET identity_label = :l WHERE id = :a"),
         {"l": label, "a": account_id},
@@ -115,11 +152,38 @@ def _period_start(period: str) -> datetime | None:
 
 
 def rankings(db: Session, *, period: str = "all", estado: str | None = None, limit: int = 50) -> dict:
-    """Rankings individual + por institución por periodo, filtrables por estado (Q8)."""
+    """Rankings individual + por institución por periodo, filtrables por estado (Q8).
+
+    CR-026: cuenta y puntúa **solo observaciones confirmadas**, igual que el resto de los contadores.
+
+    Las agregaciones van en subconsultas por cuenta a propósito: al unir ``observation`` y
+    ``points_ledger`` en el mismo JOIN, cada fila del ledger se repetía una vez por observación y
+    ``sum(points)`` salía multiplicado por el número de observaciones de la cuenta.
+    """
     start = _period_start(period)
     params = {"start": start, "estado": estado, "limit": limit}
-    time_clause = "AND (CAST(:start AS timestamptz) IS NULL OR o.captured_at >= :start)"
-    estado_clause = "AND (CAST(:estado AS text) IS NULL OR o.estado = :estado)"
+    # Filtro compartido de observaciones: confirmadas (CR-026) + ventana del periodo + estado (Q8).
+    obs_where = """
+        o.estado_revision = 'confirmada'
+        AND (CAST(:start AS timestamptz) IS NULL OR o.captured_at >= :start)
+        AND (CAST(:estado AS text) IS NULL OR o.estado = :estado)
+    """
+    # Un renglón por cuenta con sus dos agregados ya calculados (sin producto cartesiano).
+    per_account = f"""
+        LEFT JOIN (
+            SELECT o.account_id, count(*) AS observations
+            FROM observation o
+            WHERE {obs_where}
+            GROUP BY o.account_id
+        ) obs ON obs.account_id = a.id
+        LEFT JOIN (
+            SELECT pl.account_id, sum(pl.points) AS points
+            FROM points_ledger pl
+            JOIN observation o ON o.id = pl.observation_id
+            WHERE {obs_where}
+            GROUP BY pl.account_id
+        ) pts ON pts.account_id = a.id
+    """
 
     individual = [
         {
@@ -133,15 +197,12 @@ def rankings(db: Session, *, period: str = "all", estado: str | None = None, lim
             text(
                 f"""
                 SELECT a.handle, i.name AS institution, i.estado AS estado,
-                       COALESCE(sum(pl.points), 0) AS points,
-                       count(DISTINCT o.id) AS observations
+                       COALESCE(pts.points, 0) AS points,
+                       COALESCE(obs.observations, 0) AS observations
                 FROM account a
                 LEFT JOIN institution i ON i.id = a.institution_id
-                LEFT JOIN observation o ON o.account_id = a.id
-                    {time_clause} {estado_clause}
-                LEFT JOIN points_ledger pl ON pl.account_id = a.id
-                GROUP BY a.handle, i.name, i.estado
-                HAVING count(DISTINCT o.id) > 0
+                {per_account}
+                WHERE COALESCE(obs.observations, 0) > 0
                 ORDER BY points DESC, observations DESC
                 LIMIT :limit
                 """
@@ -161,15 +222,13 @@ def rankings(db: Session, *, period: str = "all", estado: str | None = None, lim
             text(
                 f"""
                 SELECT i.name, i.estado,
-                       COALESCE(sum(pl.points), 0) AS points,
-                       count(DISTINCT o.id) AS observations
+                       COALESCE(sum(pts.points), 0) AS points,
+                       COALESCE(sum(obs.observations), 0) AS observations
                 FROM institution i
                 JOIN account a ON a.institution_id = i.id
-                LEFT JOIN observation o ON o.account_id = a.id
-                    {time_clause} {estado_clause}
-                LEFT JOIN points_ledger pl ON pl.account_id = a.id
+                {per_account}
                 GROUP BY i.name, i.estado
-                HAVING count(DISTINCT o.id) > 0
+                HAVING COALESCE(sum(obs.observations), 0) > 0
                 ORDER BY points DESC
                 LIMIT :limit
                 """

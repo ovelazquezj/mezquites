@@ -92,15 +92,17 @@ void main() {
     });
   });
 
-  group('CR-010 #7 — Evidencia (comprobante de participación)', () {
-    testWidgets('la pantalla renderiza capturas + horas + sesiones del API',
+  group('CR-010 #7 / CR-026 — Evidencia (comprobante de participación)', () {
+    testWidgets(
+        'CR-026: renderiza observaciones válidas + sesiones, y NO pinta horas',
         (tester) async {
       final mock = MockClient((req) async {
         expect(req.url.path, '/api/v1/me/evidence');
         return http.Response(
           json.encode({
-            'capturas': 7,
-            'horas_totales': 3.5,
+            'capturas': 7, // confirmadas
+            'capturas_totales': 10, // subidas
+            'horas_totales': 3.5, // el backend la sigue enviando
             'sesiones': 4,
             'primera': '2026-05-01T10:00:00Z',
             'ultima': '2026-06-10T18:00:00Z',
@@ -119,9 +121,20 @@ void main() {
       await tester.pumpAndSettle();
 
       // Conteos del contrato visibles.
-      expect(find.text('7'), findsOneWidget); // capturas
-      expect(find.text('3.5'), findsOneWidget); // horas
+      expect(find.text('7'), findsOneWidget); // observaciones válidas
       expect(find.text('4'), findsOneWidget); // sesiones
+      expect(find.text(Copy.evidenceCapturas), findsOneWidget);
+
+      // CR-026: las horas ya no se muestran, aunque vengan en la respuesta.
+      expect(find.text('3.5'), findsNothing);
+      expect(find.textContaining('Horas'), findsNothing);
+
+      // La brecha entre subidas y válidas se explica como revisión pendiente,
+      // nunca como rechazo (Q5.A-D1).
+      expect(find.byKey(const Key('evidence_capturas_nota')), findsOneWidget);
+      expect(find.byKey(const Key('evidence_pendientes')), findsOneWidget);
+      expect(find.textContaining('3 siguen en revisión'), findsOneWidget);
+
       // Rango de fechas presente.
       expect(find.byKey(const Key('evidence_rango')), findsOneWidget);
       expect(find.textContaining('01/05/2026'), findsOneWidget);
@@ -130,11 +143,40 @@ void main() {
       expect(find.textContaining('control'), findsNothing);
     });
 
+    testWidgets('CR-026: sin pendientes no aparece la nota de brecha',
+        (tester) async {
+      final mock = MockClient((req) async {
+        return http.Response(
+          json.encode({
+            'capturas': 5,
+            'capturas_totales': 5,
+            'horas_totales': 2.0,
+            'sesiones': 3,
+            'primera': '2026-05-01T10:00:00Z',
+            'ultima': '2026-06-10T18:00:00Z',
+          }),
+          200,
+        );
+      });
+      final api = ApiClient(baseUrl: 'http://x/api/v1', httpClient: mock);
+
+      await tester.pumpWidget(
+        wrap(
+          const EvidenceScreen(),
+          overrides: [apiClientProvider.overrideWithValue(api)],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('evidence_pendientes')), findsNothing);
+    });
+
     testWidgets('sin actividad muestra el aviso de rango vacío', (tester) async {
       final mock = MockClient((req) async {
         return http.Response(
           json.encode({
             'capturas': 0,
+            'capturas_totales': 0,
             'horas_totales': 0.0,
             'sesiones': 0,
             'primera': null,
