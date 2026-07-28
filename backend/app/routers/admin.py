@@ -18,7 +18,13 @@ from ..db import get_db
 from ..deps import CurrentUser, require_role
 from ..institution_names import find_by_normalized_name
 from ..models import Account, Institution, OrganizationalIndicator
-from ..schemas import AllyIn, InstitutionIn, OrganizationalIndicatorIn, SnapshotResponse
+from ..schemas import (
+    AllyIn,
+    InstitutionIn,
+    InstitutionUpdateIn,
+    OrganizationalIndicatorIn,
+    SnapshotResponse,
+)
 from ..snapshots import create_snapshot
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -75,10 +81,10 @@ def list_institutions(
     ]
 
 
-def _ya_existe(inst: Institution) -> str:
+def _ya_existe(inst: Institution, consejo: str = "Úsala en vez de crear otra.") -> str:
     """Detalle del 409: nombra la institución existente para que el admin actúe sobre ESA (CR-028)."""
     situacion = "ya aprobada" if inst.status == "aprobada" else "pendiente de aprobación"
-    return f'Ya existe la institución "{inst.name}" ({situacion}). Úsala en vez de crear otra.'
+    return f'Ya existe la institución "{inst.name}" ({situacion}). {consejo}'
 
 
 @router.post("/institutions", status_code=status.HTTP_201_CREATED)
@@ -114,6 +120,57 @@ def add_institution(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=_ya_existe(existente)
         ) from None
+    return {"id": str(inst.id), "name": inst.name, "estado": inst.estado, "status": inst.status}
+
+
+@router.patch("/institutions/{institution_id}")
+def update_institution(
+    institution_id: uuid.UUID,
+    body: InstitutionUpdateIn,
+    user: CurrentUser = Depends(_admin),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Corrige el **nombre** y/o el **estado** de una institución del catálogo (CR-029).
+
+    Antes no había forma de arreglar un nombre mal escrito sin entrar a la base (la deuda que dejó
+    anotada CR-028). Notas de diseño:
+
+    - **No cambia `status`**: para aprobar está ``POST .../approve``, en un solo sentido. Degradar
+      una ``aprobada`` la sacaría del catálogo con voluntarios ya afiliados.
+    - **Respeta el índice único de CR-028**: renombrar a un nombre que ya usa **otra** institución
+      responde 409. La comprobación **excluye la propia fila**, así que corregir la escritura de una
+      institución (mayúsculas, acentos, espacios) es legítimo aunque su nombre canónico no cambie.
+    - **Renombrar no repunta nada**: las cuentas cuelgan del ``id``, no del nombre.
+    """
+    inst = db.get(Institution, institution_id)
+    if inst is None:
+        raise HTTPException(status_code=404, detail="institución no encontrada")
+
+    if body.name is not None:
+        otra = find_by_normalized_name(db, body.name)
+        if otra is not None and otra.id != inst.id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=_ya_existe(otra, "Elige otro nombre."),
+            )
+        inst.name = body.name
+
+    # `estado` se distingue por presencia, no por valor: mandar null explícitamente lo LIMPIA.
+    if "estado" in body.model_fields_set:
+        inst.estado = body.estado
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        otra = find_by_normalized_name(db, body.name or "")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=_ya_existe(otra, "Elige otro nombre.")
+            if otra is not None
+            else "Ya existe una institución con ese nombre.",
+        ) from None
+    db.refresh(inst)
     return {"id": str(inst.id), "name": inst.name, "estado": inst.estado, "status": inst.status}
 
 

@@ -68,9 +68,16 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
                     keyId: 'monitor-pendientes',
                     label: 'Pendientes de revisión',
                     value: s.pendientesDeRevision),
+                // CR-029: estas dos tarjetas cuentan cosas distintas y antes se leía como un
+                // descuadre ("58 observaciones pero 61 revisiones"). Ahora el par observaciones
+                // revisadas / veredictos emitidos deja explícito de dónde sale la diferencia.
+                _MetricCard(
+                    keyId: 'monitor-revisadas',
+                    label: 'Observaciones revisadas',
+                    value: s.observacionesRevisadas),
                 _MetricCard(
                     keyId: 'monitor-revisiones',
-                    label: 'Revisiones registradas',
+                    label: 'Veredictos emitidos (incluye re-revisiones)',
                     value: s.revisionesTotales),
               ],
             );

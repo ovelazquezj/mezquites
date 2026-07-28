@@ -422,6 +422,7 @@ class ReviewStats {
     required this.total,
     required this.pendientesDeRevision,
     required this.revisionesTotales,
+    this.observacionesRevisadas = 0,
   });
 
   final int aceptadas;
@@ -429,7 +430,14 @@ class ReviewStats {
   final int rechazadas;
   final int total;
   final int pendientesDeRevision;
+
+  /// Veredictos EMITIDOS (filas del log append-only), no observaciones: una observación revisada
+  /// dos veces suma dos. CR-029.
   final int revisionesTotales;
+
+  /// Observaciones DISTINTAS con al menos un veredicto (CR-029). Es el número comparable con
+  /// [total]; sin él, ver `total` junto a [revisionesTotales] parecía un descuadre.
+  final int observacionesRevisadas;
 
   factory ReviewStats.fromJson(Map<String, dynamic> j) => ReviewStats(
         aceptadas: (j['aceptadas'] ?? 0) as int,
@@ -438,6 +446,7 @@ class ReviewStats {
         total: (j['total'] ?? 0) as int,
         pendientesDeRevision: (j['pendientes_de_revision'] ?? 0) as int,
         revisionesTotales: (j['revisiones_totales'] ?? 0) as int,
+        observacionesRevisadas: (j['observaciones_revisadas'] ?? 0) as int,
       );
 }
 

@@ -192,6 +192,26 @@ class ApiClient {
     return Institution.fromJson(_decode(r));
   }
 
+  /// Corrige nombre y/o estado de una institución (CR-029). NO cambia `status`.
+  ///
+  /// Lanza `ApiException(409)` si el nombre nuevo ya lo usa **otra** institución
+  /// (índice único de CR-028). Pasar `estado: ''` lo deja vacío.
+  Future<Institution> updateInstitution(
+    String id, {
+    String? name,
+    String? estado,
+  }) async {
+    final r = await _http.patch(
+      _uri('/admin/institutions/$id'),
+      headers: _headers(),
+      body: json.encode({
+        if (name != null) 'name': name,
+        if (estado != null) 'estado': estado,
+      }),
+    );
+    return Institution.fromJson(_decode(r));
+  }
+
   /// Aprueba una institución **solicitada** (CR-011): pasa a `aprobada` y entra al
   /// catálogo público (`GET /institutions`).
   Future<Institution> approveInstitution(String id) async {

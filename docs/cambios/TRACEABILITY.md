@@ -575,3 +575,50 @@ tiene alguno. Es deliberado: fusionar exige decidir cuál sobrevive y repuntar `
 **Deuda anotada (no incluida):** la consola sigue sin **fusionar/renombrar/eliminar** instituciones —
 `/admin/institutions` solo tiene `GET`, `POST` y `approve`—, así que un duplicado por dos nombres
 realmente distintos de la misma escuela sigue exigiendo entrar a la base.
+
+---
+
+## CR-029 — Correcciones de la consola: contador del Monitor, edición de instituciones y zoom (2026-07-28)
+
+**Origen:** tres hallazgos del usuario usando la consola. Detalle:
+[`CR-029`](../change-requests/CR-029-consola-correcciones.md).
+
+**El bug del contador, en corto:** el Monitor mostraba 58 observaciones y 61 "Revisiones
+registradas". El contador era honesto (cuenta EVENTOS del log append-only `human_review`), pero 3 de
+esos eventos eran **el mismo veredicto grabado otra vez** sobre dos observaciones
+(`confirmada → confirmada → confirmada` y `confirmada → confirmada`): nada impedía volver a confirmar
+algo ya confirmado. Se corrigen las dos cosas — la escritura redundante y la pantalla que invitaba a
+comparar dos números que no miden lo mismo.
+
+| Criterio | Implementación | Prueba |
+|---|---|---|
+| **AC1** Repetir el veredicto vigente NO escribe en el log (el caso de producción) | `routers/review.py` (no-op + `sin_cambio`) | `backend/tests/test_cr029_consola_correcciones.py::test_repetir_el_mismo_veredicto_no_escribe_en_el_log` |
+| **AC2** Un cambio real de veredicto sí se registra (la idempotencia no se traga una re-revisión) | mismo | `::test_un_cambio_real_de_veredicto_si_se_registra` |
+| **AC3** El no-op no altera estado ni historial | mismo | `::test_el_no_op_no_altera_el_estado_ni_el_historial` |
+| **AC4** También aplica a `aceptada` sobre una recién subida | mismo | `::test_repetir_aceptada_sobre_una_recien_subida_tampoco_escribe` |
+| **AC5** `/review/stats` distingue observaciones revisadas (distintas) de veredictos emitidos | `routers/review.py::review_stats` + `schemas.ReviewStats` | `::test_stats_distingue_observaciones_revisadas_de_veredictos_emitidos` |
+| **AC6** Sin revisiones, ambos contadores son 0 | mismo | `::test_sin_revisiones_ambos_contadores_son_cero` |
+| **AC7** El Monitor pinta el escenario reportado sin parecer contradictorio | `monitor_screen.dart` | `web-admin/test/widget_cr029_test.dart::pinta el escenario reportado (58 observaciones, 61 veredictos)` |
+| **AC8** El botón del veredicto vigente va deshabilitado (confirmada/aceptada/rechazada) | `review_screen.dart` | `::una observación CONFIRMADA no deja volver a confirmarla` (+ ACEPTADA, + RECHAZADA) |
+| **AC9** Editar nombre y estado de una institución | `routers/admin.py::update_institution` (`PATCH`) | `::test_editar_nombre_y_estado` |
+| **AC10** La edición NO cambia el `status` (decisión del usuario) | mismo (`InstitutionUpdateIn` no lo expone) | `::test_editar_no_cambia_el_status` + `widget_cr029_test.dart` (el body no lleva `status`) |
+| **AC11** Renombrar al nombre de OTRA institución responde 409 (índice único de CR-028) | mismo | `::test_renombrar_a_un_nombre_de_otra_es_409` |
+| **AC12** Corregir la escritura de la PROPIA institución sí se permite (el choque excluye su fila) | mismo | `::test_corregir_la_escritura_de_la_propia_institucion_si_se_permite` |
+| **AC13** Editar solo el estado conserva el nombre; `estado` en blanco lo limpia | mismo (`model_fields_set`) | `::test_editar_solo_el_estado_conserva_el_nombre` · `::test_estado_vacio_lo_limpia` |
+| **AC14** Nombre vacío 422 · institución inexistente 404 · rol insuficiente 403 | mismo | `::test_editar_con_nombre_vacio_es_422` · `::test_editar_una_inexistente_es_404` · `::test_editar_exige_rol_de_admin` |
+| **AC15** La consola edita desde un diálogo precargado y guarda por `PATCH` | `institutions_screen.dart` (`_EditInstitutionDialog`) | `widget_cr029_test.dart::el diálogo llega precargado y guarda por PATCH` |
+| **AC16** El 409 se explica sin cerrar el diálogo | mismo | `::un nombre ya usado (409) se explica sin cerrar el diálogo` |
+| **AC17** Clic en la foto abre el visor; +/−/restablecer y cierre funcionan | `review_screen.dart::_ImageZoomDialog` | `::clic en la foto abre el visor con controles de zoom` |
+
+**Gates:** ninguno se enmienda. **#7 reforzado:** el log de revisión deja de acumular entradas que no
+corresponden a un cambio real de estado — sigue siendo append-only, solo se dejan de escribir
+redundancias. **#2 intacto.**
+
+**Zoom sin backend:** los bytes en resolución completa ya viajaban al navegador (`reviewImageBytes`,
+con el header de autorización), así que ampliar no genera peticiones nuevas ni toca el RBAC del
+endpoint de imagen. El área clicable se fijó a alto 280 / ancho completo para que no dependa de que
+la imagen esté decodificada.
+
+**Limpieza del dato existente (autorizada por el usuario):** se borran las 3 filas redundantes de
+`human_review` en producción, conservando **la primera de cada observación** (la que sí produjo el
+cambio de estado). No son "huérfanas" — huérfanas había 0.

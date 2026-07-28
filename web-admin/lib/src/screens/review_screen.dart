@@ -184,17 +184,22 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
   Future<void> _emit(String veredicto) async {
     setState(() => _busy = true);
     try {
-      await ref.read(apiClientProvider).submitVerdict(
+      final resp = await ref.read(apiClientProvider).submitVerdict(
             observationId: widget.observationId,
             veredicto: veredicto,
             nota: _notaCtrl.text.trim(),
           );
       if (!mounted) return;
-      final msg = switch (veredicto) {
-        'rechazada' => Copy.reviewRejected,
-        'aceptada' => Copy.reviewReopened,
-        _ => Copy.reviewConfirmed,
-      };
+      // CR-029: el backend no registra un veredicto igual al estado actual. Decirlo evita que el
+      // revisor crea que emitió uno nuevo (así se colaron 3 filas repetidas en el log).
+      final sinCambio = resp['sin_cambio'] == true;
+      final msg = sinCambio
+          ? (resp['message'] as String? ?? Copy.reviewNoChange)
+          : switch (veredicto) {
+              'rechazada' => Copy.reviewRejected,
+              'aceptada' => Copy.reviewReopened,
+              _ => Copy.reviewConfirmed,
+            };
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       Navigator.of(context).pop();
     } on ApiException catch (e) {
@@ -296,19 +301,26 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
                           const InputDecoration(labelText: Copy.reviewNoteLabel),
                     ),
                     const SizedBox(height: 12),
+                    // CR-029: el veredicto que YA es el estado actual va deshabilitado. Antes los
+                    // tres estaban siempre activos y volver a pulsar el vigente añadía una fila
+                    // redundante al log de revisión.
                     Wrap(
                       spacing: 12,
                       runSpacing: 8,
                       children: [
                         FilledButton.icon(
                           key: const Key('review-confirm'),
-                          onPressed: _busy ? null : () => _emit('confirmada'),
+                          onPressed: _busy || d.estadoRevision == 'confirmada'
+                              ? null
+                              : () => _emit('confirmada'),
                           icon: const Icon(Icons.check),
                           label: const Text(Copy.reviewConfirm),
                         ),
                         OutlinedButton.icon(
                           key: const Key('review-reject'),
-                          onPressed: _busy ? null : () => _emit('rechazada'),
+                          onPressed: _busy || d.estadoRevision == 'rechazada'
+                              ? null
+                              : () => _emit('rechazada'),
                           icon: const Icon(Icons.block),
                           label: const Text(Copy.reviewReject),
                         ),
@@ -316,11 +328,19 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
                         // defecto (aceptada). El backend ya lo acepta.
                         TextButton.icon(
                           key: const Key('review-reopen'),
-                          onPressed: _busy ? null : () => _emit('aceptada'),
+                          onPressed: _busy || d.estadoRevision == 'aceptada'
+                              ? null
+                              : () => _emit('aceptada'),
                           icon: const Icon(Icons.undo),
                           label: const Text(Copy.reviewReopen),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      Copy.reviewCurrentState(Copy.estadoRevision(d.estadoRevision)),
+                      key: const Key('review-current-state'),
+                      style: theme.textTheme.bodySmall,
                     ),
                   ],
                 ],
@@ -385,19 +405,173 @@ class _ReviewImageState extends ConsumerState<_ReviewImage> {
             child: const Text(Copy.reviewImageError),
           );
         }
-        return Image.memory(
-          snap.data!,
-          key: const Key('review-image'),
-          height: 280,
-          fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => Container(
-            height: 280,
-            alignment: Alignment.center,
-            color: theme.colorScheme.surfaceContainerHighest,
-            child: const Text(Copy.reviewImageError),
+        final bytes = snap.data!;
+        // CR-029: la miniatura abre el visor con zoom. Los bytes en resolución completa YA están
+        // aquí (se descargaron con el header de autorización), así que ampliar no pide nada al
+        // servidor ni toca el RBAC del endpoint de imagen.
+        return Semantics(
+          button: true,
+          label: Copy.reviewZoomHint,
+          child: Tooltip(
+            message: Copy.reviewZoomHint,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                key: const Key('review-image-open-zoom'),
+                onTap: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => _ImageZoomDialog(bytes: bytes),
+                ),
+                // Alto fijo y ancho completo: el área clicable no depende de que la imagen ya esté
+                // decodificada, así que no cambia de tamaño ni se "escapa" mientras carga.
+                child: SizedBox(
+                  height: 280,
+                  width: double.infinity,
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      Positioned.fill(
+                        child: Image.memory(
+                          bytes,
+                          key: const Key('review-image'),
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Container(
+                            alignment: Alignment.center,
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            child: const Text(Copy.reviewImageError),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: Icon(Icons.zoom_in, color: Colors.white, size: 20),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         );
       },
+    );
+  }
+}
+
+/// Visor a pantalla completa con zoom (CR-029), para juzgar detalle fino al revisar.
+///
+/// Arrastrar para desplazar, doble clic para acercar/alejar y botones +/−/restablecer. Los botones
+/// son deliberados: el zoom por rueda del ratón se comporta distinto según navegador y trackpad, y
+/// el revisor no debería depender de eso. Trabaja sobre los bytes ya descargados: sin peticiones.
+class _ImageZoomDialog extends StatefulWidget {
+  const _ImageZoomDialog({required this.bytes});
+
+  final Uint8List bytes;
+
+  @override
+  State<_ImageZoomDialog> createState() => _ImageZoomDialogState();
+}
+
+class _ImageZoomDialogState extends State<_ImageZoomDialog> {
+  static const double _min = 1.0;
+  static const double _max = 8.0;
+
+  final TransformationController _tc = TransformationController();
+
+  @override
+  void dispose() {
+    _tc.dispose();
+    super.dispose();
+  }
+
+  double get _escala => _tc.value.getMaxScaleOnAxis();
+
+  /// Fija la escala desde el centro. Reencuadra a propósito: tras un +/− el revisor espera ver el
+  /// centro de la foto, no seguir perdido donde estaba el desplazamiento anterior.
+  void _fijarEscala(double objetivo) {
+    setState(() {
+      _tc.value = Matrix4.identity()..scale(objetivo.clamp(_min, _max));
+    });
+  }
+
+  void _alternarDobleClic() =>
+      _fijarEscala(_escala > _min + 0.01 ? _min : 2.5);
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog.fullscreen(
+      backgroundColor: Colors.black,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              onDoubleTap: _alternarDobleClic,
+              child: InteractiveViewer(
+                key: const Key('review-image-zoom'),
+                transformationController: _tc,
+                minScale: _min,
+                maxScale: _max,
+                child: Center(
+                  child: Image.memory(widget.bytes, fit: BoxFit.contain),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Row(
+              children: [
+                IconButton(
+                  key: const Key('review-zoom-out'),
+                  tooltip: 'Alejar',
+                  color: Colors.white,
+                  onPressed: () => _fijarEscala(_escala / 1.5),
+                  icon: const Icon(Icons.zoom_out),
+                ),
+                IconButton(
+                  key: const Key('review-zoom-in'),
+                  tooltip: 'Acercar',
+                  color: Colors.white,
+                  onPressed: () => _fijarEscala(_escala * 1.5),
+                  icon: const Icon(Icons.zoom_in),
+                ),
+                IconButton(
+                  key: const Key('review-zoom-reset'),
+                  tooltip: 'Restablecer',
+                  color: Colors.white,
+                  onPressed: () => _fijarEscala(_min),
+                  icon: const Icon(Icons.center_focus_strong),
+                ),
+                IconButton(
+                  key: const Key('review-zoom-close'),
+                  tooltip: 'Cerrar',
+                  color: Colors.white,
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            left: 12,
+            bottom: 12,
+            child: Text(
+              Copy.reviewZoomControls,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

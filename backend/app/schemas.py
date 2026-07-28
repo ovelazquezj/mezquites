@@ -356,6 +356,32 @@ class InstitutionIn(BaseModel):
         return _estado_institucion_opcional(v)
 
 
+class InstitutionUpdateIn(BaseModel):
+    """Edición de una institución del catálogo (CR-029).
+
+    **No incluye `status` a propósito** (decisión del usuario): degradar una `aprobada` la sacaría
+    del catálogo con voluntarios ya afiliados. Para aprobar sigue estando `POST .../approve`, en un
+    solo sentido.
+
+    Campos omitidos = "no tocar". Para `estado`, mandar `null` **explícitamente** sí lo limpia; por
+    eso el router distingue con `model_fields_set` y no por el valor.
+    """
+
+    name: str | None = None
+    estado: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _limpia_nombre(cls, v: str | None) -> str | None:
+        # `name` es NOT NULL: mandar null equivale a no mandarlo (el router lo ignora).
+        return None if v is None else _nombre_institucion_limpio(v)
+
+    @field_validator("estado")
+    @classmethod
+    def _limpia_estado(cls, v: str | None) -> str | None:
+        return _estado_institucion_opcional(v)
+
+
 class SnapshotResponse(BaseModel):
     quarter: str
     created_at: datetime
@@ -492,6 +518,9 @@ class VerdictResponse(BaseModel):
     observation_id: uuid.UUID
     estado_revision: str
     message: str
+    # CR-029: True ⇒ el veredicto era igual al estado actual, así que NO se escribió en el log
+    # append-only. Permite a la consola decir "ya estaba así" en vez de fingir que cambió algo.
+    sin_cambio: bool = False
 
 
 class ReviewStats(BaseModel):
@@ -502,7 +531,10 @@ class ReviewStats(BaseModel):
     rechazadas: int
     total: int
     pendientes_de_revision: int  # = aceptadas (aún sin veredicto humano)
-    revisiones_totales: int  # filas en human_review
+    revisiones_totales: int  # filas en human_review (EVENTOS, no observaciones)
+    # CR-029: observaciones DISTINTAS con al menos un veredicto. Sin esto, el Monitor mostraba
+    # `total` (observaciones) junto a `revisiones_totales` (eventos) y la diferencia parecía un bug.
+    observaciones_revisadas: int
 
 
 # --- Reportar un problema (CR-019) ---

@@ -101,6 +101,16 @@ class Copy {
   static const reviewReopen = 'Volver a aceptada';
   static const reviewReopened = 'Observación de nuevo aceptada (visible en público).';
   static const reviewImageError = 'No se pudo cargar la imagen.';
+
+  // --- CR-029: veredicto idempotente + visor con zoom ---
+  /// El backend no registró nada porque la observación ya estaba en ese estado.
+  static const reviewNoChange =
+      'La observación ya estaba en ese estado; no se registró un veredicto nuevo.';
+  static String reviewCurrentState(String estado) =>
+      'Estado actual: $estado. El veredicto que ya corresponde aparece deshabilitado.';
+  static const reviewZoomHint = 'Clic en la foto para ampliarla';
+  static const reviewZoomControls =
+      'Arrastra para mover · doble clic para acercar · Esc para cerrar';
   static const reviewNoteLabel = 'Nota (opcional)';
   static const reviewHistoryTitle = 'Historial de revisión';
   static const reviewNoHistory = 'Sin revisiones aún.';

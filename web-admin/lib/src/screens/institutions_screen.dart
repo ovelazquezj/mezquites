@@ -87,6 +87,20 @@ class _InstitutionsScreenState extends ConsumerState<InstitutionsScreen> {
         .showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  /// Editar nombre/estado de una institución ya registrada (CR-029). No toca `status`.
+  Future<void> _edit(Institution inst) async {
+    final guardada = await showDialog<Institution>(
+      context: context,
+      builder: (_) => _EditInstitutionDialog(institution: inst),
+    );
+    if (guardada != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('"${guardada.name}" actualizada.')),
+      );
+      setState(_reload);
+    }
+  }
+
   /// Aprueba una institución solicitada (CR-011): pasa a aprobada y al catálogo público.
   Future<void> _approve(Institution inst) async {
     try {
@@ -202,18 +216,141 @@ class _InstitutionsScreenState extends ConsumerState<InstitutionsScreen> {
                           ? theme.colorScheme.secondary.withValues(alpha: 0.2)
                           : theme.colorScheme.tertiary.withValues(alpha: 0.15),
                     )),
-                    DataCell(i.isRequested
-                        ? TextButton(
+                    // CR-029: "Editar" está siempre; "Aprobar" solo si sigue solicitada.
+                    DataCell(Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextButton(
+                          key: Key('institution-edit-${i.id}'),
+                          onPressed: () => _edit(i),
+                          child: const Text('Editar'),
+                        ),
+                        if (i.isRequested)
+                          TextButton(
                             key: Key('institution-approve-${i.id}'),
                             onPressed: () => _approve(i),
                             child: const Text('Aprobar'),
-                          )
-                        : const Text('—')),
+                          ),
+                      ],
+                    )),
                   ]),
                 ),
               ),
             );
           },
+        ),
+      ],
+    );
+  }
+}
+
+/// Diálogo de edición de una institución (CR-029): nombre + estado.
+///
+/// **No ofrece cambiar la situación** (aprobada/solicitada) a propósito: degradar una aprobada la
+/// sacaría del catálogo con voluntarios ya afiliados. Para aprobar está el botón "Aprobar".
+///
+/// Si el nombre nuevo ya lo usa otra institución, el backend responde 409 (índice único de CR-028)
+/// y el error se muestra dentro del diálogo, sin cerrarlo, para que se pueda corregir en el momento.
+class _EditInstitutionDialog extends ConsumerStatefulWidget {
+  const _EditInstitutionDialog({required this.institution});
+
+  final Institution institution;
+
+  @override
+  ConsumerState<_EditInstitutionDialog> createState() =>
+      _EditInstitutionDialogState();
+}
+
+class _EditInstitutionDialogState
+    extends ConsumerState<_EditInstitutionDialog> {
+  late final TextEditingController _nameCtrl =
+      TextEditingController(text: widget.institution.name);
+  late final TextEditingController _estadoCtrl =
+      TextEditingController(text: widget.institution.estado ?? '');
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _estadoCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) {
+      setState(() => _error = 'Escribe el nombre.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final actualizada = await ref.read(apiClientProvider).updateInstitution(
+            widget.institution.id,
+            name: name,
+            estado: _estadoCtrl.text.trim(),
+          );
+      if (!mounted) return;
+      Navigator.of(context).pop(actualizada);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = e.statusCode == 409
+            ? 'Ya existe otra institución con ese nombre. Elige uno distinto.'
+            : 'No se pudo guardar. Inténtalo de nuevo.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Editar institución'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            key: const Key('institution-edit-name'),
+            controller: _nameCtrl,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'Nombre'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            key: const Key('institution-edit-estado'),
+            controller: _estadoCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Estado',
+              helperText: 'Déjalo vacío si no aplica.',
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _error!,
+              key: const Key('institution-edit-error'),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          key: const Key('institution-edit-cancel'),
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          key: const Key('institution-edit-save'),
+          onPressed: _busy ? null : _save,
+          child: _busy
+              ? const SizedBox(
+                  width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('Guardar'),
         ),
       ],
     );

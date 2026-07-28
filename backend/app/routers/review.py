@@ -198,10 +198,24 @@ def review_verdict(
     del voluntario, en sus insignias, en sus puntos y en el mapa público. Las filas de
     ``points_ledger`` no se tocan —el filtro se aplica al leer—, pero sí hay que recomputar la
     etiqueta de identidad L3, que está persistida en ``account``.
+
+    **CR-029 (idempotente):** si el veredicto es igual al ``estado_revision`` actual, **no se escribe
+    nada**: no hay cambio de estado que registrar. Antes cada clic repetido añadía una fila al log
+    (en producción quedaron 3 así: ``confirmada → confirmada → confirmada``), inflando el contador
+    del Monitor. Se responde 200 con ``sin_cambio=True`` en vez de un error: el revisor no hizo nada
+    malo. El log sigue siendo append-only (gate #7) — no escribir de más no es reescribir historia.
     """
     obs = db.get(Observation, observation_id)
     if obs is None:
         raise HTTPException(status_code=404, detail="observación no encontrada")
+
+    if obs.estado_revision == body.veredicto:
+        return VerdictResponse(
+            observation_id=observation_id,
+            estado_revision=obs.estado_revision,
+            message=f"La observación ya estaba en «{body.veredicto}»; no se registró un veredicto nuevo.",
+            sin_cambio=True,
+        )
 
     db.add(
         HumanReview(
@@ -247,6 +261,14 @@ def review_stats(
     revisiones = int(
         db.execute(text("SELECT count(*) FROM human_review")).scalar_one()
     )
+    # CR-029: observaciones DISTINTAS con veredicto. `revisiones` cuenta EVENTOS, así que en cuanto
+    # una observación se revisa dos veces los dos números divergen; el Monitor necesita ambos para
+    # que la diferencia se lea como lo que es y no como un descuadre.
+    revisadas = int(
+        db.execute(
+            text("SELECT count(DISTINCT observation_id) FROM human_review")
+        ).scalar_one()
+    )
     return ReviewStats(
         aceptadas=aceptadas,
         confirmadas=confirmadas,
@@ -254,4 +276,5 @@ def review_stats(
         total=aceptadas + confirmadas + rechazadas,
         pendientes_de_revision=aceptadas,
         revisiones_totales=revisiones,
+        observaciones_revisadas=revisadas,
     )
