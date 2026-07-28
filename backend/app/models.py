@@ -33,11 +33,13 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
+from .institution_names import NORMALIZED_NAME_INDEX, NORMALIZED_NAME_SQL
 
 ROLES = (
     "voluntario",
@@ -107,6 +109,11 @@ class Institution(Base):
 
     __table_args__ = (
         CheckConstraint("status IN ('aprobada','solicitada')", name="ck_institution_status"),
+        # CR-028 — regla antiduplicados: no puede haber dos instituciones con el mismo nombre
+        # canónico (sin acentos, minúsculas, espacios colapsados). Es la última línea de defensa:
+        # los routers ya reusan la existente en vez de insertar, pero el índice hace imposible el
+        # duplicado incluso ante una carrera entre dos altas simultáneas.
+        Index(NORMALIZED_NAME_INDEX, text(NORMALIZED_NAME_SQL), unique=True),
     )
 
 

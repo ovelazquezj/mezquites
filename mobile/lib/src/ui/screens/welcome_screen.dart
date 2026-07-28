@@ -186,12 +186,41 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
       ),
     );
     if (!mounted) return;
-    if (name != null && name.isNotEmpty) {
+    if (name == null || name.isEmpty) return;
+
+    // CR-028: si ese nombre YA está en el catálogo, se elige esa institución en vez de encolar el
+    // registro de una gemela. El catálogo ya vive en memoria (_loadInstitutions), así que el aviso
+    // es inmediato y el voluntario ve su elección reflejada en el desplegable.
+    final existente = _buscarEnCatalogo(name);
+    if (existente != null) {
       setState(() {
-        _pendingNewInstitution = name;
-        _selected = null; // registrar nueva ⇒ no se elige una existente
+        _selected = existente;
+        _pendingNewInstitution = null;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(Copy.institutionAlreadyInList(existente.name))),
+      );
+      return;
     }
+
+    setState(() {
+      _pendingNewInstitution = name;
+      _selected = null; // registrar nueva ⇒ no se elige una existente
+    });
+  }
+
+  /// La institución del catálogo que es la MISMA que [name], o null (CR-028).
+  ///
+  /// Compara por nombre canónico con la misma regla que el backend y el índice único de la base,
+  /// así que "  UNIVERSIDAD  Cuauhtémoc " reconoce a "Universidad Cuauhtemoc". Esto solo cubre lo
+  /// que el catálogo público muestra (las aprobadas); si el nombre corresponde a una institución
+  /// todavía en revisión, el backend la reusa igual al enviar.
+  Institution? _buscarEnCatalogo(String name) {
+    final canonico = Institution.normalizeName(name);
+    for (final i in _institutions) {
+      if (Institution.normalizeName(i.name) == canonico) return i;
+    }
+    return null;
   }
 
   @override

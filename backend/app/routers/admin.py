@@ -11,10 +11,12 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import CurrentUser, require_role
+from ..institution_names import find_by_normalized_name
 from ..models import Account, Institution, OrganizationalIndicator
 from ..schemas import AllyIn, InstitutionIn, OrganizationalIndicatorIn, SnapshotResponse
 from ..snapshots import create_snapshot
@@ -73,18 +75,45 @@ def list_institutions(
     ]
 
 
+def _ya_existe(inst: Institution) -> str:
+    """Detalle del 409: nombra la institución existente para que el admin actúe sobre ESA (CR-028)."""
+    situacion = "ya aprobada" if inst.status == "aprobada" else "pendiente de aprobación"
+    return f'Ya existe la institución "{inst.name}" ({situacion}). Úsala en vez de crear otra.'
+
+
 @router.post("/institutions", status_code=status.HTTP_201_CREATED)
 def add_institution(
     body: InstitutionIn, user: CurrentUser = Depends(_admin), db: Session = Depends(get_db)
 ) -> dict:
-    """Alta directa (aprobada) o "solicitar agregar" (solicitada → ticket a EA3)."""
+    """Alta directa (aprobada) o "solicitar agregar" (solicitada → ticket a EA3).
+
+    CR-028 (antiduplicados): si ya existe una con el mismo nombre canónico (sin acentos,
+    minúsculas, espacios colapsados) responde **409** en vez de crear una gemela. Aquí sí conviene
+    el error y no el reuso silencioso de ``/institutions/request``: el administrador ve la lista
+    completa —incluidas las ``solicitada``—, así que puede aprobar o renombrar la que ya está; un
+    alta que "no hace nada" le ocultaría que su captura era redundante.
+    """
+    existente = find_by_normalized_name(db, body.name)
+    if existente is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=_ya_existe(existente))
+
     inst = Institution(
         name=body.name,
         estado=body.estado,
         status="solicitada" if body.request_only else "aprobada",
     )
     db.add(inst)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Carrera con otra alta simultánea: el índice único la atrapó.
+        db.rollback()
+        existente = find_by_normalized_name(db, body.name)
+        if existente is None:  # pragma: no cover - el índice solo falla por duplicado
+            raise
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=_ya_existe(existente)
+        ) from None
     return {"id": str(inst.id), "name": inst.name, "estado": inst.estado, "status": inst.status}
 
 

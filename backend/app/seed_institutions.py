@@ -20,6 +20,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from .db import get_sessionmaker
+from .institution_names import find_by_normalized_name
 from .models import Institution
 
 ESTADO = "Aguascalientes"
@@ -39,11 +40,17 @@ INSTITUCIONES: list[str] = [
 
 
 def seed_institutions(db: Session) -> tuple[int, int]:
-    """Siembra el catálogo aprobado. Devuelve ``(insertadas, ya_existian)``. Idempotente por nombre."""
+    """Siembra el catálogo aprobado. Devuelve ``(insertadas, ya_existian)``. Idempotente por nombre.
+
+    CR-028: la coincidencia es por **nombre canónico**, no literal. Antes usaba ``one_or_none()``
+    sobre el nombre exacto, así que una institución capturada a mano con otro acento o espaciado
+    (a) no se reconocía y se sembraba una gemela, y (b) si ya había dos iguales, la siembra
+    reventaba con ``MultipleResultsFound`` en vez de seguir.
+    """
     insertadas = 0
     ya_existian = 0
     for name in INSTITUCIONES:
-        existente = db.query(Institution).filter(Institution.name == name).one_or_none()
+        existente = find_by_normalized_name(db, name)
         if existente is not None:
             ya_existian += 1
             continue

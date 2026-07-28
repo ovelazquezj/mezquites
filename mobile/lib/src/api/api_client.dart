@@ -209,6 +209,12 @@ class ApiClient {
   /// Registrar una nueva institución (CR-010 #6). El voluntario autenticado
   /// la propone; queda `solicitada` hasta que el consorcio la apruebe (no entra
   /// al catálogo público hasta entonces). Devuelve la institución creada.
+  ///
+  /// CR-028: si ya existía una con el mismo nombre (sin acentos, minúsculas,
+  /// espacios colapsados) el backend NO crea otra — afilia la cuenta a la que ya
+  /// está y responde 200 con `ya_existia: true`. Nunca es un error: el catálogo
+  /// público solo lista las aprobadas, así que el voluntario no tiene forma de
+  /// ver una institución en revisión para elegirla.
   Future<Institution> requestInstitution({
     required String name,
     String? estado,

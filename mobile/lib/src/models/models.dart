@@ -416,6 +416,7 @@ class Institution {
     required this.name,
     this.estado,
     required this.status,
+    this.yaExistia = false,
   });
 
   final String id;
@@ -423,10 +424,36 @@ class Institution {
   final String? estado;
   final String status;
 
+  /// CR-028: la institución YA estaba registrada y quedaste afiliado a ella (no se creó nada).
+  /// Solo lo manda `POST /institutions/request`; en el catálogo viene ausente ⇒ false.
+  final bool yaExistia;
+
   factory Institution.fromJson(Map<String, dynamic> j) => Institution(
         id: j['id'] as String,
         name: j['name'] as String,
         estado: j['estado'] as String?,
         status: j['status'] as String,
+        yaExistia: j['ya_existia'] as bool? ?? false,
       );
+
+  /// Forma canónica del nombre, para saber si dos escrituras son la MISMA institución (CR-028).
+  ///
+  /// Réplica en Dart de `normalize_institution_name` del backend y del índice único de la base:
+  /// sin acentos, minúsculas, espacios internos colapsados y extremos recortados. Se mantiene
+  /// alineada a propósito — si divergiera, la app diría "es nueva" y el backend respondería "ya
+  /// existía", que es exactamente la confusión que esto viene a evitar.
+  static String normalizeName(String raw) {
+    const acentos = 'ÁÀÂÄÃÉÈÊËÍÌÎÏÓÒÔÖÕÚÙÛÜÑÇáàâäãéèêëíìîïóòôöõúùûüñç';
+    const bases = 'AAAAAEEEEIIIIOOOOOUUUUNCaaaaaeeeeiiiiooooouuuunc';
+    final sinAcentos = StringBuffer();
+    for (final ch in raw.split('')) {
+      final i = acentos.indexOf(ch);
+      sinAcentos.write(i >= 0 ? bases[i] : ch);
+    }
+    return sinAcentos
+        .toString()
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim()
+        .toLowerCase();
+  }
 }

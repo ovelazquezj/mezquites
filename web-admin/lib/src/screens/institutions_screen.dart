@@ -62,8 +62,20 @@ class _InstitutionsScreenState extends ConsumerState<InstitutionsScreen> {
         );
         setState(_reload);
       }
-    } on ApiException catch (_) {
-      _showError('No se pudo guardar. Inténtalo de nuevo.');
+    } on ApiException catch (e) {
+      // CR-028: 409 = ya hay una institución con ese nombre (aunque difiera en acentos,
+      // mayúsculas o espacios). No es un fallo técnico, así que se explica en vez de invitar a
+      // reintentar: reintentar daría el mismo 409. Se recarga para que la existente quede a la
+      // vista en la tabla de abajo.
+      if (e.statusCode == 409) {
+        _showError(
+          'Ya existe una institución con ese nombre. Búscala en la lista de abajo '
+          'y apruébala o edítala en vez de agregar otra.',
+        );
+        setState(_reload);
+      } else {
+        _showError('No se pudo guardar. Inténtalo de nuevo.');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

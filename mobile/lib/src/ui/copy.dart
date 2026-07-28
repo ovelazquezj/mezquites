@@ -223,6 +223,14 @@ class Copy {
   static const institutionRequestError =
       'No se pudo enviar la solicitud. Intenta de nuevo.';
 
+  // --- Antiduplicados (CR-028) ---
+  // El nombre escrito ya estaba en el catálogo: se elige esa en vez de registrar una gemela.
+  static String institutionAlreadyInList(String name) =>
+      '"$name" ya está en la lista. La seleccionamos por ti.';
+  // El backend detectó que ya existía (p. ej. otra persona la registró y aún no se aprueba).
+  static const institutionRequestAlreadyExisted =
+      'Esa institución ya estaba registrada. Quedaste afiliado a ella.';
+
   // --- Evidencia / comprobante de participación (CR-010 #7; CR-026) ---
   static const evidenceTitle = 'Mi participación';
   static const evidenceNote =

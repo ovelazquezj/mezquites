@@ -9,11 +9,32 @@ Notas de gates:
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+def _nombre_institucion_limpio(v: str) -> str:
+    """Colapsa espacios internos, recorta y rechaza vacío (CR-028).
+
+    Solo limpia lo que se GUARDA. Decidir si dos nombres son "el mismo" es harina de otro costal y
+    vive en ``institution_names`` (acentos, mayúsculas), porque esa regla también la tiene que
+    conocer el índice de la base.
+    """
+    limpio = re.sub(r"\s+", " ", v).strip()
+    if not limpio:
+        raise ValueError("el nombre de la institución no puede ir vacío")
+    return limpio
+
+
+def _estado_institucion_opcional(v: str | None) -> str | None:
+    """Un estado en blanco es "sin estado" (``None``), no un estado distinto de ``NULL`` (CR-028)."""
+    if v is None:
+        return None
+    return re.sub(r"\s+", " ", v).strip() or None
 
 # --- Auth ---
 
@@ -324,6 +345,16 @@ class InstitutionIn(BaseModel):
         default=False, description="True ⇒ 'solicitar agregar' (status=solicitada, ticket a EA3)."
     )
 
+    @field_validator("name")
+    @classmethod
+    def _limpia_nombre(cls, v: str) -> str:
+        return _nombre_institucion_limpio(v)
+
+    @field_validator("estado")
+    @classmethod
+    def _limpia_estado(cls, v: str | None) -> str | None:
+        return _estado_institucion_opcional(v)
+
 
 class SnapshotResponse(BaseModel):
     quarter: str
@@ -392,11 +423,24 @@ class InstitutionRequestIn(BaseModel):
     name: str
     estado: str | None = None
 
+    @field_validator("name")
+    @classmethod
+    def _limpia_nombre(cls, v: str) -> str:
+        return _nombre_institucion_limpio(v)
+
+    @field_validator("estado")
+    @classmethod
+    def _limpia_estado(cls, v: str | None) -> str | None:
+        return _estado_institucion_opcional(v)
+
 
 class InstitutionRequestResponse(BaseModel):
     id: uuid.UUID
     name: str
     status: str
+    # CR-028: True ⇒ la institución YA existía y la cuenta quedó afiliada a ella (no se creó nada).
+    # Permite a la app decir "ya estaba registrada" en vez de "solicitud enviada".
+    ya_existia: bool = False
 
 
 # --- Analítica (analista) — CR-010 ---

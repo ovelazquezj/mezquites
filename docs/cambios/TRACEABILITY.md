@@ -531,3 +531,47 @@ modelo de roles. **#6 intacto:** dev sigue corriendo sin nube y con el default.
 **Deuda anotada (no incluida en este CR):** (a) no hay **revocación de tokens** — cerrar sesión no
 invalida nada del lado del servidor; (b) la **cancelación ARCO no borra las fotografías**, solo
 anonimiza la observación.
+
+---
+
+## CR-028 — Una institución por nombre (antiduplicados) (2026-07-28)
+
+**Origen:** hallazgo en producción — dos "Global University" (una con estado, otra sin él) creadas
+por dos caminos distintos de la misma app, porque **ninguna capa comprobaba si el nombre ya
+existía**. Detalle: [`CR-028`](../change-requests/CR-028-instituciones-sin-duplicados.md).
+
+Regla única de "el mismo nombre" (sin acentos, minúsculas, espacios colapsados) en
+`backend/app/institution_names.py`, compartida por el índice SQL, el backend y la app.
+
+| Criterio | Implementación | Prueba |
+|---|---|---|
+| **AC1** Dos altas del mismo nombre ⇒ una sola institución (el caso de producción) | `routers/institutions.py` (reusa la existente) | `backend/tests/test_cr028_instituciones_sin_duplicados.py::test_solicitar_dos_veces_el_mismo_nombre_no_duplica` |
+| **AC2** Acentos, mayúsculas y espacios no crean instituciones distintas | `institution_names.normalize_institution_name` | `::test_variantes_de_acentos_mayusculas_y_espacios_son_la_misma` |
+| **AC3** Reusar afilia la cuenta a la institución que sobrevive | `routers/institutions.py` | `::test_la_segunda_cuenta_queda_afiliada_a_la_institucion_existente` |
+| **AC4** Reusar no aprueba por la puerta de atrás (una `solicitada` sigue `solicitada`) | mismo | `::test_reusar_no_cambia_el_estado_de_la_existente` |
+| **AC5** El alta duplicada desde la consola responde 409 nombrando la existente | `routers/admin.py::_ya_existe` | `::test_alta_desde_la_consola_duplicada_es_409` |
+| **AC6** La consola no puede duplicar una `solicitada` por un voluntario | mismo | `::test_la_consola_no_puede_duplicar_una_solicitada_por_el_voluntario` |
+| **AC7** Ni un `INSERT` directo puede duplicar (última línea de defensa) | índice `ux_institution_nombre_norm` (migración `0007`, y `models.py` para `create_all`) | `::test_el_indice_unico_impide_el_duplicado_incluso_por_sql_directo` |
+| **AC8** Un nombre vacío o de puros espacios se rechaza | `schemas._nombre_institucion_limpio` | `::test_nombre_vacio_o_solo_espacios_se_rechaza` |
+| **AC9** El nombre se guarda con espacios normalizados (conservando acentos y mayúsculas) | mismo | `::test_el_nombre_se_guarda_con_espacios_normalizados` |
+| **AC10** Un `estado` en blanco se guarda como `NULL`, no como un estado distinto | `schemas._estado_institucion_opcional` | `::test_estado_en_blanco_se_guarda_como_nulo` |
+| **AC11** La siembra reconoce variantes previas, no duplica y ya no revienta | `seed_institutions.py` (por nombre canónico, ya no `one_or_none`) | `::test_la_siembra_reconoce_variantes_previas_y_no_duplica` |
+| **AC12** La app aplica la MISMA regla que el backend | `Institution.normalizeName` | `mobile/test/cr028_instituciones_sin_duplicados_test.dart` (grupo "regla del nombre canónico") |
+| **AC13** En el login, escribir una institución que ya está la **selecciona** en vez de encolar una gemela | `welcome_screen._buscarEnCatalogo` | `::la selecciona en vez de encolar una gemela, y lo dice` |
+| **AC14** Una institución realmente nueva sigue quedando pendiente de registro | mismo | `::una institución realmente nueva sí queda pendiente de registro` |
+| **AC15** Elegir una existente no dispara ningún POST de alta | mismo | `::elegir una existente no dispara ningún POST de alta` |
+| **AC16** La consola explica el 409 en vez de invitar a reintentar | `institutions_screen._submit` | `web-admin/test/widget_cr028_test.dart::un nombre duplicado (409) se explica` |
+| **AC17** El alta normal de la consola no cambia | mismo | `::un alta normal sigue confirmando como antes` |
+
+**Gates:** ninguno se enmienda. **#3 (sin gating) preservado a propósito:** al voluntario nunca se le
+rechaza — si escribe un nombre existente queda afiliado a esa institución. Por eso el reuso (200) y
+no un 409 en `/institutions/request`: el catálogo público solo lista las aprobadas, así que una
+institución en revisión no se puede "elegir" de ninguna lista.
+
+**Migración `0007`:** crea el índice único y **se detiene enumerando los duplicados** si la base aún
+tiene alguno. Es deliberado: fusionar exige decidir cuál sobrevive y repuntar `account.institution_id`
+(única FK que apunta a `institution`), y eso no lo debe adivinar una migración.
+
+**Deuda anotada (no incluida):** la consola sigue sin **fusionar/renombrar/eliminar** instituciones —
+`/admin/institutions` solo tiene `GET`, `POST` y `approve`—, así que un duplicado por dos nombres
+realmente distintos de la misma escuela sigue exigiendo entrar a la base.

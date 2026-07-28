@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/models.dart';
 import '../../models/municipios.dart';
 import '../../state/providers.dart';
 import '../copy.dart';
@@ -94,20 +95,27 @@ class AccountScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
   ) async {
-    final ok = await showDialog<bool>(
+    final registrada = await showDialog<Institution>(
       context: context,
       builder: (_) => const _RequestInstitutionDialog(),
     );
-    if (ok == true && context.mounted) {
+    if (registrada != null && context.mounted) {
+      // CR-028: si el backend reusó una institución existente no hubo "solicitud" que revisar;
+      // decirlo evita que la persona espere una aprobación que nunca va a llegar.
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(Copy.institutionRequestOk)),
+        SnackBar(
+          content: Text(registrada.yaExistia
+              ? Copy.institutionRequestAlreadyExisted
+              : Copy.institutionRequestOk),
+        ),
       );
     }
   }
 }
 
 /// Diálogo de "Registrar nueva institución" (CR-010 #6): nombre + estado →
-/// `POST /institutions/request`. Devuelve `true` al cerrar tras un envío OK.
+/// `POST /institutions/request`. Al cerrar devuelve la institución resultante (creada o, si ya
+/// existía una con el mismo nombre, la existente a la que quedó afiliada la cuenta — CR-028).
 class _RequestInstitutionDialog extends ConsumerStatefulWidget {
   const _RequestInstitutionDialog();
 
@@ -140,11 +148,11 @@ class _RequestInstitutionDialogState
       _error = null;
     });
     try {
-      await ref
+      final inst = await ref
           .read(apiClientProvider)
           .requestInstitution(name: name, estado: _estado);
       if (!mounted) return;
-      Navigator.of(context).pop(true);
+      Navigator.of(context).pop(inst);
     } catch (_) {
       if (!mounted) return;
       setState(() {
