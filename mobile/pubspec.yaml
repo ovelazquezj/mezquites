@@ -54,6 +54,14 @@ dependencies:
   # --- Instalación como PWA (CR-016) ---
   # Interop con el navegador (window/eventos) para el botón "Instalar app" (solo web).
   web: ^1.1.0
+  # --- Captura sin conexión (CR-031) ---
+  # Directorio privado de la app donde se guardan los JPEG pendientes de subir
+  # (móvil nativo). NO es la galería: el gate #4 sigue intacto.
+  path_provider: ^2.1.4
+  # IndexedDB en el navegador para la cola de la PWA (que es el caso de PRODUCCIÓN).
+  # Guarda los bytes en binario; `shared_preferences` (localStorage) topa en ~5 MB y
+  # obligaría a base64, que infla otro 33 %.
+  idb_shim: ^2.6.1
 
 dev_dependencies:
   flutter_test:

@@ -40,6 +40,7 @@ class ObservationDraft {
     this.municipio,
     this.imagePath,
     this.imageBytes,
+    this.clientCaptureId,
   }) : assert(imagePath != null || imageBytes != null,
             'La observación necesita imagen por ruta (móvil) o bytes (web).',);
 
@@ -61,6 +62,12 @@ class ObservationDraft {
   final String? imagePath;
   final Uint8List? imageBytes;
 
+  /// CR-031: id que la app genera **al capturar** y repite en cada reintento de
+  /// subida. Hace idempotente el `POST /observations`: si la respuesta se perdió
+  /// de vuelta, el reintento devuelve la observación original en vez de crear un
+  /// segundo árbol. `null` solo en pruebas o en un envío que no pasa por la cola.
+  final String? clientCaptureId;
+
   /// Las etiquetas serializadas para el campo `payload` (multipart). Incluye
   /// estado/municipio solo cuando están presentes (autodeclarados, CR-010 #5).
   Map<String, dynamic> toPayloadJson() => {
@@ -74,6 +81,7 @@ class ObservationDraft {
         'contexto': contexto.wire,
         if (estado != null) 'estado': estado,
         if (municipio != null) 'municipio': municipio,
+        if (clientCaptureId != null) 'client_capture_id': clientCaptureId,
       };
 }
 
