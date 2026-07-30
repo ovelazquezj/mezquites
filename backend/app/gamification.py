@@ -10,8 +10,12 @@
 presenta* — lifelist, conteo de observaciones, insignias, etiqueta L3 y rankings — considera
 únicamente las observaciones **confirmadas** por revisión humana (``estado_revision =
 'confirmada'``). Una foto que nadie ha revisado todavía, o que resultó no ser un mezquite, no
-suma. El dato crudo NO se toca: ``account_observation_count`` sigue devolviendo el total sin
-filtrar y ``points_ledger`` sigue registrando cada alta; el criterio se aplica **al leer**.
+suma. El dato crudo NO se toca: ``account_review_counts`` sigue devolviendo el total sin filtrar y
+``points_ledger`` sigue registrando cada alta; el criterio se aplica **al leer**.
+
+**CR-030:** ``account_review_counts`` reemplaza al viejo ``account_observation_count`` (un solo
+``count(*)``) y devuelve los cuatro estados de golpe, porque las pantallas del voluntario ahora
+presentan el total subido y el confirmado uno al lado del otro.
 
 Gate #3 / Q5.C-D1: NO hay multiplicadores por capacitación, NI certificados/tier que bloqueen.
 """
@@ -78,20 +82,6 @@ def account_lifelist(db: Session, account_id: uuid.UUID) -> int:
     )
 
 
-def account_observation_count(db: Session, account_id: uuid.UUID) -> int:
-    """Total CRUDO de observaciones de la cuenta, sin filtrar por revisión.
-
-    CR-026 dejó de presentarlo como "observaciones registradas" en la app, pero se conserva: es el
-    denominador del avance de revisión y viaja en ``/me/evidence`` como ``capturas_totales``.
-    """
-    return int(
-        db.execute(
-            text("SELECT count(*) FROM observation WHERE account_id = :a"),
-            {"a": account_id},
-        ).scalar_one()
-    )
-
-
 def account_confirmed_count(db: Session, account_id: uuid.UUID) -> int:
     """Observaciones CONFIRMADAS por revisión humana (CR-026).
 
@@ -108,6 +98,37 @@ def account_confirmed_count(db: Session, account_id: uuid.UUID) -> int:
             {"a": account_id},
         ).scalar_one()
     )
+
+
+def account_review_counts(db: Session, account_id: uuid.UUID) -> dict[str, int]:
+    """Los cuatro conteos de revisión de la cuenta, en UNA consulta (CR-030).
+
+    Devuelve ``total`` (crudo subido), ``confirmada``, ``aceptada`` (= en revisión) y ``rechazada``.
+    ``account_confirmed_count`` sigue sirviendo a quien solo necesita ese número (la etiqueta L3);
+    esta existe para las pantallas que presentan varios **juntos** (perfil, resumen de aporte,
+    comprobante de participación) y evita tres viajes a la base para el mismo renglón.
+
+    Que ``aceptada`` viaje aparte no es cosmético: la app deducía "en revisión" restando
+    ``total − confirmadas``, y esa resta contaba las **rechazadas** como si siguieran en cola.
+    """
+    row = (
+        db.execute(
+            text(
+                """
+                SELECT count(*) AS total,
+                       count(*) FILTER (WHERE estado_revision = 'confirmada') AS confirmada,
+                       count(*) FILTER (WHERE estado_revision = 'aceptada') AS aceptada,
+                       count(*) FILTER (WHERE estado_revision = 'rechazada') AS rechazada
+                FROM observation
+                WHERE account_id = :a
+                """
+            ),
+            {"a": account_id},
+        )
+        .mappings()
+        .one()
+    )
+    return {key: int(value) for key, value in row.items()}
 
 
 def compute_badges(confirmed_count: int) -> list[str]:

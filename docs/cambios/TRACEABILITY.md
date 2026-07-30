@@ -622,3 +622,57 @@ la imagen esté decodificada.
 **Limpieza del dato existente (autorizada por el usuario):** se borran las 3 filas redundantes de
 `human_review` en producción, conservando **la primera de cada observación** (la que sí produjo el
 cambio de estado). No son "huérfanas" — huérfanas había 0.
+
+---
+
+## CR-030 — Números reales para el voluntario (2026-07-29)
+
+**Origen:** voluntarios reportan que la app "solo deja registrar 20 mezquites".
+
+**Hallazgo (verificado contra la base de producción):** el registro **no tiene tope**. Había cuentas
+con **22, 27, 29, 31 y 37** observaciones —una de ellas 37 en 47 minutos—, **0** filas sin imagen, 167
+claves de imagen distintas para 167 filas, y un retraso entre captura y `created_at` de **19–23 s de
+promedio (109 s el máximo)**: las subidas entraban en tiempo real. El 20 estaba **en el texto**:
+`feedback_window = 20` era el `LIMIT` de `GET /me/feedback`, así que la frase "de tus últimas 20
+observaciones" **se congelaba en 20** para quien pasara de 20 y mostraba el total real por debajo de
+ese umbral — razón por la que el hallazgo era invisible desde una cuenta con 13 capturas.
+
+| # | Criterio de aceptación | Implementación | Prueba |
+|---|---|---|---|
+| **AC1** El resumen considera TODAS las observaciones, no 20 | `routers/me.py::feedback` (sin `LIMIT`) + `gamification.account_review_counts` | `backend/tests/test_cr030_numeros_reales.py::test_feedback_sin_ventana_de_20` (22 subidas ⇒ 22) |
+| **AC2** El mensaje nombra el total real y el 20 no reaparece | mismo | `::test_feedback_mensaje_usa_total_real` (afirma que "20" y "últimas" NO están) |
+| **AC3** El resumen sigue siendo agregado y no delata rechazos | mismo | `test_rankings_profile.py::test_feedback_is_aggregate_not_individual` · `::test_en_revision_excluye_rechazadas` |
+| **AC4** `/me/profile` expone `total_uploaded` sin alterar `total_observations` (CR-026) | `routers/me.py::profile` + `schemas.ProfileResponse` | `::test_profile_expone_subidas_sin_tocar_confirmadas` (3 subidas / 1 confirmada) |
+| **AC5** `en_revision` excluye rechazadas en profile y evidence | `account_review_counts` (`count(*) FILTER` por estado) | `::test_en_revision_excluye_rechazadas` |
+| **AC6** El texto concuerda en número (no dice "1 observaciones") | `routers/me.py::feedback` | `::test_feedback_concordancia_en_singular` |
+| **AC7** `feedback_window` desapareció de la configuración | `config.py` | `::test_config_ya_no_expone_feedback_window` |
+| **AC8** Perfil pinta subidas y confirmadas con etiquetas distintas | `profile_screen.dart` (`activity_subidas` / `activity_confirmadas`) | `mobile/test/cr030_numeros_reales_test.dart::con 31 subidas y 3 confirmadas pinta AMBOS números` |
+| **AC9** La brecha se explica como cola de revisión; sin cola, no hay nota | `profile_screen.dart` (`activity_en_revision`) | mismo · `::con todo revisado no aparece la nota de brecha` (caso real de 37/37) |
+| **AC10** Mi participación abre con el total subido y no cuenta rechazadas como pendientes | `evidence_screen.dart` (`evidence_subidas`) + `models.dart::Evidence.pendientes` | `::una rechazada NO se cuenta como "sigue en revisión"` (13/12/1) |
+| **AC11** Los modelos toleran un backend anterior a CR-030 | `models.dart` (campos con default y respaldo) | `::AC-8 — los modelos toleran un backend anterior a CR-030` (4 casos) |
+| **AC12** Ningún texto del voluntario fija un tope ni habla de "las últimas N" | `copy.dart` | `::ningún texto del voluntario promete un tope de 20` |
+
+**Gates:** ninguno se enmienda. **#9 / CR-026 intacto:** conteos "válidos", insignias, etiqueta L3,
+puntos, mapas e indicadores públicos siguen contando **solo `confirmada`**; este CR **añade** el dato
+crudo al lado, no redefine qué es válida. **Q5.A-D1 intacto:** el resumen sigue siendo agregado.
+**Sin migración** (no se toca ninguna tabla).
+
+**Decisión del usuario (2026-07-29):** las **rechazadas NO se le muestran** al voluntario. El mensaje
+nombra confirmadas y en revisión, y el total subido se presenta como cifra aparte. Consecuencia
+asumida: para quien tenga rechazos, confirmadas + en revisión **no suman** el total subido, y esa
+diferencia no se explica en pantalla.
+
+**Compatibilidad:** `window` se conserva en la respuesta (deprecado, ahora igual al total) para que
+una PWA con bundle viejo en caché no reviente al parsearlo como `int` obligatorio. Como el `message`
+lo arma el **servidor**, esos clientes ven el texto corregido **en cuanto se despliega el backend**.
+
+**Nota sobre AC4 de CR-026:** el `account_observation_count` que citaba ese renglón fue reemplazado
+por `account_review_counts` (una consulta agregada con los cuatro estados); el criterio no cambia.
+
+**Deuda anotada (NO entra en este CR):** el envío es *fire-and-forget* y **falla en silencio** —
+`capture_screen.dart` muestra "registrada y aceptada" **antes** de que el POST responda,
+`.catchError((_) {})` se traga el error, la `PendingQueue` es solo en memoria y **ningún widget la
+pinta**, no hay reintento, y el **401** de un token vencido (TTL 7 días, CR-027) no se maneja. **No
+hay almacenamiento sin conexión:** una captura tomada sin red se pierde y el usuario ve un mensaje de
+éxito. Los datos de producción no muestran un corte sistemático, pero por diseño ese fallo no deja
+rastro en la base. Amerita su propio CR.

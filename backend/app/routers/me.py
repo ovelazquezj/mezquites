@@ -1,6 +1,6 @@
 """Perfil y feedback del voluntario.
 
-- ``GET /me/feedback`` — resumen **agregado** de aportaciones ("de tus últimas N, M confirmadas").
+- ``GET /me/feedback`` — resumen **agregado** de aportaciones ("subiste N, M confirmadas").
   Revisión humana (CR-001): toda observación se acepta al subir; un rechazo humano no se expone de
   forma individual. NUNCA acusación individual (gate Q5.A-D1).
 - ``GET /me/profile`` — lifelist, etiqueta de identidad L3, insignias (sin desbloquear funciones).
@@ -11,6 +11,12 @@
 son las observaciones **confirmadas**; las horas de sesión se retiran de la pantalla de la app por
 medir tiempo de app abierta y no trabajo de campo. Nada se deja de capturar: ``horas_totales``,
 ``sesiones`` y el total crudo de capturas se siguen calculando y viajando en la respuesta.
+
+**CR-030 (reporte de voluntarios: "solo deja registrar 20"):** los tres endpoints presentan ahora el
+**total real subido** junto al confirmado. El resumen de ``/me/feedback`` dejó de calcularse sobre
+"las últimas 20" (la ventana era un recorte que se leía como tope de captura) y ``en_revision`` viaja
+explícito para que la app no lo deduzca restando. El criterio de CR-026 sobre qué cuenta como
+*válida* **no se toca**: se añade el dato crudo al lado.
 """
 
 from __future__ import annotations
@@ -19,14 +25,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from ..config import get_settings
 from ..db import get_db
 from ..deps import CurrentUser, get_current_user, require_role
 from ..gamification import (
-    account_confirmed_count,
     account_lifelist,
-    account_observation_count,
     account_points,
+    account_review_counts,
     compute_badges,
 )
 from ..models import Account, ParticipationSession
@@ -48,38 +52,45 @@ _volunteer = require_role("voluntario", "aliado_firmante", "admin_consorcio")
 def feedback(
     user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> FeedbackAggregate:
-    """Resumen AGREGADO sobre las últimas N observaciones (sin acusación individual, CR-001).
+    """Resumen AGREGADO de TODAS las observaciones de la cuenta (sin acusación individual, CR-001).
 
     CR-026: ``validas`` cuenta las **confirmadas** por revisión humana. El mensaje nombra además las
     que siguen en revisión, para que la diferencia entre lo subido y lo confirmado no se lea como un
     rechazo: la mayor parte de esa brecha es cola de revisión, no calidad. Nunca se expone el
     resultado de una foto en particular (gate Q5.A-D1).
+
+    **CR-030:** se retiró la ventana de 20 (``settings.feedback_window``). El texto resultante decía
+    "de tus últimas 20 observaciones" y **se congelaba en 20** para quien pasara de 20 — voluntarios
+    con 22, 27, 31 y 37 capturas reales lo leyeron como un tope de registro. Ahora el mensaje abre
+    con el **total real subido**, que es el número que el voluntario reconoce.
+
+    El mensaje NO nombra las rechazadas (decisión del usuario, 2026-07-29): sigue el criterio de
+    CR-001 de no dar feedback de rechazo, ni siquiera agregado. Consecuencia asumida: para quien
+    tenga rechazos, confirmadas + en revisión no suman el total, y esa diferencia no se explica.
     """
-    settings = get_settings()
-    window = settings.feedback_window
-    rows = db.execute(
-        text(
-            """
-            SELECT estado_revision FROM observation
-            WHERE account_id = :a
-            ORDER BY captured_at DESC
-            LIMIT :n
-            """
-        ),
-        {"a": user.account_id, "n": window},
-    ).all()
-    total = len(rows)
-    validas = sum(1 for r in rows if r[0] == "confirmada")
-    en_revision = sum(1 for r in rows if r[0] == "aceptada")
+    counts = account_review_counts(db, user.account_id)
+    total = counts["total"]
+    validas = counts["confirmada"]
+    en_revision = counts["aceptada"]
     if total == 0:
         message = "Aún no tienes observaciones para mostrar tu resumen."
     else:
-        message = (
-            f"De tus últimas {total} observaciones, {validas} ya están confirmadas "
-            f"y {en_revision} siguen en revisión."
+        # Concordancia explícita: el texto lo lee un voluntario, no un log.
+        subidas = "observación" if total == 1 else "observaciones"
+        confirmadas_frase = (
+            "1 ya está confirmada" if validas == 1 else f"{validas} ya están confirmadas"
         )
+        revision_frase = (
+            "1 sigue en revisión" if en_revision == 1 else f"{en_revision} siguen en revisión"
+        )
+        message = f"Subiste {total} {subidas}. {confirmadas_frase} y {revision_frase}."
     return FeedbackAggregate(
-        window=window, total_considered=total, validas=validas, message=message
+        # `window` queda deprecado (CR-030) pero se sigue enviando por los bundles en caché.
+        window=total,
+        total_considered=total,
+        validas=validas,
+        en_revision=en_revision,
+        message=message,
     )
 
 
@@ -90,13 +101,18 @@ def profile(
     account = db.get(Account, user.account_id)
     institution = account.institution.name if account and account.institution else None
     # CR-026: el perfil presenta lo confirmado (conteo, insignias, lifelist y puntos).
-    confirmed = account_confirmed_count(db, user.account_id)
+    # CR-030: además viaja el total crudo subido, para que la app pueda mostrar el número que el
+    # voluntario reconoce junto al confirmado. No redefine nada: `total_observations` sigue igual.
+    counts = account_review_counts(db, user.account_id)
+    confirmed = counts["confirmada"]
     return ProfileResponse(
         handle=user.handle,
         identity_label=account.identity_label if account else "nuevo_observador",
         institution=institution,
         lifelist_trees=account_lifelist(db, user.account_id),
         total_observations=confirmed,
+        total_uploaded=counts["total"],
+        en_revision=counts["aceptada"],
         total_points=account_points(db, user.account_id),
         badges=compute_badges(confirmed),
     )
@@ -151,8 +167,12 @@ def evidence(
     Las horas se siguen calculando y devolviendo aunque la app ya no las pinte (CR-026): son dato de
     análisis para la institución, no evidencia de trabajo de campo.
     """
-    capturas = account_confirmed_count(db, user.account_id)
-    capturas_totales = account_observation_count(db, user.account_id)
+    # CR-030: los tres conteos salen de una sola consulta agregada, y `en_revision` viaja explícito
+    # para que la app no lo deduzca restando (esa resta contaba las rechazadas como si estuvieran
+    # en cola: con 13 subidas / 12 confirmadas / 1 rechazada decía "1 sigue en revisión").
+    counts = account_review_counts(db, user.account_id)
+    capturas = counts["confirmada"]
+    capturas_totales = counts["total"]
     row = db.execute(
         text(
             """
@@ -170,6 +190,7 @@ def evidence(
     return EvidenceResponse(
         capturas=capturas,
         capturas_totales=capturas_totales,
+        en_revision=counts["aceptada"],
         horas_totales=horas,
         sesiones=int(row["n_sesiones"]),
         primera=row["primera"],

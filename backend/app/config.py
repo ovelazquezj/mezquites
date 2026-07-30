@@ -92,7 +92,11 @@ class Settings(BaseSettings):
     metric_srid: int = 6372                  # EPSG:6372 (México ITRF2008 LCC) para metros
     points_base: int = 5                     # recompensa base (fire-and-forget)
     points_deferred: int = 10                # recompensa diferida (solo si válida)
-    feedback_window: int = 20                # "de tus últimas N observaciones"
+    # CR-030: aquí vivía `feedback_window: int = 20`, el `LIMIT` del resumen de `/me/feedback`. La
+    # frase resultante ("de tus últimas 20 observaciones") se congelaba en 20 para quien pasara de
+    # 20 y varios voluntarios la leyeron como un tope de captura. El resumen ya considera TODAS las
+    # observaciones de la cuenta, así que la ventana desapareció en vez de volverse configurable:
+    # ninguna cifra que el voluntario lea debe ser un recorte silencioso.
     # Huso con el que se agrupa "por día" en los reportes (CR-026). Las marcas de tiempo se guardan
     # en UTC; agrupar en UTC correría al día siguiente toda la actividad vespertina de México.
     report_timezone: str = "America/Mexico_City"

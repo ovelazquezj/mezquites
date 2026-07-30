@@ -44,16 +44,19 @@ void main() {
     }
   });
 
-  test('FeedbackAggregate es agregado (window/total/validas)', () {
+  test('FeedbackAggregate es agregado (total/validas/en revisión)', () {
+    // CR-030: `window` sigue viajando en la respuesta (bundles en caché) pero el
+    // modelo ya no lo lee: el resumen cubre TODAS las observaciones.
     final f = FeedbackAggregate.fromJson({
-      'window': 20,
+      'window': 8,
       'total_considered': 8,
       'validas': 6,
-      'message': 'De tus últimas 8 observaciones, 6 siguen aceptadas.',
+      'en_revision': 2,
+      'message': 'Subiste 8 observaciones. 6 ya están confirmadas y 2 siguen en revisión.',
     });
-    expect(f.window, 20);
     expect(f.totalConsidered, 8);
     expect(f.validas, 6);
+    expect(f.enRevision, 2);
   });
 
   test('AC6: el copy de envío dice "registrada y aceptada" (CR-001)', () {

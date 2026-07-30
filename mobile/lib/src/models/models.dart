@@ -119,31 +119,46 @@ class MineObservation {
       );
 }
 
-/// Feedback AGREGADO de tasa de validación (Q5.A-D1, gate #9).
-/// "De tus últimas N, M válidas." NUNCA acusación individual.
+/// Feedback AGREGADO de aportaciones (Q5.A-D1, gate #9). NUNCA acusación individual.
+///
+/// CR-030: el resumen cubre **todas** las observaciones de la cuenta, no "las
+/// últimas 20". El campo `window` del backend queda deprecado y ya no se lee:
+/// era el recorte que hacía que el mensaje se congelara en 20.
 class FeedbackAggregate {
   const FeedbackAggregate({
-    required this.window,
     required this.totalConsidered,
     required this.validas,
+    this.enRevision = 0,
     required this.message,
   });
 
-  final int window;
+  /// Total real de observaciones subidas por la cuenta (CR-030).
   final int totalConsidered;
+
+  /// Confirmadas por revisión humana (CR-026).
   final int validas;
+
+  /// Subidas que siguen en cola de revisión. NO incluye rechazadas (CR-030).
+  final int enRevision;
+
+  /// Mensaje agregado, redactado por el backend.
   final String message;
 
   factory FeedbackAggregate.fromJson(Map<String, dynamic> j) =>
       FeedbackAggregate(
-        window: j['window'] as int,
-        totalConsidered: j['total_considered'] as int,
-        validas: j['validas'] as int,
+        totalConsidered: (j['total_considered'] as num).toInt(),
+        validas: (j['validas'] as num).toInt(),
+        // Tolera un backend anterior a CR-030 (campo ausente).
+        enRevision: (j['en_revision'] as num?)?.toInt() ?? 0,
         message: j['message'] as String,
       );
 }
 
 /// Perfil del voluntario (Q4). Etiqueta de identidad SIN desbloquear funciones.
+///
+/// CR-030: además del conteo de confirmadas (CR-026) llega [totalUploaded], el
+/// número que el voluntario reconoce como "lo que subí". Tener los dos permite
+/// explicar la brecha en pantalla en vez de dejarla como una pérdida aparente.
 class Profile {
   const Profile({
     required this.handle,
@@ -151,6 +166,8 @@ class Profile {
     this.institution,
     required this.lifelistTrees,
     required this.totalObservations,
+    this.totalUploaded = 0,
+    this.enRevision = 0,
     required this.totalPoints,
     required this.badges,
   });
@@ -158,8 +175,19 @@ class Profile {
   final String handle;
   final String identityLabel;
   final String? institution;
+
+  /// Árboles distintos con al menos una observación confirmada (CR-026).
   final int lifelistTrees;
+
+  /// Observaciones **confirmadas** por revisión humana (CR-026).
   final int totalObservations;
+
+  /// Observaciones **subidas**, revisadas o no (CR-030).
+  final int totalUploaded;
+
+  /// Subidas que siguen en cola de revisión. NO incluye rechazadas (CR-030).
+  final int enRevision;
+
   final int totalPoints;
   final List<String> badges;
 
@@ -167,9 +195,14 @@ class Profile {
         handle: j['handle'] as String,
         identityLabel: j['identity_label'] as String,
         institution: j['institution'] as String?,
-        lifelistTrees: j['lifelist_trees'] as int,
-        totalObservations: j['total_observations'] as int,
-        totalPoints: j['total_points'] as int,
+        lifelistTrees: (j['lifelist_trees'] as num).toInt(),
+        totalObservations: (j['total_observations'] as num).toInt(),
+        // Tolera un backend anterior a CR-030: sin el campo, el total subido no
+        // se conoce y cae al confirmado (nunca lo pinta más bajo de lo real).
+        totalUploaded: (j['total_uploaded'] as num?)?.toInt() ??
+            (j['total_observations'] as num).toInt(),
+        enRevision: (j['en_revision'] as num?)?.toInt() ?? 0,
+        totalPoints: (j['total_points'] as num).toInt(),
         badges: (j['badges'] as List).cast<String>(),
       );
 }
@@ -364,15 +397,21 @@ class Indicators {
 /// el total subido. [horasTotales] se sigue recibiendo pero **ya no se muestra**:
 /// medía tiempo con la app abierta, no trabajo en campo. Se conserva en el
 /// modelo porque el backend la sigue enviando y es dato de análisis.
+///
+/// CR-030: [enRevision] llega del servidor. Antes se deducía restando
+/// `capturasTotales - capturas`, y esa resta contaba las **rechazadas** como si
+/// siguieran en cola: con 13 subidas, 12 confirmadas y 1 rechazada la pantalla
+/// decía "1 sigue en revisión".
 class Evidence {
   const Evidence({
     required this.capturas,
     required this.capturasTotales,
     required this.horasTotales,
     required this.sesiones,
+    int? enRevision,
     this.primera,
     this.ultima,
-  });
+  }) : _enRevision = enRevision;
 
   /// Nº de observaciones propias **confirmadas** (CR-026).
   final int capturas;
@@ -390,14 +429,25 @@ class Evidence {
   final DateTime? primera;
   final DateTime? ultima;
 
-  /// Observaciones subidas que aún esperan revisión (o fueron rechazadas).
-  int get pendientes =>
-      capturasTotales - capturas < 0 ? 0 : capturasTotales - capturas;
+  /// Valor del servidor (CR-030). `null` = backend anterior al campo.
+  final int? _enRevision;
+
+  /// Observaciones subidas que siguen esperando revisión.
+  ///
+  /// Con un backend anterior a CR-030 cae a la resta antigua, que sobrestima
+  /// (mete las rechazadas). Es el peor caso tolerable: nunca oculta trabajo.
+  int get pendientes {
+    final delServidor = _enRevision;
+    if (delServidor != null) return delServidor < 0 ? 0 : delServidor;
+    final resta = capturasTotales - capturas;
+    return resta < 0 ? 0 : resta;
+  }
 
   factory Evidence.fromJson(Map<String, dynamic> j) => Evidence(
         capturas: (j['capturas'] as num).toInt(),
         capturasTotales: (j['capturas_totales'] as num?)?.toInt() ??
             (j['capturas'] as num).toInt(),
+        enRevision: (j['en_revision'] as num?)?.toInt(),
         horasTotales: (j['horas_totales'] as num).toDouble(),
         sesiones: (j['sesiones'] as num).toInt(),
         primera: (j['primera'] as String?) != null

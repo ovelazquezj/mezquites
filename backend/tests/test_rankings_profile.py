@@ -124,7 +124,8 @@ def test_feedback_is_aggregate_not_individual(client, db_session):
     assert fb["total_considered"] == 3
     assert fb["validas"] == 1  # solo la confirmada
     # Mensaje agregado: nombra confirmadas y pendientes, nunca cuál se rechazó.
-    assert "confirmadas" in fb["message"]
+    # CR-030: se busca la raíz porque el texto concuerda en número ("1 ya está confirmada").
+    assert "confirmad" in fb["message"]
     assert "en revisión" in fb["message"]
     assert "rechaz" not in fb["message"].lower()
 

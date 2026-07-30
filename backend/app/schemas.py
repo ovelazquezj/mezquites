@@ -221,13 +221,20 @@ class FeedbackAggregate(BaseModel):
     """Feedback AGREGADO de aportaciones (Q5.A-D1). NUNCA acusación individual.
 
     Revisión humana (CR-001): toda observación se acepta al subir, así que el resumen pasa a
-    "aceptadas / contadas" sobre las últimas N. CR-026: ``validas`` = **confirmadas** en la ventana
-    (se conserva el nombre del campo por compatibilidad).
+    "aceptadas / contadas". CR-026: ``validas`` = **confirmadas** (se conserva el nombre del campo
+    por compatibilidad).
+
+    **CR-030:** el resumen ya no se calcula sobre "las últimas N": considera **todas** las
+    observaciones de la cuenta, así que ``total_considered`` es el total real subido.
     """
 
+    # Deprecado (CR-030): la ventana desapareció y este campo vale lo mismo que `total_considered`.
+    # Se conserva porque una PWA con bundle viejo en caché lo parsea como `int` obligatorio; quitarlo
+    # rompería su pantalla de perfil hasta que el service worker refresque.
     window: int
-    total_considered: int
-    validas: int  # confirmadas en la ventana (CR-026)
+    total_considered: int  # CR-030: total real subido por la cuenta
+    validas: int  # confirmadas (CR-026)
+    en_revision: int = 0  # CR-030: aceptadas (sin revisar); NO incluye rechazadas
     message: str
 
 
@@ -236,7 +243,11 @@ class ProfileResponse(BaseModel):
     identity_label: str  # L3
     institution: str | None
     lifelist_trees: int
+    # CR-026: confirmadas por revisión humana. Alimenta insignias y etiqueta L3, y NO cambia con
+    # CR-030: lo que se añade es el total crudo al lado, no otra definición de "válida".
     total_observations: int
+    total_uploaded: int = 0  # CR-030: total real subido, revisado o no
+    en_revision: int = 0  # CR-030: aceptadas (sin revisar); NO incluye rechazadas
     total_points: int
     badges: list[str]
 
@@ -508,6 +519,9 @@ class EvidenceResponse(BaseModel):
 
     capturas: int  # confirmadas (CR-026)
     capturas_totales: int  # total subido, sin filtrar por revisión
+    # CR-030: aceptadas (sin revisar). La app lo deducía restando `capturas_totales - capturas`, resta
+    # que contaba las rechazadas como si siguieran en cola.
+    en_revision: int = 0
     horas_totales: float
     sesiones: int
     primera: datetime | None

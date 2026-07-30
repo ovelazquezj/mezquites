@@ -156,21 +156,43 @@ class _ProfileBody extends StatelessWidget {
           ),
         ),
         SectionCard(
-          title: 'Tu actividad',
+          title: Copy.activityTitle,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // CR-026: ambos contadores presentan lo confirmado por revisión
-              // humana, igual que "Mi participación". Las etiquetas lo dicen
-              // para que el número cuadre entre pantallas.
+              // CR-030: el total SUBIDO va primero. Es el número que el
+              // voluntario cuenta en campo; cuando la pantalla solo mostraba lo
+              // confirmado (CR-026), la lectura obvia era "se perdieron".
               StatTile(
-                label: 'Árboles distintos validados',
+                key: const Key('activity_subidas'),
+                label: Copy.activitySubidas,
+                value: '${profile.totalUploaded}',
+              ),
+              // CR-026: de aquí para abajo, solo lo confirmado por revisión
+              // humana. Las etiquetas lo dicen para que el número cuadre entre
+              // pantallas y no se lea como una contradicción.
+              StatTile(
+                key: const Key('activity_confirmadas'),
+                label: Copy.activityConfirmadas,
+                value: '${profile.totalObservations}',
+              ),
+              StatTile(
+                label: Copy.activityArboles,
                 value: '${profile.lifelistTrees}',
               ),
               StatTile(
-                label: 'Observaciones válidas',
-                value: '${profile.totalObservations}',
+                label: Copy.activityPuntos,
+                value: '${profile.totalPoints}',
               ),
-              StatTile(label: 'Puntos', value: '${profile.totalPoints}'),
+              if (profile.enRevision > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    Copy.activityEnRevision(profile.enRevision),
+                    key: const Key('activity_en_revision'),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
             ],
           ),
         ),

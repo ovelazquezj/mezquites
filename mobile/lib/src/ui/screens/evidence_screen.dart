@@ -21,6 +21,12 @@ import '../widgets/common.dart';
 ///   un mezquite. Se acompaña del total subido para que el número tenga
 ///   denominador y no se lea como un rechazo.
 ///
+/// CR-030: el comprobante abre con **"Observaciones subidas"** como cifra propia.
+/// Antes el total solo aparecía en la nota al pie, así que el voluntario veía
+/// primero un número más bajo que el que contó en campo y concluía que la app
+/// había dejado de registrarle. La nota de pendientes usa ahora el `en_revision`
+/// del servidor: la resta anterior contaba las rechazadas como si siguieran en cola.
+///
 /// Gate #1: descriptivo (cuenta aportaciones; sin acciones de manejo).
 /// Gate #2: sin PII (solo conteos y fechas). Gate #3: no bloquea nada.
 class EvidenceScreen extends ConsumerWidget {
@@ -81,6 +87,14 @@ class _EvidenceBody extends StatelessWidget {
       title: Copy.evidenceTitle,
       child: Column(
         children: [
+          // CR-030: el total subido, como cifra propia y primero. El comprobante
+          // debe abrir con el número que el voluntario reconoce; lo confirmado va
+          // debajo, con su etiqueta, sin sustituirlo.
+          StatTile(
+            key: const Key('evidence_subidas'),
+            label: Copy.evidenceSubidas,
+            value: '${evidence.capturasTotales}',
+          ),
           StatTile(
             key: const Key('evidence_capturas'),
             label: Copy.evidenceCapturas,

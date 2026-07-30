@@ -132,6 +132,24 @@ class Copy {
   // --- Perfil / gamificación (Q4) ---
   static const profileTitle = 'Perfil';
   static const rankingsTitle = 'Rankings';
+
+  /// Tarjeta "Tu actividad" (CR-030). El primer renglón es el **total subido**:
+  /// es lo que el voluntario cuenta en campo y lo que buscaba sin encontrarlo.
+  /// Los demás renglones siguen el criterio de CR-026 (solo confirmadas), y por
+  /// eso lo dicen en la etiqueta: dos números distintos con nombres distintos.
+  static const activityTitle = 'Tu actividad';
+  static const activitySubidas = 'Observaciones subidas';
+  static const activityConfirmadas = 'Confirmadas por revisión';
+  static const activityArboles = 'Árboles distintos confirmados';
+  static const activityPuntos = 'Puntos';
+
+  /// Nota que explica la brecha entre subidas y confirmadas. Solo aparece cuando
+  /// hay algo en cola; si todo está revisado, sobra.
+  static String activityEnRevision(int enRevision) => enRevision == 1
+      ? '1 de tus observaciones sigue en revisión. Las insignias, los puntos y '
+          'el mapa cuentan las confirmadas.'
+      : '$enRevision de tus observaciones siguen en revisión. Las insignias, '
+          'los puntos y el mapa cuentan las confirmadas.';
   static const identityNote =
       'Tu etiqueta de identidad reconoce tu trayectoria. No desbloquea '
       'funciones: todas están disponibles desde el primer día.';
@@ -236,6 +254,10 @@ class Copy {
   static const evidenceNote =
       'Este es un resumen de tu participación, útil como comprobante. Es '
       'descriptivo: cuenta tus aportaciones, sin acciones de manejo.';
+  /// CR-030: el total subido va PRIMERO y como cifra propia. Es el número que el
+  /// voluntario cuenta en campo; si solo ve el confirmado, concluye que la app
+  /// dejó de registrarle.
+  static const evidenceSubidas = 'Observaciones subidas';
   static const evidenceCapturas = 'Observaciones válidas registradas';
 
   /// CR-026: la diferencia entre lo subido y lo válido es, casi siempre, cola de
@@ -244,9 +266,12 @@ class Copy {
       'Solo se cuentan las observaciones que el equipo del $orgName ya revisó y '
       'confirmó. Las que subiste hace poco pueden seguir en revisión.';
 
-  /// Pie con el total subido, para que el número confirmado tenga denominador.
+  /// Pie que explica la brecha. CR-030: [pendientes] viene del servidor, así que
+  /// ya no incluye las que no se pudieron confirmar.
   static String evidencePendientes(int pendientes, int totales) =>
-      'Subiste $totales en total; $pendientes siguen en revisión.';
+      pendientes == 1
+          ? 'De tus $totales subidas, 1 sigue en revisión.'
+          : 'De tus $totales subidas, $pendientes siguen en revisión.';
 
   static const evidenceSesiones = 'Sesiones';
   static const evidenceRango = 'Periodo de actividad';
