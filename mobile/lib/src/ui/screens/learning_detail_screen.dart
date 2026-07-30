@@ -90,11 +90,63 @@ class _LearningDetailScreenState extends State<LearningDetailScreen> {
                 data: snapshot.data!,
                 // Enlaces "Saber más" -> navegador externo (AC2).
                 onTapLink: (text, href, title) => _openLink(context, href),
+                // Ilustraciones EMPAQUETADAS en el bundle, no enlazadas: así los
+                // módulos siguen funcionando sin conexión, que es donde de verdad
+                // hacen falta (reconocer paxtle o cúscuta frente al árbol, en
+                // campo y sin señal).
+                imageBuilder: _buildImage,
               );
             },
           ),
         ],
       ),
+    );
+  }
+
+  /// Pinta una ilustración del módulo desde los **assets** del bundle.
+  ///
+  /// El markdown las referencia con ruta relativa (`img/archivo.jpg`) para que la
+  /// fuente única de `docs/learning/` también se lea bien en GitHub; aquí se
+  /// resuelve contra `assets/learning/`. Al ir empaquetadas no hacen ninguna
+  /// petición de red: los módulos siguen sirviendo sin conexión.
+  ///
+  /// Si el archivo faltara (asset mal declarado en `pubspec.yaml`), se muestra el
+  /// texto alternativo en vez de un cuadro roto: el módulo se puede seguir leyendo.
+  Widget _buildImage(Uri uri, String? title, String? alt) {
+    final ruta = uri.hasScheme
+        // Una URL absoluta no debería aparecer en estos contenidos; si aparece, no
+        // se descarga nada y se degrada al texto alternativo.
+        ? null
+        : 'assets/learning/${uri.path}';
+    return Builder(
+      builder: (context) {
+        final theme = Theme.of(context);
+        final alterno = Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Text(
+            alt?.isNotEmpty == true ? alt! : 'Ilustración no disponible.',
+            key: const Key('learning_image_fallback'),
+            style: theme.textTheme.bodySmall
+                ?.copyWith(fontStyle: FontStyle.italic),
+          ),
+        );
+        if (ruta == null) return alterno;
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              ruta,
+              key: const Key('learning_image'),
+              width: double.infinity,
+              fit: BoxFit.cover,
+              // Etiqueta para lectores de pantalla.
+              semanticLabel: alt,
+              errorBuilder: (_, __, ___) => alterno,
+            ),
+          ),
+        );
+      },
     );
   }
 }

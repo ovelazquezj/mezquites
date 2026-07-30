@@ -676,4 +676,74 @@ por `account_review_counts` (una consulta agregada con los cuatro estados); el c
 pinta**, no hay reintento, y el **401** de un token vencido (TTL 7 días, CR-027) no se maneja. **No
 hay almacenamiento sin conexión:** una captura tomada sin red se pierde y el usuario ve un mensaje de
 éxito. Los datos de producción no muestran un corte sistemático, pero por diseño ese fallo no deja
-rastro en la base. Amerita su propio CR.
+rastro en la base. Amerita su propio CR. → **Es CR-031.**
+
+---
+
+## CR-031 — Captura sin conexión y subida diferida (2026-07-29)
+
+Los **21 criterios de aceptación** y las 9 decisiones humanas resueltas están en
+[`CR-031-captura-sin-conexion.md`](../change-requests/CR-031-captura-sin-conexion.md) (§8, §10, §12).
+Aquí queda el mapa de dónde vive cada cosa y qué la prueba.
+
+| Paquete | Implementación | Pruebas |
+|---|---|---|
+| **W1** submit idempotente + 410 | migración `0008` · `models.Observation.client_capture_id` (+ índice parcial único, declarado también en el modelo) · `routers/observations.py` (200 + `ya_existia`) · `deps.py` (410 Gone) · `web-admin/.../api_exception.dart` (`isAuthError` suma 410) | `backend/tests/test_cr031_idempotencia.py` (7) · `web-admin/test/cr031_410_test.dart` (3) |
+| **W2** almacén persistente | `pending_capture.dart` · `pending_store.dart` · `pending_backend_io.dart` (nativo) · `pending_backend_web.dart` (IndexedDB, PRODUCCIÓN) · `pending_backend.dart` (import condicional) | `mobile/test/cr031_pending_store_test.dart` (21) |
+| **W3** motor de subida | `pending_uploader.dart` · `api_client.submitObservation` → `SubmitResult` | `mobile/test/cr031_uploader_test.dart` (16), incluye **AC14** (respuesta perdida ⇒ no duplica) |
+| **W4** interfaz honesta + disparadores | `capture_screen.dart` · `pending_uploads_card.dart` · `account_screen.dart` (D3) · `problem_report_screen.dart` (AC21) · `home_shell.dart` (ciclo de vida) · `network_signal*.dart` (evento `online`) · `providers.dart` (`PendingQueueController`) · `AuthSession.accountId` desde el `sub` del JWT | `mobile/test/cr031_ui_test.dart` (15) |
+
+**Gates:** ninguno se enmienda. **#4 intacto** (la cola solo contiene lo que produjo la cámara; el
+`captured_at` no se reescribe al subir tarde). **#9 / Q5.A-D1 intacto** y reforzado en el texto: los
+mensajes de la cola hablan de **transporte** ("en tu teléfono", "por subir"), nunca de veredicto.
+**#3 intacto:** ningún aviso de acumulación impide capturar. **#2 intacto:** el diagnóstico de la cola
+viaja sin PII (probado).
+
+**Sin cobertura automática, dicho explícitamente:** el backend de **IndexedDB** —que es el de
+producción— no se puede ejercitar en `flutter test`, que corre sobre la VM de Dart y no en un
+navegador. Por eso su costura se redujo a cuatro primitivas sin decisiones y toda la lógica se prueba
+contra un backend en memoria. Se verifica además con `flutter build web`, que sí compila esa rama.
+**AC15 (que la PWA abra sin conexión) requiere un teléfono real en modo avión.**
+
+---
+
+## CR-032 — Aprender como pestaña inicial + ilustraciones de los módulos (2026-07-30)
+
+**Origen:** petición del usuario. (1) La app abría en la cámara y debe abrir en **Aprender**. (2) Los
+módulos de reconocimiento no tenían imágenes; el usuario aportó tres de Wikimedia Commons.
+
+**Hallazgo al analizar el CSV aportado:** las tres URLs eran **páginas de descripción** de Commons
+(`content-type: text/html`), no imágenes — puestas tal cual habrían mostrado un hueco roto. La ruta
+que sí sirve los bytes es `Special:FilePath/<archivo>?width=N` (y no la de `upload.wikimedia.org` con
+hash, que puede cambiar). **Decisión del usuario:** empaquetarlas, no enlazarlas — así "Aprender"
+sigue funcionando sin conexión, que es donde de verdad hace falta reconocer paxtle o cúscuta.
+
+| # | Criterio | Implementación | Prueba |
+|---|---|---|---|
+| **AC1** La app abre en Aprender | `home_shell.dart` (`_index = _tabAprender`) | `cr032_aprender_imagenes_test.dart::la pestaña inicial es Aprender, no la cámara` |
+| **AC2** Los 4 destinos siguen disponibles (gate #3) | mismo | `::capturar sigue estando a un toque` |
+| **AC3** Cada módulo referencia su imagen con ruta **relativa** | `docs/learning/mod_{que_es,paxtle,cuscuta}.md` | `::cada módulo referencia su imagen con ruta relativa` |
+| **AC4** **Ninguna** imagen por red en los contenidos | mismos | `::ningún módulo carga imágenes por red` |
+| **AC5** Los JPEG existen en fuente y bundle, idénticos y válidos | `docs/learning/img/` → `mobile/assets/learning/img/` | `::los archivos existen en la fuente y en el bundle, idénticos` (comprueba los *magic bytes*, porque las URLs del CSV devolvían HTML) |
+| **AC6** `pubspec` declara `assets/learning/img/` | `mobile/pubspec.yaml` | `::pubspec declara assets/learning/img/ explícitamente` |
+| **AC7** Atribución CC BY-SA visible: autor + licencia + enlace | pie de foto en los dos módulos | `::las dos CC BY-SA nombran autor, licencia y enlace` |
+| **AC8** La de dominio público también acredita | `mod_que_es.md` | `::la de dominio público también acredita al autor` |
+| **AC9** Registro de procedencia | `docs/learning/CREDITOS-IMAGENES.md` | `::existe el registro de procedencia` |
+| **AC10** El detalle pinta la imagen desde assets, no el texto de reemplazo | `learning_detail_screen.dart::_buildImage` | `::mod_cuscuta muestra la imagen y no el texto de reemplazo` |
+
+**Licencias.** Empaquetar es **redistribuir**, así que la atribución es condición de la licencia:
+cúscuta (ShahadatHossain) y paxtle (Juan Carlos Fonseca Mata) son **CC BY-SA 4.0** y llevan autor,
+licencia y enlace al pie de su imagen; mezquite (Renebeto) es **dominio público** y se acredita igual.
+Incluirlas **sin modificarlas** es agregación, no obra derivada: **no cambia la licencia MIT del
+software** ni la CC BY 4.0 de los datos. ⚠️ Recortar o retocar alguna sí crearía obra derivada y
+obligaría a publicarla como BY-SA — anotado en el archivo de créditos.
+
+**Peso:** +**717 KB** al bundle del voluntario (960×540, 960×600 y 960×1280; medido con Pillow, no
+estimado). Se pidió `width=800` y Commons sirvió 960: mejor resolución al mismo peso.
+
+**Nota de plataforma:** declarar `assets/learning/` en `pubspec.yaml` **no** incluye subcarpetas en
+Flutter; `assets/learning/img/` va en su propia línea. Verificado en el bundle compilado
+(`build/web/assets/AssetManifest.json`), no solo en las pruebas.
+
+**Gates:** ninguno se enmienda. El banner de **BORRADOR** de los contenidos (pendiente de validación
+AU2/H4) sigue igual: añadir ilustraciones no los valida.

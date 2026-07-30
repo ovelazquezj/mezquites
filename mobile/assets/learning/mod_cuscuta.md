@@ -1,5 +1,9 @@
 # Reconocer la cúscuta
 
+![Maraña de hilos delgados de color amarillo anaranjado enroscados sobre las ramas de una planta](img/cuscuta.jpg)
+
+*Foto: ShahadatHossain, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), vía Wikimedia Commons.*
+
 La cúscuta (*Cuscuta* spp.) es muy fácil de reconocer una vez que sabes qué buscar: parece una maraña
 de **hilos o fideos delgados de color amarillo o anaranjado** enroscados sobre las ramas y hojas del
 mezquite. No tiene hojas verdes visibles, así que ese color brillante destaca de inmediato.

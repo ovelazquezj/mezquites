@@ -83,6 +83,10 @@ flutter:
     # Contenidos de "Aprender" (CR-007): markdown bundleado por módulo. Stubs en
     # dev/tests; el orquestador los reemplaza por docs/learning/ en la integración.
     - assets/learning/
+    # Ilustraciones de los módulos (CR-032). Va aparte porque declarar
+    # `assets/learning/` NO incluye subcarpetas en Flutter. Empaquetadas, no
+    # enlazadas: "Aprender" tiene que funcionar sin conexión.
+    - assets/learning/img/
 
 # --- Ícono de app (CR-003) ---
 # Genera mipmaps Android (mdpi→xxxhdpi) desde el master de marca; adaptive icon

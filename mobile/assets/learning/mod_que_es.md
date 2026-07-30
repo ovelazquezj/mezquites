@@ -1,5 +1,9 @@
 # ¿Qué es el mezquite?
 
+![Un mezquite adulto de copa amplia en un paisaje seco](img/mezquite.jpg)
+
+*Foto: Renebeto, dominio público, vía Wikimedia Commons.*
+
 El mezquite (*Prosopis laevigata*) es un árbol propio de las zonas secas de México. Está muy bien
 adaptado a la sequía: sus raíces profundas alcanzan el agua que otras plantas no logran, y por eso
 sobrevive donde pocos árboles lo harían.

@@ -19,7 +19,14 @@ class HomeShell extends ConsumerStatefulWidget {
 
 class _HomeShellState extends ConsumerState<HomeShell>
     with WidgetsBindingObserver {
-  int _index = 0;
+  /// Pestaña inicial: **Aprender** (CR-032, petición del usuario). Antes abría en
+  /// "Observar". Capturar queda a un toque; el contador de capturas por subir
+  /// (CR-031) sigue visible en Perfil y en la propia pantalla de captura.
+  int _index = _tabAprender;
+
+  /// Índice de "Aprender" en [_screens]. Con nombre para que el orden de las
+  /// pestañas y la pestaña inicial no se desincronicen en silencio.
+  static const _tabAprender = 1;
 
   /// Para dejar de escuchar el evento `online` del navegador (CR-031).
   void Function()? _dejarDeEscucharRed;

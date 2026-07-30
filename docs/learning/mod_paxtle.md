@@ -1,5 +1,9 @@
 # Reconocer el paxtle (heno motita)
 
+![Motas grises de paxtle (Tillandsia recurvata) colgando de las ramas de un árbol](img/paxtle-tillandsia-recurvata.jpg)
+
+*Foto: Juan Carlos Fonseca Mata, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), vía Wikimedia Commons.*
+
 El paxtle, también llamado "heno motita", es la planta *Tillandsia recurvata*. Se ve como pequeñas
 "motas" o bolas grises que cuelgan de las ramas del mezquite y de otros árboles, sobre todo donde hay
 mucha humedad en el aire. De lejos parecen mechones grisáceos repartidos por la copa.
