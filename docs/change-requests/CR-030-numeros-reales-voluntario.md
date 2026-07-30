@@ -8,7 +8,11 @@ mezquites" · **Estado:** integrado
 ## 1. El síntoma y lo que realmente pasaba
 
 Varios voluntarios reportaron que la app **solo les permite registrar 20 observaciones**. Se revisó
-la base de **producción** antes de tocar código. El registro **no tiene ningún tope**:
+la base de **producción** antes de tocar código. El registro **no tiene ningún tope**.
+
+> **Las cifras de abajo son una fotografía del 2026-07-29 ~15:20 h (America/Mexico_City)**, no un
+> estado permanente: seis horas después había **331** observaciones (164 capturas nuevas esa misma
+> tarde). Ver §11 de CR-031 para el muestreo posterior.
 
 | handle | subidas reales | perfil "válidas" | puntos | "de tus últimas N" |
 |---|---|---|---|---|

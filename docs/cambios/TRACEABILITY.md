@@ -629,7 +629,8 @@ cambio de estado). No son "huérfanas" — huérfanas había 0.
 
 **Origen:** voluntarios reportan que la app "solo deja registrar 20 mezquites".
 
-**Hallazgo (verificado contra la base de producción):** el registro **no tiene tope**. Había cuentas
+**Hallazgo (verificado contra la base de producción, fotografía del 2026-07-29 ~15:20 h):** el
+registro **no tiene tope**. Había cuentas
 con **22, 27, 29, 31 y 37** observaciones —una de ellas 37 en 47 minutos—, **0** filas sin imagen, 167
 claves de imagen distintas para 167 filas, y un retraso entre captura y `created_at` de **19–23 s de
 promedio (109 s el máximo)**: las subidas entraban en tiempo real. El 20 estaba **en el texto**:
