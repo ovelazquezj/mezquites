@@ -7,6 +7,7 @@ import '../copy.dart';
 import '../widgets/branded_app_bar.dart';
 import '../widgets/common.dart';
 import '../widgets/install_app_button.dart';
+import '../widgets/pending_uploads_card.dart';
 import 'about_screen.dart';
 import 'account_screen.dart';
 import 'help_screen.dart';
@@ -59,6 +60,11 @@ class ProfileScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            // CR-031: lo que falta por subir va ARRIBA, antes de los conteos del
+            // servidor. Si no, un voluntario con capturas sin enviar vería primero
+            // números que no las incluyen y concluiría que se perdieron. Se
+            // auto-oculta si no hay nada pendiente.
+            const PendingUploadsCard(),
             profileAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => const Text('No se pudo cargar el perfil.'),

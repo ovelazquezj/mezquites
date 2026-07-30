@@ -75,19 +75,50 @@ class AccountScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           OutlinedButton.icon(
             key: const Key('logout_button'),
-            onPressed: () async {
-              await ref.read(authProvider.notifier).logout();
-              if (!context.mounted) return;
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute<void>(builder: (_) => const WelcomeScreen()),
-                (route) => false,
-              );
-            },
+            onPressed: () => _logout(context, ref),
             icon: const Icon(Icons.logout),
-            label: const Text('Cerrar sesión'),
+            label: const Text(Copy.logoutConfirm),
           ),
         ],
       ),
+    );
+  }
+
+  /// Cierra sesión. **Decisión D3 (CR-031):** si hay capturas sin subir, se
+  /// **advierte** y se deja salir — nunca se bloquea. Bloquear la salida dejaría
+  /// atrapado justo a quien está sin señal, que es el escenario para el que existe
+  /// la cola. La cola **sobrevive**: por D8 (un dispositivo, un voluntario) al
+  /// volver a entrar es la misma cuenta y sus capturas se envían solas.
+  Future<void> _logout(BuildContext context, WidgetRef ref) async {
+    final pendientes = ref.read(pendingQueueProvider).pendientes;
+    if (pendientes > 0) {
+      final salir = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          key: const Key('logout_pending_dialog'),
+          title: const Text(Copy.logoutConfirm),
+          content: Text(Copy.logoutWithPending(pendientes)),
+          actions: [
+            TextButton(
+              key: const Key('logout_cancel'),
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text(Copy.logoutCancel),
+            ),
+            FilledButton(
+              key: const Key('logout_accept'),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text(Copy.logoutConfirm),
+            ),
+          ],
+        ),
+      );
+      if (salir != true) return;
+    }
+    await ref.read(authProvider.notifier).logout();
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const WelcomeScreen()),
+      (route) => false,
     );
   }
 

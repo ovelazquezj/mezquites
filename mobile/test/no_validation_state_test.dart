@@ -59,8 +59,17 @@ void main() {
     expect(f.enRevision, 2);
   });
 
-  test('AC6: el copy de envío dice "registrada y aceptada" (CR-001)', () {
-    expect(Copy.captureQueued.toLowerCase(), contains('aceptada'));
+  test('el copy de envío no promete resultado por foto (Q5.A-D1)', () {
+    // CR-031 retiró `captureQueued` ("Observación registrada y aceptada"), que se
+    // mostraba ANTES de que el servidor respondiera. Ahora hay dos mensajes y
+    // ninguno afirma un veredicto: hablan de transporte.
+    expect(Copy.captureSavedOffline.toLowerCase(), contains('tu teléfono'));
+    expect(Copy.captureUploaded.toLowerCase(), contains('registrada'));
+    for (final t in [Copy.captureSavedOffline, Copy.captureUploaded]) {
+      expect(t.toLowerCase(), isNot(contains('válida')));
+      expect(t.toLowerCase(), isNot(contains('confirmada')));
+      expect(t.toLowerCase(), isNot(contains('revisión')));
+    }
     // El copy del aporte no promete resultado por foto individual (Q5.A-D1).
     expect(Copy.feedbackNote.toLowerCase(), contains('resumen'));
     expect(Copy.feedbackNote.toLowerCase(), contains('en particular'));

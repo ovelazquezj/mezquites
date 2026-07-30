@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -38,11 +40,26 @@ class _ProblemReportScreenState extends ConsumerState<ProblemReportScreen> {
   Future<void> _send() async {
     setState(() => _sending = true);
     final diag = deviceDiagnostics();
+    // CR-031 (AC21): se adjunta el estado de la cola de subida. Con solo el
+    // contador en pantalla (decisión D5), esta es la ÚNICA vía por la que una cola
+    // atascada llega al equipo: el voluntario no puede señalar cuál falló. Sin PII
+    // (solo cifras, marcas de tiempo y el último error técnico).
+    String? detalle = widget.errorDetail;
+    try {
+      final cola = await ref.read(pendingStoreProvider).diagnostico();
+      final resumen = 'cola_de_subida=${json.encode(cola)}';
+      detalle = detalle == null || detalle.isEmpty
+          ? resumen
+          : '$detalle | $resumen';
+    } catch (_) {
+      // Si el almacén no responde, el reporte se manda igual: vale más el reporte
+      // que el diagnóstico.
+    }
     try {
       await ref.read(apiClientProvider).submitProblemReport(
             note: _noteCtrl.text.trim(),
             context: widget.prefillContext ?? 'general',
-            errorDetail: widget.errorDetail,
+            errorDetail: detalle,
             userAgent: diag.userAgent,
             platform: diag.platform,
             appVersion: Copy.appVersion,

@@ -220,9 +220,18 @@ no rompe nada de lo que hoy está instalado.
 
 ## 9. Dependencias nuevas
 
-`path_provider` (imagen en disco, nativo) · `idb_shim` (IndexedDB en web) · `connectivity_plus`
-(señal de red; opcional — el motor funciona sin ella, solo reintentaría más tarde) · `uuid` (o
-generar el UUID v4 a mano con `Random.secure`, para no añadir paquete).
+**Añadidas:** `path_provider` (imagen en disco, nativo) · `idb_shim` (IndexedDB en web).
+
+**Descartadas, y por qué:**
+
+- **`connectivity_plus`** — no se añadió. En **web**, que es la plataforma de producción, el evento
+  `online` de la ventana da la misma señal y `package:web` ya era dependencia (CR-016). En **nativo**
+  la subida se dispara al abrir la app, al volver a primer plano, tras cada captura, con el botón
+  "Subir ahora" y por la escalera de espera del motor. **Costo asumido:** en nativo, con la app
+  abierta y sin tocarla, recuperar la señal puede tardar hasta el siguiente reintento programado
+  (tope 15 min) en vez de ser inmediato. Además `connectivity_plus` solo informa del **estado de la
+  interfaz**, no de que haya internet (wifi cautivo), así que tampoco evitaría el intento fallido.
+- **`uuid`** — el UUID v4 se genera con `Random.secure()` en 12 líneas, fijando versión y variante.
 
 ---
 

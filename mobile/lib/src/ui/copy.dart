@@ -103,9 +103,31 @@ class Copy {
       'Lo detectamos por tu ubicación; corrígelo si hace falta.';
 
   static const captureSubmit = 'Registrar observación';
-  // Revisión humana (CR-001): toda observación se acepta al instante.
-  static const captureQueued =
-      'Observación registrada y aceptada. ¡Gracias por contribuir!';
+
+  // --- Confirmación del envío (CR-031) ---
+  //
+  // Aquí vivía un solo mensaje —"Observación registrada y aceptada"— que se
+  // mostraba ANTES de que el servidor respondiera. Si la subida fallaba, el
+  // voluntario ya había leído que todo salió bien. Ahora hay dos mensajes y cada
+  // uno se muestra cuando de verdad corresponde.
+  //
+  // ⚠️ Gate #9 / Q5.A-D1: "guardada" y "registrada" hablan de **transporte**, no de
+  // revisión. Los tres estados que el voluntario debe distinguir son:
+  // en tu teléfono → subida (en revisión) → confirmada. Ningún texto de esta
+  // sección puede insinuar un veredicto.
+
+  /// Se guardó en el dispositivo y aún no ha llegado al servidor.
+  static const captureSavedOffline =
+      'Guardada en tu teléfono. Se enviará sola cuando haya internet.';
+
+  /// El servidor confirmó la recepción.
+  static const captureUploaded = 'Observación registrada. ¡Gracias por contribuir!';
+
+  /// No se pudo ni guardar en el teléfono (almacenamiento lleno o no disponible).
+  /// Es el único caso que debe alarmar: la captura no está a salvo en ningún sitio.
+  static const captureSaveFailed =
+      'No se pudo guardar la observación en tu teléfono. Revisa el espacio '
+      'disponible e inténtalo de nuevo.';
 
   // --- Resumen agregado de aportaciones (CR-001) ---
   static const feedbackTitle = 'Tu aporte';
@@ -113,6 +135,56 @@ class Copy {
       'Tus observaciones se registran al instante y el equipo del $orgName las '
       'revisa después; cuentan como válidas una vez confirmadas. Aquí ves un '
       'resumen de tus aportaciones, nunca el resultado de una foto en particular.';
+
+  // --- Capturas por subir (CR-031; decisión D5: solo contador, sin lista) ---
+
+  /// Contador de pendientes. Dice "por subir" y nunca "por revisar" (gate #9).
+  static String pendingCount(int n) =>
+      n == 1 ? '1 observación por subir' : '$n observaciones por subir';
+
+  static const pendingUploadNow = 'Subir ahora';
+  static const pendingUploading = 'Subiendo…';
+
+  /// Explica que no hay nada que hacer: se envían solas.
+  static const pendingNote =
+      'Se envían solas cuando hay internet. No hace falta que hagas nada; '
+      'puedes seguir capturando sin conexión.';
+
+  /// Aviso al acumular muchas (D2). NUNCA impide capturar (gate #3).
+  static String pendingWarning(int n) =>
+      'Llevas $n observaciones sin subir. Cuando tengas internet, abre la app un '
+      'momento para que se envíen.';
+
+  /// Aviso insistente (D2, umbral alto).
+  static String pendingWarningHigh(int n) =>
+      'Llevas $n observaciones sin subir. Busca una conexión pronto para no '
+      'acumular más en el teléfono.';
+
+  /// Umbrales de aviso (D2). Ajustables en un solo sitio.
+  static const pendingWarnAt = 50;
+  static const pendingWarnHighAt = 150;
+
+  /// La sesión venció (401): la cola NO se pierde.
+  static const pendingSessionExpired =
+      'Tu sesión expiró. Vuelve a entrar y tus observaciones se enviarán solas; '
+      'no se ha perdido ninguna.';
+
+  /// Alguna quedó marcada para revisar por el equipo (error permanente).
+  static String pendingNeedsAttention(int n) => n == 1
+      ? '1 observación no se pudo enviar. Repórtalo con el botón de "Reportar un '
+          'problema" para que el equipo la recupere.'
+      : '$n observaciones no se pudieron enviar. Repórtalo con el botón de '
+          '"Reportar un problema" para que el equipo las recupere.';
+
+  /// Advertencia al cerrar sesión con pendientes (D3). Se permite salir.
+  static String logoutWithPending(int n) => n == 1
+      ? 'Tienes 1 observación sin subir. Se queda guardada y se enviará cuando '
+          'vuelvas a entrar.'
+      : 'Tienes $n observaciones sin subir. Se quedan guardadas y se enviarán '
+          'cuando vuelvas a entrar.';
+
+  static const logoutConfirm = 'Cerrar sesión';
+  static const logoutCancel = 'Cancelar';
 
   // --- Aprendizaje (Q5.C; sin gating, gate #3) ---
   static const learningTitle = 'Aprendizaje';

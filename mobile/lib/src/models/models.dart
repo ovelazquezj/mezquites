@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'enums.dart';
@@ -9,17 +10,49 @@ class AuthSession {
     required this.handle,
     required this.role,
     required this.token,
+    this.accountId,
   });
 
   final String handle;
   final String role;
   final String token;
 
-  factory AuthSession.fromToken(Map<String, dynamic> j) => AuthSession(
-        handle: j['handle'] as String,
-        role: j['role'] as String,
-        token: j['token'] as String,
-      );
+  /// CR-031: id de la cuenta, leído del `sub` del JWT. Es el **sello de
+  /// procedencia** de las capturas guardadas en el dispositivo: identifica de
+  /// quién son sin que la app tenga que guardar nada nuevo (el backend ya pone ahí
+  /// el `account_id`, ver `deps.py`). Sigue sin haber PII: es un UUID opaco.
+  /// `null` si el token no se pudo leer.
+  final String? accountId;
+
+  factory AuthSession.fromToken(Map<String, dynamic> j) {
+    final token = j['token'] as String;
+    return AuthSession(
+      handle: j['handle'] as String,
+      role: j['role'] as String,
+      token: token,
+      accountId: accountIdFromJwt(token),
+    );
+  }
+}
+
+/// Lee el `sub` (account_id) del payload de un JWT, **sin verificar la firma**.
+///
+/// No hace falta verificarla: la firma la comprueba el backend en cada petición y
+/// aquí el valor solo se usa como etiqueta local de "de quién es esta captura". Si
+/// el token es ilegible devuelve `null` y quien lo use debe tolerarlo.
+String? accountIdFromJwt(String token) {
+  try {
+    final partes = token.split('.');
+    if (partes.length < 2) return null;
+    var payload = partes[1].replaceAll('-', '+').replaceAll('_', '/');
+    // base64url sin relleno: se completa a múltiplo de 4.
+    payload = payload.padRight((payload.length + 3) ~/ 4 * 4, '=');
+    final json = jsonDecode(utf8.decode(base64.decode(payload)));
+    if (json is Map && json['sub'] is String) return json['sub'] as String;
+    return null;
+  } catch (_) {
+    return null;
+  }
 }
 
 /// Borrador de las etiquetas de captura (Q2/Q3) listas para POST /observations.

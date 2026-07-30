@@ -6,6 +6,7 @@ import '../../services/capture_service.dart';
 import '../../state/providers.dart';
 import '../copy.dart';
 import '../widgets/branded_app_bar.dart';
+import '../widgets/pending_uploads_card.dart';
 import 'capture_pane.dart';
 import 'help_screen.dart';
 import 'observation_form.dart';
@@ -31,32 +32,37 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
 
   void _onCaptured(CaptureResult result) => setState(() => _shot = result);
 
-  /// Fire-and-forget: encola pendiente, dispara POST, no espera (Q5.A).
-  void _submit(ObservationDraft draft) {
-    final pending = MineObservation(
-      observationId: 'local-${DateTime.now().microsecondsSinceEpoch}',
-      capturedAt: draft.capturedAt,
-      nivelG4: draft.nivelG4.wire,
-      flagCuscuta: draft.flagCuscuta,
-      flagDanio: draft.flagDanio,
-      tamanio: draft.tamanio.wire,
-      contexto: draft.contexto.wire,
-      pending: true,
-    );
-    ref.read(pendingQueueProvider.notifier).add(pending);
-
-    // Dispara sin await (no bloquea la UI). Al confirmar, retira de pendientes.
-    ref.read(apiClientProvider).submitObservation(draft).then((serverId) {
-      ref.read(pendingQueueProvider.notifier).remove(pending.observationId);
+  /// Guarda la captura en el dispositivo y **luego** intenta subirla (CR-031).
+  ///
+  /// Antes esto era fire-and-forget: se mostraba "Observación registrada y
+  /// aceptada" **antes** de que el servidor respondiera y `.catchError((_) {})` se
+  /// tragaba el fallo, así que una captura sin red se perdía con mensaje de éxito.
+  /// Ahora la foto queda **guardada primero** —eso nunca falla estando el
+  /// almacenamiento disponible— y el mensaje dice lo que de verdad pasó.
+  Future<void> _submit(ObservationDraft draft) async {
+    // Libera la vista de inmediato: el voluntario puede seguir capturando aunque
+    // la subida tarde (gate #3: nada se bloquea).
+    setState(() => _shot = null);
+    final queue = ref.read(pendingQueueProvider.notifier);
+    try {
+      final subida = await queue.registrar(draft);
+      if (!mounted) return;
       ref.invalidate(myObservationsProvider);
-    }).catchError((_) {
-      // Permanece "pendiente" para reintento; NO es estado de validación.
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text(Copy.captureQueued)),
-    );
-    setState(() => _shot = null); // listo para la siguiente
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            subida ? Copy.captureUploaded : Copy.captureSavedOffline,
+          ),
+        ),
+      );
+    } catch (_) {
+      // Ni guardar funcionó (almacenamiento lleno o no disponible). Es lo único
+      // que sí debe alarmar: la captura NO está a salvo en ninguna parte.
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(Copy.captureSaveFailed)),
+      );
+    }
   }
 
   @override
@@ -75,9 +81,22 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
           ),
         ],
       ),
-      body: shot != null
-          ? ObservationForm(capture: shot, onSubmit: _submit)
-          : CapturePane(onCaptured: _onCaptured),
+      body: Column(
+        children: [
+          // CR-031: aquí es donde el voluntario está cuando captura sin señal, así
+          // que es donde tiene que ver qué falta por subir. Se auto-oculta cuando
+          // no hay nada pendiente, para no restar espacio a la cámara.
+          const Padding(
+            padding: EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: PendingUploadsCard(),
+          ),
+          Expanded(
+            child: shot != null
+                ? ObservationForm(capture: shot, onSubmit: _submit)
+                : CapturePane(onCaptured: _onCaptured),
+          ),
+        ],
+      ),
     );
   }
 }

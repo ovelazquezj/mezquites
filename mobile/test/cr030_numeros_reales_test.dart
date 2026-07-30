@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mezquite_app/src/api/api_client.dart';
 import 'package:mezquite_app/src/models/models.dart';
+import 'package:mezquite_app/src/services/pending/pending_store.dart';
 import 'package:mezquite_app/src/state/providers.dart';
 import 'package:mezquite_app/src/ui/copy.dart';
 import 'package:mezquite_app/src/ui/screens/evidence_screen.dart';
@@ -22,6 +23,15 @@ import 'helpers.dart';
 /// número que reconociera.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  /// CR-031: Perfil incluye la tarjeta de capturas por subir, que lee el almacén
+  /// de pendientes. Se inyecta uno vacío (así la tarjeta se auto-oculta y estas
+  /// pruebas siguen midiendo solo lo de CR-030).
+  Future<PendingCaptureStore> almacenVacio() async {
+    final store = PendingCaptureStore(InMemoryPendingBackend());
+    await store.init();
+    return store;
+  }
 
   http.Client mockApi(
     Map<String, Object?> profile,
@@ -67,7 +77,10 @@ void main() {
       await tester.pumpWidget(
         wrap(
           const ProfileScreen(),
-          overrides: [apiClientProvider.overrideWithValue(api)],
+          overrides: [
+            apiClientProvider.overrideWithValue(api),
+            pendingStoreProvider.overrideWithValue(await almacenVacio()),
+          ],
         ),
       );
       await tester.pumpAndSettle();
@@ -131,7 +144,10 @@ void main() {
       await tester.pumpWidget(
         wrap(
           const ProfileScreen(),
-          overrides: [apiClientProvider.overrideWithValue(api)],
+          overrides: [
+            apiClientProvider.overrideWithValue(api),
+            pendingStoreProvider.overrideWithValue(await almacenVacio()),
+          ],
         ),
       );
       await tester.pumpAndSettle();
@@ -177,7 +193,10 @@ void main() {
       await tester.pumpWidget(
         wrap(
           const EvidenceScreen(),
-          overrides: [apiClientProvider.overrideWithValue(api)],
+          overrides: [
+            apiClientProvider.overrideWithValue(api),
+            pendingStoreProvider.overrideWithValue(await almacenVacio()),
+          ],
         ),
       );
       await tester.pumpAndSettle();

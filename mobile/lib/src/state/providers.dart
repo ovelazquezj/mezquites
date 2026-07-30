@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_client.dart';
 import '../models/models.dart';
 import '../services/google_auth_service.dart';
+import '../services/pending/pending_capture.dart';
+import '../services/pending/pending_store.dart';
+import '../services/pending/pending_uploader.dart';
 import '../services/session_store.dart';
 import '../services/session_tracker.dart';
 import '../theme/design_tokens.dart';
@@ -143,24 +146,154 @@ final authProvider =
   );
 });
 
-/// Cola local de observaciones "pendientes" (fire-and-forget, Q5.A).
-///
-/// Al enviar, encolamos localmente como `pending` y disparamos el POST sin
-/// bloquear la UI. NUNCA reflejamos estado de validación individual (gate #9):
-/// `pending` solo significa "aún en envío", no "en validación".
-class PendingQueue extends StateNotifier<List<MineObservation>> {
-  PendingQueue() : super(const []);
+/// Almacén persistente de capturas pendientes (CR-031). Se inyecta desde `main()`
+/// porque su apertura es asíncrona, igual que [sessionStoreProvider].
+final pendingStoreProvider = Provider<PendingCaptureStore>(
+  (ref) => throw UnimplementedError(
+    'inyectar PendingCaptureStore en main()/pruebas',
+  ),
+);
 
-  void add(MineObservation obs) => state = [obs, ...state];
+/// Motor de subida (CR-031 W3).
+final pendingUploaderProvider = Provider<PendingUploader>((ref) {
+  return PendingUploader(
+    store: ref.watch(pendingStoreProvider),
+    api: ref.watch(apiClientProvider),
+  );
+});
 
-  void remove(String id) =>
-      state = state.where((o) => o.observationId != id).toList();
+/// Lo que la UI necesita saber de la cola (CR-031). Decisión **D5**: solo cifras,
+/// sin lista por foto.
+class PendingQueueState {
+  const PendingQueueState({
+    this.pendientes = 0,
+    this.necesitanAtencion = 0,
+    this.subiendo = false,
+    this.sesionExpirada = false,
+  });
+
+  /// Total por subir. Incluye las que necesitan atención: el número no miente.
+  final int pendientes;
+
+  final int necesitanAtencion;
+  final bool subiendo;
+
+  /// True tras un 401. La cola **sigue intacta**; solo hace falta volver a entrar.
+  final bool sesionExpirada;
+
+  bool get hayPendientes => pendientes > 0;
+
+  PendingQueueState copyWith({
+    int? pendientes,
+    int? necesitanAtencion,
+    bool? subiendo,
+    bool? sesionExpirada,
+  }) =>
+      PendingQueueState(
+        pendientes: pendientes ?? this.pendientes,
+        necesitanAtencion: necesitanAtencion ?? this.necesitanAtencion,
+        subiendo: subiendo ?? this.subiendo,
+        sesionExpirada: sesionExpirada ?? this.sesionExpirada,
+      );
+}
+
+/// Guarda las capturas y las va subiendo (CR-031). Sustituye a la `PendingQueue`
+/// en memoria que nadie leía y que perdía la foto al cerrar la app.
+class PendingQueueController extends StateNotifier<PendingQueueState> {
+  PendingQueueController({
+    required PendingCaptureStore store,
+    required PendingUploader uploader,
+    required String? Function() accountId,
+    required void Function() onCuentaEliminada,
+  })  : _store = store,
+        _uploader = uploader,
+        _accountId = accountId,
+        _onCuentaEliminada = onCuentaEliminada,
+        super(const PendingQueueState());
+
+  final PendingCaptureStore _store;
+  final PendingUploader _uploader;
+  final String? Function() _accountId;
+  final void Function() _onCuentaEliminada;
+
+  /// Relee las cifras del almacén (no toca la red).
+  Future<void> refresh() async {
+    final capturas = await _store.list();
+    if (!mounted) return;
+    state = state.copyWith(
+      pendientes: capturas.length,
+      necesitanAtencion: capturas
+          .where((c) => c.state == PendingState.necesitaAtencion)
+          .length,
+    );
+  }
+
+  /// Guarda una captura recién tomada y dispara la subida.
+  ///
+  /// Devuelve `true` si el servidor la confirmó en el acto; `false` si quedó
+  /// guardada esperando conexión. El llamador usa eso para decir la verdad en
+  /// pantalla en vez de dar por buena una subida que no ocurrió.
+  Future<bool> registrar(ObservationDraft draft) async {
+    final cuenta = _accountId();
+    final captura = PendingCapture.fromDraft(
+      draft,
+      id: draft.clientCaptureId ?? nuevoClientCaptureId(),
+      accountId: cuenta ?? '',
+    );
+    final bytes = draft.imageBytes;
+    if (bytes == null) {
+      // No debería pasar: la captura web y la nativa entregan bytes. Si pasa, es
+      // mejor fallar visiblemente que perder la foto en silencio.
+      throw StateError('la captura no trae bytes de imagen');
+    }
+    await _store.save(captura, bytes);
+    await refresh();
+    final run = await subirAhora();
+    return run != null && run.subidas > 0;
+  }
+
+  /// Fuerza una pasada del motor. `null` si no hay sesión.
+  Future<UploadRun?> subirAhora() async {
+    final cuenta = _accountId();
+    if (cuenta == null) return null;
+    state = state.copyWith(subiendo: true);
+    UploadRun run;
+    try {
+      run = await _uploader.flush(accountId: cuenta);
+    } finally {
+      if (mounted) state = state.copyWith(subiendo: false);
+    }
+    if (!mounted) return run;
+    if (run.cuentaEliminada) {
+      // D6: la cola ya la vació el motor; aquí se cierra la sesión.
+      state = const PendingQueueState();
+      _onCuentaEliminada();
+      return run;
+    }
+    state = state.copyWith(sesionExpirada: run.sesionExpirada);
+    await refresh();
+    return run;
+  }
+
+  /// Tras volver a entrar: se limpia el aviso y se reintenta.
+  Future<void> sesionRenovada() async {
+    if (mounted) state = state.copyWith(sesionExpirada: false);
+    await subirAhora();
+  }
 }
 
 final pendingQueueProvider =
-    StateNotifierProvider<PendingQueue, List<MineObservation>>(
-  (ref) => PendingQueue(),
-);
+    StateNotifierProvider<PendingQueueController, PendingQueueState>((ref) {
+  final controller = PendingQueueController(
+    store: ref.watch(pendingStoreProvider),
+    uploader: ref.watch(pendingUploaderProvider),
+    accountId: () => ref.read(authProvider)?.accountId,
+    onCuentaEliminada: () => ref.read(authProvider.notifier).logout(),
+  );
+  // Al construirse, publica lo que ya hubiera guardado de una sesión anterior.
+  controller.refresh();
+  return controller;
+});
 
 // --- Datos remotos (FutureProviders) ---
 

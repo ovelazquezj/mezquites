@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import 'src/app.dart';
+import 'src/services/pending/pending_backend.dart';
+import 'src/services/pending/pending_store.dart';
 import 'src/services/session_store.dart';
 import 'src/state/app_config.dart';
 import 'src/state/providers.dart';
@@ -30,10 +32,27 @@ Future<void> main() async {
   }
 
   final store = await SessionStore.create();
+
+  // CR-031: almacén de capturas pendientes. Se abre aquí porque es asíncrono
+  // (IndexedDB en web, directorio + prefs en nativo) y porque `init()` rescata a la
+  // cola lo que hubiera quedado marcado como "subiendo" si la app murió a media
+  // subida. Si no se puede abrir NO se impide usar la app (gate #3): se cae a un
+  // almacén en memoria, que no sobrevive al cierre pero permite seguir capturando;
+  // el hecho viaja en el diagnóstico de "Reportar un problema".
+  PendingCaptureStore pendingStore;
+  try {
+    pendingStore = PendingCaptureStore(crearPendingBackend());
+    await pendingStore.init();
+  } catch (_) {
+    pendingStore = PendingCaptureStore(InMemoryPendingBackend());
+    await pendingStore.init();
+  }
+
   runApp(
     ProviderScope(
       overrides: [
         sessionStoreProvider.overrideWithValue(store),
+        pendingStoreProvider.overrideWithValue(pendingStore),
       ],
       child: const MezquiteApp(),
     ),

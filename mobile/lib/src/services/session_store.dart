@@ -32,7 +32,14 @@ class SessionStore {
     final role = _prefs.getString(_kRole);
     final token = _prefs.getString(_kToken);
     if (handle == null || role == null || token == null) return null;
-    return AuthSession(handle: handle, role: role, token: token);
+    // CR-031: el `account_id` se deriva del propio token, así que no hace falta
+    // guardarlo aparte (ni migrar las sesiones ya persistidas).
+    return AuthSession(
+      handle: handle,
+      role: role,
+      token: token,
+      accountId: accountIdFromJwt(token),
+    );
   }
 
   Future<void> clearSession() async {
