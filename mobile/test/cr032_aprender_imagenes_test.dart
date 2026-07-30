@@ -172,11 +172,14 @@ void main() {
   });
 
   group('el detalle pinta la imagen desde los assets', () {
-    testWidgets('mod_cuscuta muestra la imagen y no el texto de reemplazo',
-        (tester) async {
+    /// Monta el detalle de un módulo con los `.md` leídos del disco.
+    Future<void> abrirModulo(WidgetTester tester, String modulo) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       final mod = LearningModule.placeholders
-          .firstWhere((m) => m.assetPath.contains('mod_cuscuta'));
-
+          .firstWhere((m) => m.assetPath.contains(modulo));
       await tester.pumpWidget(
         wrap(
           DefaultAssetBundle(
@@ -186,12 +189,37 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+    }
+
+    testWidgets('mod_cuscuta muestra la imagen y no el texto de reemplazo',
+        (tester) async {
+      await abrirModulo(tester, 'mod_cuscuta');
 
       expect(find.byKey(const Key('learning_image')), findsOneWidget);
       expect(find.byKey(const Key('learning_image_fallback')), findsNothing);
       // El pie de foto con la atribución se ve en pantalla, no solo en el archivo.
       expect(find.textContaining('ShahadatHossain'), findsOneWidget);
     });
+
+    // Esta es la aserción que faltaba y por la que el fallo llegó a producción:
+    // la imagen SÍ estaba en el árbol, pero con `Size(ancho, 0)` — invisible.
+    // Estar presente no es estar visible.
+    for (final modulo in ['mod_que_es', 'mod_paxtle', 'mod_cuscuta']) {
+      testWidgets('$modulo: la imagen se renderiza con alto MAYOR QUE CERO',
+          (tester) async {
+        await abrirModulo(tester, modulo);
+
+        final img = find.byKey(const Key('learning_image'));
+        expect(img, findsOneWidget);
+        final tamano = tester.getSize(img);
+        expect(
+          tamano.height,
+          greaterThan(0),
+          reason: '$modulo: la ilustración quedaría invisible',
+        );
+        expect(tamano.width, greaterThan(0));
+      });
+    }
   });
 }
 

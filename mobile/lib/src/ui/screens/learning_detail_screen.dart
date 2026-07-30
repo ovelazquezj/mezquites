@@ -135,14 +135,27 @@ class _LearningDetailScreenState extends State<LearningDetailScreen> {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              ruta,
-              key: const Key('learning_image'),
+            // ALTURA FIJA a propósito. Con solo `width` y sin alto, el alto sale de
+            // las dimensiones intrínsecas de la imagen, que valen 0 hasta que
+            // termina de decodificarse: la ilustración quedaba con `Size(w, 0)`,
+            // es decir en el árbol pero **invisible**. Es la misma trampa que ya
+            // nos mordió en la consola con la foto de revisión (CR-029), donde el
+            // área se fijó a 280 px por esta razón.
+            //
+            // `contain` y no `cover`: recortar una foto de reconocimiento puede
+            // quitar justo el detalle que hay que distinguir (las motas del paxtle,
+            // los hilos de la cúscuta), y una de las tres es vertical (960×1280).
+            child: SizedBox(
+              height: 240,
               width: double.infinity,
-              fit: BoxFit.cover,
-              // Etiqueta para lectores de pantalla.
-              semanticLabel: alt,
-              errorBuilder: (_, __, ___) => alterno,
+              child: Image.asset(
+                ruta,
+                key: const Key('learning_image'),
+                fit: BoxFit.contain,
+                // Etiqueta para lectores de pantalla.
+                semanticLabel: alt,
+                errorBuilder: (_, __, ___) => alterno,
+              ),
             ),
           ),
         );
