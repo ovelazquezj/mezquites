@@ -83,8 +83,16 @@ class ApiClient {
   // --- Observaciones ---
 
   /// Envía una observación (multipart: `payload` JSON con 8 etiquetas + `image`).
-  /// Fire-and-forget en el sentido de UI: el caller no debe bloquear esperando.
-  Future<String> submitObservation(ObservationDraft draft) async {
+  ///
+  /// CR-031: devuelve [SubmitResult] en vez del id suelto, porque ahora hay dos
+  /// desenlaces buenos distintos: **201** (se creó) y **200 + `ya_existia`** (era el
+  /// reintento de una captura que sí había llegado, y el servidor devolvió la
+  /// original en vez de duplicar el árbol). Los dos significan "ya está a salvo en
+  /// el servidor", así que los dos permiten borrarla del teléfono.
+  ///
+  /// Propaga `ApiException` con el código HTTP: el motor de subida decide según él
+  /// (5xx reintenta, 422 necesita atención, 401 pausa, 410 borra la cola).
+  Future<SubmitResult> submitObservation(ObservationDraft draft) async {
     final request = http.MultipartRequest('POST', _uri('/observations'));
     request.headers['ngrok-skip-browser-warning'] = 'true';
     if (_token != null) {
@@ -106,7 +114,10 @@ class ApiClient {
     final streamed = await _http.send(request);
     final r = await http.Response.fromStream(streamed);
     final body = _decode(r);
-    return body['observation_id'] as String;
+    return SubmitResult(
+      observationId: body['observation_id'] as String,
+      yaExistia: body['ya_existia'] as bool? ?? false,
+    );
   }
 
   /// Historial propio. SIN estado de validación individual (gate #9).

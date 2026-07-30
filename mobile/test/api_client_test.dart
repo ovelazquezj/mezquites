@@ -73,8 +73,10 @@ void main() {
       imagePath: tmp.path,
     );
 
-    final id = await api.submitObservation(draft);
-    expect(id, 'obs-1');
+    final resultado = await api.submitObservation(draft);
+    expect(resultado.observationId, 'obs-1');
+    // CR-031: un 201 sin `ya_existia` es una observación NUEVA.
+    expect(resultado.yaExistia, isFalse);
     expect(contentType.contains('multipart/form-data'), isTrue);
     final bodyStr = utf8.decode(rawBody);
     // El campo `payload` y el archivo `image` viajan en el multipart.

@@ -85,6 +85,21 @@ class ObservationDraft {
       };
 }
 
+/// Resultado de `POST /observations` (CR-031).
+///
+/// Hay **dos** desenlaces buenos y la app necesita distinguirlos: **201** creó la
+/// observación; **200 con [yaExistia]** significa que esta captura ya estaba
+/// registrada —era el reintento de un envío cuya respuesta se perdió— y el
+/// servidor devolvió la original en vez de crear un segundo árbol. Los dos quieren
+/// decir "está a salvo en el servidor", así que en los dos casos la captura se
+/// puede borrar del teléfono.
+class SubmitResult {
+  const SubmitResult({required this.observationId, this.yaExistia = false});
+
+  final String observationId;
+  final bool yaExistia;
+}
+
 /// Una observación propia en cola/registrada. NUNCA contiene estado de
 /// validación individual (gate #9, Q5.A-D1).
 class MineObservation {
