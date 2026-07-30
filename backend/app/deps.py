@@ -50,7 +50,14 @@ def get_current_user(
         )
     account = db.get(Account, account_id)
     if account is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="cuenta no existe")
+        # CR-031: **410 Gone**, no 401. El token es válido pero la cuenta ya no existe (cancelación
+        # ARCO, CR-006). La app necesita distinguir los dos casos porque hace lo CONTRARIO en cada
+        # uno: ante 401 (token vencido) **conserva** las capturas sin subir y pide volver a entrar;
+        # ante 410 **borra** la cola local, porque esa cuenta pidió dejar de existir. Antes ambos
+        # eran 401 y solo se diferenciaban por el texto en español del `detail`: ramificar sobre esa
+        # cadena significaba que reescribir un mensaje podía convertir "vuelve a entrar" en "borra
+        # el trabajo del voluntario".
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="cuenta eliminada")
     # El rol autoritativo es el de la DB (no el del token), por si cambió.
     return CurrentUser(account.id, account.handle, account.role)
 

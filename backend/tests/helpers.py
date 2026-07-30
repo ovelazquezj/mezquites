@@ -149,6 +149,7 @@ def submit_observation(
     tamanio: str = "mediano",
     contexto: str = "campo_abierto",
     captured_at: datetime | None = None,
+    client_capture_id: str | None = None,
 ):
     captured_at = captured_at or datetime.now(timezone.utc)
     payload = {
@@ -161,6 +162,10 @@ def submit_observation(
         "tamanio": tamanio,
         "contexto": contexto,
     }
+    # CR-031: solo se incluye si la prueba lo pide, para poder ejercitar también el camino del
+    # cliente anterior al campo (que no lo manda).
+    if client_capture_id is not None:
+        payload["client_capture_id"] = client_capture_id
     return client.post(
         "/api/v1/observations",
         headers=auth_header(token),

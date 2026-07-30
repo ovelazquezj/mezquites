@@ -192,12 +192,20 @@ class ObservationCreate(BaseModel):
     # preselecciona (editable). Si no vienen, el backend los DERIVA del EXIF (respaldo, Q8).
     estado: str | None = None
     municipio: str | None = None
+    # CR-031: id que la app genera AL CAPTURAR y repite en cada reintento. Hace idempotente el
+    # submit: si la respuesta se perdió, el reintento no crea un segundo árbol. Opcional para no
+    # romper clientes anteriores a CR-031 (que simplemente no lo mandan).
+    client_capture_id: uuid.UUID | None = None
 
 
 class ObservationSubmitResponse(BaseModel):
     observation_id: uuid.UUID
     base_points: int
     message: str = "Observación registrada y aceptada. ¡Gracias por contribuir!"
+    # CR-031: True ⇒ esta captura ya estaba registrada (mismo `client_capture_id`), así que NO se
+    # creó nada nuevo y se devuelve el `observation_id` original. Mismo criterio que `ya_existia` de
+    # CR-028 y `sin_cambio` de CR-029: no castigar un reintento legítimo ni ensuciar el dato.
+    ya_existia: bool = False
     # NO se devuelve estado de revisión individual (Q5.A-D1: sin acusación por observación).
 
 

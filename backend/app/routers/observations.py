@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -41,6 +41,7 @@ router = APIRouter(tags=["observations"])
     status_code=status.HTTP_201_CREATED,
 )
 async def submit_observation(
+    response: Response,
     payload: str = Form(..., description="JSON con las 8 etiquetas (ObservationCreate)."),
     image: UploadFile = File(..., description="Imagen de cámara nativa (con EXIF)."),
     user: CurrentUser = Depends(require_role("voluntario", "aliado_firmante", "admin_consorcio")),
@@ -53,6 +54,29 @@ async def submit_observation(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"payload inválido: {exc}"
         )
+
+    # (0) CR-031 — idempotencia. Si esta captura ya se registró (mismo `client_capture_id` de la
+    # misma cuenta), NO se crea nada: se devuelve la observación original con 200 y `ya_existia`.
+    # Es lo que permite a la app reintentar sin miedo cuando la respuesta se perdió de vuelta.
+    # Se comprueba ANTES de leer la imagen y de tocar el storage: un reintento no debe subir de nuevo
+    # 200 KB ni dejar un objeto huérfano.
+    if data.client_capture_id is not None:
+        previa = (
+            db.query(Observation)
+            .filter(
+                Observation.account_id == user.account_id,
+                Observation.client_capture_id == data.client_capture_id,
+            )
+            .one_or_none()
+        )
+        if previa is not None:
+            response.status_code = status.HTTP_200_OK
+            return ObservationSubmitResponse(
+                observation_id=previa.id,
+                base_points=settings.points_base,
+                message="Esta captura ya estaba registrada. No se duplicó.",
+                ya_existia=True,
+            )
 
     image_bytes = await image.read()
     if not image_bytes:
@@ -99,6 +123,7 @@ async def submit_observation(
         estado=estado,
         municipio=municipio,
         estado_revision="aceptada",
+        client_capture_id=data.client_capture_id,  # CR-031: sella la captura contra reintentos
     )
     db.add(obs)
 

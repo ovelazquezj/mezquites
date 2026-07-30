@@ -8,7 +8,12 @@ class ApiException implements Exception {
   final String? body;
 
   /// True si es un fallo de autorización (token inválido o rol insuficiente).
-  bool get isAuthError => statusCode == 401 || statusCode == 403;
+  ///
+  /// CR-031 añade el **410**: el backend lo devuelve cuando el token es válido pero la cuenta ya no
+  /// existe (cancelación ARCO). Sin incluirlo aquí, a un usuario de consola cuya cuenta se eliminara
+  /// le saldría un error genérico en vez de volver al login.
+  bool get isAuthError =>
+      statusCode == 401 || statusCode == 403 || statusCode == 410;
 
   @override
   String toString() => 'ApiException($statusCode): $message';

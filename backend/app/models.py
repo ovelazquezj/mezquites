@@ -225,6 +225,11 @@ class Observation(Base):
     estado_revision: Mapped[str] = mapped_column(Text, nullable=False, default="aceptada")
     model_version: Mapped[str | None] = mapped_column(Text)  # legado YOLO (inactivo)
     validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # CR-031: id que la APP genera al capturar y repite en cada reintento de subida. Es lo que hace
+    # idempotente el submit: si la respuesta se pierde y el cliente reintenta, no nace un segundo
+    # árbol. Nullable porque las observaciones históricas no lo tienen y un cliente anterior a CR-031
+    # no lo manda; la unicidad la impone el índice PARCIAL (account_id, client_capture_id).
+    client_capture_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -247,6 +252,17 @@ class Observation(Base):
         Index("observation_geom_gix", "geom", postgresql_using="gist"),
         Index("observation_tree_idx", "tree_id", "captured_at"),
         Index("observation_estado_revision_idx", "estado_revision"),
+        # CR-031: la misma captura no puede registrarse dos veces (reintento tras una respuesta
+        # perdida). PARCIAL: las filas sin id de captura —históricas o de un cliente anterior— quedan
+        # fuera del índice. Se declara aquí y no solo en la migración 0008 para que la garantía exista
+        # también donde el esquema se crea desde los modelos (dev y pruebas), no solo en producción.
+        Index(
+            "ux_observation_client_capture",
+            "account_id",
+            "client_capture_id",
+            unique=True,
+            postgresql_where=text("client_capture_id IS NOT NULL"),
+        ),
     )
 
 
