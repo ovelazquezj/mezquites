@@ -4,10 +4,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../copy.dart';
 import '../widgets/branded_app_bar.dart';
-import '../widgets/common.dart';
 
-/// Detalle de un módulo de "Aprender" (CR-007 §4): `BrandedAppBar` + banner
-/// BORRADOR + render del markdown bundleado (`module.assetPath`). Al tocar un
+/// Detalle de un módulo de "Aprender" (CR-007 §4): `BrandedAppBar` + render del
+/// markdown bundleado (`module.assetPath`), con las ilustraciones empaquetadas
+/// (CR-032). El banner de BORRADOR se retiró en CR-032. Al tocar un
 /// enlace abre la URL en el navegador EXTERNO (`url_launcher`).
 ///
 /// La UI SOLO renderiza: el contenido (texto + enlaces "Saber más") lo provee
@@ -66,9 +66,13 @@ class _LearningDetailScreenState extends State<LearningDetailScreen> {
         key: const Key('learning_detail_content'),
         padding: const EdgeInsets.all(16),
         children: [
-          // Marca el carácter de borrador, sin condicionar el uso (gates #1/#3).
-          const InfoNote(Copy.learningDraftBanner),
-          const SizedBox(height: 12),
+          // CR-032 (petición del usuario, 2026-07-30): se retira el banner de
+          // BORRADOR que CR-007 pintaba aquí. Marcaba que el texto no lo habían
+          // revisado los expertos académicos (AU2/H4) —cosa que sigue siendo
+          // cierta—, pero en la app desplegada al voluntario le resultaba
+          // desconcertante. El texto sigue marcado como borrador en `docs/learning/`
+          // y en la bitácora; lo que se quita es el aviso en pantalla.
+          // Gates #1/#3 intactos: el banner no condicionaba nada.
           FutureBuilder<String>(
             future: _body,
             builder: (context, snapshot) {

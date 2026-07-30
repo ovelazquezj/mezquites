@@ -96,14 +96,15 @@ void main() {
     }
 
     // Tocar el primer módulo navega al detalle. El render del cuerpo markdown
-    // se verifica aparte (test del detalle con bundle de disco); aquí basta con
-    // confirmar que se navegó y aparece el banner BORRADOR (no depende del asset).
+    // se verifica aparte (test del detalle con bundle de disco).
     await tester.tap(find.byKey(const Key('learning_mod_que_es')));
     await tester.pump(); // inicia la transición de ruta
     await tester.pump(const Duration(milliseconds: 400)); // completa la transición
 
     expect(find.byKey(const Key('learning_detail_content')), findsOneWidget);
-    expect(find.textContaining('BORRADOR'), findsOneWidget);
+    // CR-032: el banner de BORRADOR se retiró de la pantalla (petición del
+    // usuario). El contenido sigue marcado como borrador en `docs/learning/`.
+    expect(find.textContaining('BORRADOR'), findsNothing);
   });
 
   testWidgets('AC1/AC5: el detalle renderiza el markdown bundleado del módulo',
