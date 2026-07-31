@@ -27,6 +27,13 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   String? _estadoRevisionFilter;
   late Future<List<ReviewQueueItem>> _future;
 
+  // CR-033: la paginación vive AQUÍ y no en el PagedTable. Al recargar la cola
+  // el FutureBuilder pasa por el spinner y destruye la tabla con su estado
+  // interno; si la página y las filas/página no sobreviven aquí, volver de un
+  // detalle regresaba al revisor a la página 1 con 10 filas.
+  int _page = 0;
+  int _perPage = 10;
+
   static const _filters = <String, String>{
     'aceptada': 'Aceptadas',
     'confirmada': 'Confirmadas',
@@ -40,9 +47,11 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   }
 
   void _reload() {
+    // CR-033: reviewQueueAll pagina contra el backend hasta traer TODA la
+    // cola; el limit fijo de 200 escondía el resto de los registros.
     _future = ref
         .read(apiClientProvider)
-        .reviewQueue(estadoRevision: _estadoRevisionFilter, limit: 200);
+        .reviewQueueAll(estadoRevision: _estadoRevisionFilter);
   }
 
   Future<void> _openDetail(ReviewQueueItem item) async {
@@ -78,6 +87,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
               selected: _estadoRevisionFilter == null,
               onSelected: (_) => setState(() {
                 _estadoRevisionFilter = null;
+                _page = 0; // cambiar de filtro sí reinicia la página
                 _reload();
               }),
             ),
@@ -88,6 +98,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 selected: _estadoRevisionFilter == entry.key,
                 onSelected: (_) => setState(() {
                   _estadoRevisionFilter = entry.key;
+                  _page = 0;
                   _reload();
                 }),
               ),
@@ -112,6 +123,10 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 padding: const EdgeInsets.all(16),
                 child: PagedTable<ReviewQueueItem>(
                   items: rows,
+                  page: _page,
+                  perPage: _perPage,
+                  onPageChanged: (p) => setState(() => _page = p),
+                  onPerPageChanged: (v) => setState(() => _perPage = v),
                   columns: const [
                     DataColumn(label: Text('Usuario')),
                     DataColumn(label: Text('Fecha')),

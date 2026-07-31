@@ -747,3 +747,33 @@ Flutter; `assets/learning/img/` va en su propia línea. Verificado en el bundle 
 
 **Gates:** ninguno se enmienda. El banner de **BORRADOR** de los contenidos (pendiente de validación
 AU2/H4) sigue igual: añadir ilustraciones no los valida.
+
+---
+
+## CR-033 — La cola de Revisión completa y sin perder la página (2026-07-31)
+
+**Origen:** dos bugs reportados por el usuario usando la consola. (1) La cola de Revisión mostraba
+como máximo 200 registros aunque la base tuviera más. (2) Al entrar al detalle de una observación y
+volver, la lista regresaba a la página 1 con 10 filas por página, perdiendo dónde estaba el revisor.
+
+**Diagnóstico.** (1) El tope era del **cliente**: `review_screen.dart` pedía `reviewQueue(limit: 200)`
+— una sola página — y el backend (`/review/queue`, `le=1000` + `offset`) tenía el resto disponible
+pero nadie lo pedía. (2) El estado de paginación (`_page`/`_perPage`) vivía **dentro** del
+`PagedTable`; al volver del detalle la pantalla recarga la cola, el `FutureBuilder` pasa por el
+spinner y **saca la tabla del árbol**, destruyendo su estado — renacía con los defaults.
+
+| # | Criterio | Implementación | Prueba |
+|---|---|---|---|
+| **AC1** La consola trae TODA la cola, paginando contra el backend hasta la página corta | `api_client.dart::reviewQueueAll` (páginas de 1000 con `offset`) | `review_api_test.dart::reviewQueueAll recorre offsets hasta la página corta (CR-033)` (1150 filas → 2 peticiones, filtro en ambas) |
+| **AC2** Con >200 registros la tabla muestra el total real | `review_screen.dart::_reload` usa `reviewQueueAll` | `widget_cr033_test.dart::la cola muestra MÁS de 200 registros` (331 filas → "1–10 de 331") |
+| **AC3** Volver del detalle conserva página y filas/página | estado de paginación en `_ReviewScreenState` + `PagedTable` controlado (`page`/`perPage` + callbacks, CR-033) | `::volver del detalle conserva la página y las filas por página` (25/pág + pág 2 → abrir detalle → cerrar → sigue en "26–30 de 30" y 25/pág) |
+| **AC4** Cambiar el filtro de estado SÍ vuelve a la página 1 (intencional) | chips de filtro reinician `_page = 0` | `::cambiar el filtro SÍ regresa a la página 1 (intencional)` |
+| **AC5** Las otras tablas (modo no controlado) no cambian de comportamiento | `PagedTable` con `page`/`perPage` **opcionales** (null = estado propio, como siempre) | `widget_cr012_test.dart` intacto (paginación default) |
+
+**Decisiones.** Traer toda la cola y seguir paginando en **cliente** (no paginación de servidor en la
+tabla): es la opción más simple, el backend ya soportaba `offset`, y a la escala del piloto (cientos
+de filas) el costo es de una petición extra por millar. Si la cola creciera a decenas de miles, ahí
+sí tocaría paginar contra el servidor. Si la lista encoge (un veredicto saca la fila del filtro
+activo), la tabla se acota sola a la última página existente (clamp que ya existía).
+
+**Gates:** ninguno se toca. Solo consola (web-admin); sin backend, sin migración.

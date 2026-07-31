@@ -54,6 +54,43 @@ void main() {
       expect(rec.hitPathContaining('/restricted'), isFalse);
     });
 
+    test('reviewQueueAll recorre offsets hasta la página corta (CR-033)',
+        () async {
+      Map<String, dynamic> fila(int i) => {
+            'observation_id': 'o$i',
+            'handle': 'obs-A',
+            'captured_at': '2026-06-15T12:00:00Z',
+            'estado_revision': 'aceptada',
+            'nivel_g4': 'leve',
+            'flag_cuscuta': false,
+            'flag_danio': false,
+            'tamanio': 'mediano',
+            'contexto': 'campo_abierto',
+            'estado': 'Aguascalientes',
+            'municipio': 'Centro'
+          };
+      final rec = RequestRecorder();
+      // 1150 filas en el backend: página llena (1000) + página corta (150).
+      final api = _client(rec, responder: (req) {
+        final offset = int.parse(req.url.queryParameters['offset'] ?? '0');
+        final n = offset == 0 ? 1000 : 150;
+        return http.Response(
+            json.encode([for (var i = 0; i < n; i++) fila(offset + i)]), 200,
+            headers: {'content-type': 'application/json'});
+      });
+      final rows = await api.reviewQueueAll(estadoRevision: 'aceptada');
+      // Trae TODO, no un tope arbitrario (el bug era un limit fijo de 200).
+      expect(rows.length, 1150);
+      expect(rows.first.observationId, 'o0');
+      expect(rows.last.observationId, 'o1149');
+      expect(rec.requests.length, 2);
+      expect(rec.requests[0].url.queryParameters['limit'], '1000');
+      expect(rec.requests[0].url.queryParameters['offset'], '0');
+      expect(rec.requests[1].url.queryParameters['offset'], '1000');
+      // El filtro viaja en TODAS las páginas.
+      expect(rec.requests[1].url.queryParameters['estado_revision'], 'aceptada');
+    });
+
     test('submitVerdict hace POST con veredicto y nota', () async {
       final rec = RequestRecorder();
       final api = _client(rec, responder: (req) {

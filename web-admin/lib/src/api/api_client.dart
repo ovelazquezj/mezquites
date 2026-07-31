@@ -359,6 +359,32 @@ class ApiClient {
         .toList();
   }
 
+  /// Cola de revisión COMPLETA (CR-033): recorre `/review/queue` con `offset`
+  /// en páginas del tope del backend (`le=1000`) hasta recibir una página
+  /// corta. Antes la pantalla pedía una sola página de 200 y el resto de la
+  /// cola quedaba invisible aunque existiera en la base.
+  Future<List<ReviewQueueItem>> reviewQueueAll({
+    String? estadoRevision,
+    String? estado,
+    String? municipio,
+  }) async {
+    const porPagina = 1000;
+    final todas = <ReviewQueueItem>[];
+    var offset = 0;
+    while (true) {
+      final pagina = await reviewQueue(
+        estadoRevision: estadoRevision,
+        estado: estado,
+        municipio: municipio,
+        limit: porPagina,
+        offset: offset,
+      );
+      todas.addAll(pagina);
+      if (pagina.length < porPagina) return todas;
+      offset += porPagina;
+    }
+  }
+
   /// Detalle + historial de veredictos de una observación (sin coord exacta).
   Future<ReviewObservationDetail> reviewDetail(String observationId) async {
     final r = await _http.get(
