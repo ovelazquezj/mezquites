@@ -122,6 +122,51 @@ void main() {
     expect(list.single.snapshotQuarter, 'Q2-2026');
   });
 
+  test('publicObservationsAll recorre offsets hasta la página corta (CR-034)',
+      () async {
+    Map<String, dynamic> fila(int i) => {
+          'handle': 'h$i',
+          'lat': 21.88,
+          'lon': -102.29,
+          'nivel_g4': 'leve',
+          'flag_cuscuta': false,
+          'flag_danio': false,
+          'estado': 'Ags',
+          'municipio': 'Centro',
+          'captured_at': '2026-05-30T10:00:00Z',
+          'snapshot_quarter': 'Q2-2026',
+        };
+    final peticiones = <Uri>[];
+    // 5002 filas en el backend: página llena (5000) + página corta (2).
+    final mock = MockClient((req) async {
+      peticiones.add(req.url);
+      final offset = int.parse(req.url.queryParameters['offset'] ?? '0');
+      final n = offset == 0 ? 5000 : 2;
+      return http.Response(
+        json.encode([for (var i = 0; i < n; i++) fila(offset + i)]),
+        200,
+      );
+    });
+    final api = ApiClient(baseUrl: 'http://x/api/v1', httpClient: mock);
+    final list = await api.publicObservationsAll();
+    expect(list.length, 5002);
+    expect(peticiones.length, 2);
+    expect(peticiones[0].queryParameters['limit'], '5000');
+    expect(peticiones[1].queryParameters['offset'], '5000');
+  });
+
+  test('publicGrid pide el tope del backend (5000) por defecto (CR-034)',
+      () async {
+    late Uri pedida;
+    final mock = MockClient((req) async {
+      pedida = req.url;
+      return http.Response('[]', 200);
+    });
+    final api = ApiClient(baseUrl: 'http://x/api/v1', httpClient: mock);
+    await api.publicGrid();
+    expect(pedida.queryParameters['limit'], '5000');
+  });
+
   test('injectExif escribe EXIF GPS/fecha en un JPEG real', () async {
     // JPEG mínimo válido (SOI + APP0 + EOI) para que native_exif lo abra.
     final jpeg = <int>[

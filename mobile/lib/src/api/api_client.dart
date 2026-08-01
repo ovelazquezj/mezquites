@@ -161,11 +161,13 @@ class ApiClient {
   Future<List<PublicObservation>> publicObservations({
     String? estado,
     int limit = 500,
+    int offset = 0,
   }) async {
     final r = await _http.get(
       _uri('/public/observations', {
         if (estado != null) 'estado': estado,
         'limit': '$limit',
+        'offset': '$offset',
       }),
       headers: _headers(json: false),
     );
@@ -174,12 +176,38 @@ class ApiClient {
         .toList();
   }
 
+  /// Dataset público COMPLETO (CR-034): recorre `/public/observations` con
+  /// `offset` en páginas del tope del backend (5000) hasta la página corta.
+  /// Un `limit` solo, sin lazo, era un tope silencioso: el mapa dejaba de
+  /// pintar árboles al rebasarlo.
+  Future<List<PublicObservation>> publicObservationsAll({
+    String? estado,
+  }) async {
+    const porPagina = 5000;
+    final todas = <PublicObservation>[];
+    var offset = 0;
+    while (true) {
+      final p = await publicObservations(
+        estado: estado,
+        limit: porPagina,
+        offset: offset,
+      );
+      todas.addAll(p);
+      if (p.length < porPagina) return todas;
+      offset += porPagina;
+    }
+  }
+
   /// Mapa de calor público (CR-009): celdas de ~300 m (binning de agregación
   /// server-side). Agrega solo observaciones NO RECHAZADAS. Sin auth
   /// (endpoint `public/*`; `_headers(json:false)` no exige token).
+  ///
+  /// CR-034: default = 5000, el tope del backend (es el máximo de FILAS que
+  /// escanea el binning, no de celdas; la deuda de agregar sin tope queda
+  /// anotada para cuando el piloto rebase 5000 confirmadas).
   Future<List<GridCell>> publicGrid({
     String? estado,
-    int limit = 2000,
+    int limit = 5000,
   }) async {
     final r = await _http.get(
       _uri('/public/grid', {

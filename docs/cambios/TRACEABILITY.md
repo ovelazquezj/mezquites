@@ -818,3 +818,10 @@ observaciones 2000) — arreglarlo exige recompilar y desplegar el bundle del vo
 
 **Gates:** ninguno se enmienda. El texto del pastel repite el caveat (nivel autodeclarado, sin
 validación de expertos — gate #8). Sin migración; el despliegue requiere backend + consola.
+
+**Extensión (mismo CR, 2026-08-01):** se retiran también los topes del mapa del **VOLUNTARIO**
+(la deuda anotada arriba): `publicObservationsAll` en el cliente móvil (lazo de offset, páginas de
+5000) alimenta `publicObservationsProvider`, y `publicGrid` sube su default a 5000 (tope del
+backend). Pruebas: `api_client_test.dart::publicObservationsAll recorre offsets hasta la página
+corta (CR-034)` y `::publicGrid pide el tope del backend (5000) por defecto (CR-034)`. Queda solo la
+deuda del *binning* del calor (≤5000 filas escaneadas, en ambos clientes).

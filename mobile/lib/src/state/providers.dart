@@ -319,7 +319,9 @@ final rankingsProvider = FutureProvider.autoDispose<Rankings>((ref) {
 
 final publicObservationsProvider =
     FutureProvider.autoDispose<List<PublicObservation>>(
-  (ref) => ref.watch(apiClientProvider).publicObservations(),
+  // CR-034: trae TODO paginando contra el backend; el limit fijo escondía
+  // árboles del mapa al rebasarlo.
+  (ref) => ref.watch(apiClientProvider).publicObservationsAll(),
 );
 
 final publicIndicatorsProvider = FutureProvider.autoDispose<Indicators>(
