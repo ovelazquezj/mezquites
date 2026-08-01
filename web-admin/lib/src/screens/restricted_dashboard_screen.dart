@@ -34,7 +34,9 @@ class _RestrictedDashboardScreenState
   void _reload() {
     _future = ref
         .read(apiClientProvider)
-        .restrictedObservations(estado: _estado, limit: 500);
+        // CR-034: trae TODO paginando contra el backend; el limit fijo de 500
+        // escondía el resto de los registros.
+        .restrictedObservationsAll(estado: _estado);
   }
 
   @override

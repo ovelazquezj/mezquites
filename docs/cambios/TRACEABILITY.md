@@ -777,3 +777,44 @@ sí tocaría paginar contra el servidor. Si la lista encoge (un veredicto saca l
 activo), la tabla se acota sola a la última página existente (clamp que ya existía).
 
 **Gates:** ninguno se toca. Solo consola (web-admin); sin backend, sin migración.
+
+---
+
+## CR-034 — Listas completas en toda la consola + claridad del panel público + pastel de paxtle (2026-07-31)
+
+**Origen:** tres peticiones del usuario. (1) El tope silencioso de CR-033 existía en las DEMÁS
+listas; (2) el panel público mostraba datos ilegibles "entre llaves"; (3) falta un gráfico de pastel
+del nivel de paxtle.
+
+**Diagnóstico.** (1) Cada pantalla pedía UNA página con `limit` fijo (público 200, restringido 500,
+Datos 1000, mapa exacto 2000) y **ninguno de los tres endpoints aceptaba `offset`** — el resto del
+dataset era inalcanzable por diseño. (2) Los indicadores anidados (`distribucion_niveles`,
+`distribucion_identidad_e3`) son mapas JSON y `_Metric` los pintaba con `toString()` →
+`"{leve: 3, moderado: 1}"`; además `proporcion_confirmada` salía como fracción (`0.5`) y a
+`observaciones_capturadas` le faltaba etiqueta.
+
+| # | Criterio | Implementación | Prueba |
+|---|---|---|---|
+| **AC1** Los 3 endpoints de listas aceptan `offset` (ge=0, 422 si negativo) | `public.py`/`restricted.py`/`analytics.py` + `OFFSET` en SQL (ya tenían `ORDER BY captured_at DESC`) | `test_cr034_offset_listas.py` (4 casos: páginas disjuntas, unión = dataset, orden estable, 422) |
+| **AC2** El cliente recorre TODO con lazo de offset | `ApiClient._fetchAll` + `publicObservationsAll` (5000/pág) · `restrictedObservationsAll` (20000/pág) · `analyticsObservationsAll` (5000/pág) | `cr034_test.dart::Listas completas` (3 casos) |
+| **AC3** Panel público, restringido, Datos y mapa exacto usan las variantes `All` | las 4 pantallas; `publicGrid` sube a 5000 (tope) | `::muestra MÁS de 200 observaciones` (331 → "1–10 de 331") |
+| **AC4** Ningún indicador se pinta como mapa crudo | `_IndicatorGroup` separa escalares de desgloses; `_Breakdown` traduce claves wire (`Copy.nivelG4`/`identidadE3`) en orden de escala | `::ningún indicador se pinta como mapa crudo "{...}"` |
+| **AC5** Proporciones como porcentaje; etiquetas completas | `_Metric._display`; `Copy`: `observaciones_capturadas`, `proporcion_confirmada`, `identidadE3` | mismo caso (50 % presente, 0.5 ausente) |
+| **AC6** Pastel del nivel de paxtle en el panel público | `PaxtlePieChart` (CustomPainter, sin dependencias) + `_PaxtlePieCard`; datos = `distribucion_niveles` (agregado del SERVIDOR sobre todas las confirmadas — inmune a topes de lista) | `::el pastel pinta rebanadas y leyenda` (+ aserción de alto > 0, la trampa de CR-029/032) |
+| **AC7** Pastel legible sin depender del color | leyenda SIEMPRE con conteo y % + total; separadores de 2 px; vacío honesto | `PaxtlePieChart (unidad)` (3 casos: vacío, un nivel, niveles en cero) |
+
+**Decisiones.** (a) El pastel usa la MISMA rampa de severidad del mapa de calor (`HeatRampTheme`,
+sano→severo): una variable, una codificación en todo el producto, y T7 intacto (cero hex nuevos en
+widgets; la prueba-gate `theme_tokens_test` lo vigila y de hecho **atrapó** el primer intento con
+rampa propia). Paleta validada con el verificador del método de dataviz: CVD ΔE 14.8, visión normal
+15.8; el bajo contraste del amarillo se releva con separadores + leyenda numérica. (b) El nivel es
+una escala ORDENADA: las rebanadas van en orden de escala fijo, nunca por tamaño. (c) El pastel se
+alimenta del indicador agregado, NO de contar filas de la lista: sobrevive a cualquier paginación.
+(d) Render inspeccionado visualmente (golden temporal, luego borrado), no solo afirmado en pruebas.
+
+**Deuda anotada:** el mapa del VOLUNTARIO (móvil/PWA) conserva sus topes (`publicGrid` 500,
+observaciones 2000) — arreglarlo exige recompilar y desplegar el bundle del voluntario; y
+`/public/grid` escanea a lo más 5000 filas para el binning (suficiente hasta ~5000 confirmadas).
+
+**Gates:** ninguno se enmienda. El texto del pastel repite el caveat (nivel autodeclarado, sin
+validación de expertos — gate #8). Sin migración; el despliegue requiere backend + consola.

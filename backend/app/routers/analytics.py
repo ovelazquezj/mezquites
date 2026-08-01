@@ -136,13 +136,17 @@ def analytics_observations(
     desde: str | None = Query(None, description="ISO date/datetime: captured_at >= desde."),
     hasta: str | None = Query(None, description="ISO date/datetime: captured_at <= hasta."),
     limit: int = Query(1000, le=5000),
+    offset: int = Query(0, ge=0),
     user: CurrentUser = Depends(_analyst),
     db: Session = Depends(get_db),
 ) -> list[dict]:
     """Tabla de observaciones para el analista (CR-010 #3). No incluye coords: expone estado/municipio
-    agregables; la ubicación exacta se consulta en ``/restricted/observations`` o el CSV."""
+    agregables; la ubicación exacta se consulta en ``/restricted/observations`` o el CSV.
+
+    CR-034: ``offset`` permite recorrer el dataset completo por páginas."""
     params = _filter_params(estado, municipio, nivel_g4, estado_revision, desde, hasta)
     params["limit"] = limit
+    params["offset"] = offset
     rows = db.execute(
         text(
             f"""
@@ -151,7 +155,7 @@ def analytics_observations(
             FROM observation
             WHERE {_FILTER_WHERE}
             ORDER BY captured_at DESC
-            LIMIT :limit
+            LIMIT :limit OFFSET :offset
             """
         ),
         params,

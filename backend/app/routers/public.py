@@ -37,6 +37,7 @@ _G4_INDICE = {"sano": 0, "leve": 1, "moderado": 2, "severo": 3}
 def public_observations(
     estado: str | None = Query(None),
     limit: int = Query(500, le=5000),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ) -> list[PublicObservation]:
     """Dataset público: ubicación EXACTA del árbol. Solo CONFIRMADAS (CR-026).
@@ -44,6 +45,9 @@ def public_observations(
     Devuelve la ubicación exacta capturada (``ST_Y``/``ST_X`` del ``geom``) tal cual. Especie y nivel
     G4 siguen siendo AUTODECLARADOS (gate #8) — la confirmación humana avala que la foto corresponde
     a un mezquite observado, no el nivel declarado. Ningún umbral (U1).
+
+    CR-034: ``offset`` permite al cliente recorrer el dataset completo por páginas (el ``limit``
+    solo, sin offset, era un tope silencioso para las vistas de lista).
     """
     quarter = latest_snapshot_label(db)
     rows = db.execute(
@@ -55,10 +59,10 @@ def public_observations(
             WHERE estado_revision = 'confirmada'
               AND (CAST(:estado AS text) IS NULL OR estado = :estado)
             ORDER BY captured_at DESC
-            LIMIT :limit
+            LIMIT :limit OFFSET :offset
             """
         ),
-        {"estado": estado, "limit": limit},
+        {"estado": estado, "limit": limit, "offset": offset},
     ).mappings().all()
 
     out: list[PublicObservation] = []

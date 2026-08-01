@@ -264,16 +264,35 @@ class ApiClient {
 
   // --- Vistas de datos ---
 
+  /// Recorre un listado paginado del backend hasta la página corta (CR-034).
+  /// Mismo patrón que `reviewQueueAll` (CR-033): un `limit` solo, sin lazo de
+  /// `offset`, es un tope silencioso que esconde el resto del dataset.
+  Future<List<T>> _fetchAll<T>(
+    Future<List<T>> Function(int limit, int offset) pagina,
+    int porPagina,
+  ) async {
+    final todas = <T>[];
+    var offset = 0;
+    while (true) {
+      final p = await pagina(porPagina, offset);
+      todas.addAll(p);
+      if (p.length < porPagina) return todas;
+      offset += porPagina;
+    }
+  }
+
   /// Dashboard PÚBLICO: coords EXACTAS del árbol (CR-025).
   /// Sin auth. Filtro geográfico por estado (Q8).
   Future<List<PublicObservation>> publicObservations({
     String? estado,
     int limit = 500,
+    int offset = 0,
   }) async {
     final r = await _http.get(
       _uri('/public/observations', {
         if (estado != null && estado.isNotEmpty) 'estado': estado,
         'limit': '$limit',
+        'offset': '$offset',
       }),
       headers: _headers(json: false),
     );
@@ -281,6 +300,14 @@ class ApiClient {
         .map((e) => PublicObservation.fromJson((e as Map).cast()))
         .toList();
   }
+
+  /// Dataset público COMPLETO (CR-034): pagina con el tope del backend (5000).
+  Future<List<PublicObservation>> publicObservationsAll({String? estado}) =>
+      _fetchAll(
+        (limit, offset) =>
+            publicObservations(estado: estado, limit: limit, offset: offset),
+        5000,
+      );
 
   /// Mapa de calor público (CR-009/CR-010 #2): celdas de ~300 m (binning de
   /// agregación server-side). Agrega solo observaciones no-rechazadas.
@@ -318,6 +345,7 @@ class ApiClient {
     String? estado,
     String? estadoRevision,
     int limit = 2000,
+    int offset = 0,
   }) async {
     final r = await _http.get(
       _uri('/restricted/observations', {
@@ -325,6 +353,7 @@ class ApiClient {
         if (estadoRevision != null && estadoRevision.isNotEmpty)
           'estado_revision': estadoRevision,
         'limit': '$limit',
+        'offset': '$offset',
       }),
       headers: _headers(json: false),
     );
@@ -332,6 +361,21 @@ class ApiClient {
         .map((e) => RestrictedObservation.fromJson((e as Map).cast()))
         .toList();
   }
+
+  /// Vista restringida COMPLETA (CR-034): pagina con el tope del backend (20000).
+  Future<List<RestrictedObservation>> restrictedObservationsAll({
+    String? estado,
+    String? estadoRevision,
+  }) =>
+      _fetchAll(
+        (limit, offset) => restrictedObservations(
+          estado: estado,
+          estadoRevision: estadoRevision,
+          limit: limit,
+          offset: offset,
+        ),
+        20000,
+      );
 
   // --- Revisión humana (CR-001): rol evaluador/analista/administrador ---
 
@@ -439,6 +483,7 @@ class ApiClient {
     String? desde,
     String? hasta,
     int? limit,
+    int? offset,
   }) =>
       {
         if (estadoRevision != null && estadoRevision.isNotEmpty)
@@ -448,6 +493,7 @@ class ApiClient {
         if (desde != null && desde.isNotEmpty) 'desde': desde,
         if (hasta != null && hasta.isNotEmpty) 'hasta': hasta,
         if (limit != null) 'limit': '$limit',
+        if (offset != null) 'offset': '$offset',
       };
 
   /// Tarjetas de resumen (GET /admin/analytics/summary). Conteos agregados sin
@@ -482,6 +528,7 @@ class ApiClient {
     String? desde,
     String? hasta,
     int limit = 500,
+    int offset = 0,
   }) async {
     final r = await _http.get(
       _uri('/admin/analytics/observations',
@@ -492,6 +539,7 @@ class ApiClient {
             desde: desde,
             hasta: hasta,
             limit: limit,
+            offset: offset,
           )),
       headers: _headers(json: false),
     );
@@ -499,6 +547,27 @@ class ApiClient {
         .map((e) => AnalyticsObservation.fromJson((e as Map).cast()))
         .toList();
   }
+
+  /// Tabla del analista COMPLETA (CR-034): pagina con el tope del backend (5000).
+  Future<List<AnalyticsObservation>> analyticsObservationsAll({
+    String? estadoRevision,
+    String? municipio,
+    String? nivelG4,
+    String? desde,
+    String? hasta,
+  }) =>
+      _fetchAll(
+        (limit, offset) => analyticsObservations(
+          estadoRevision: estadoRevision,
+          municipio: municipio,
+          nivelG4: nivelG4,
+          desde: desde,
+          hasta: hasta,
+          limit: limit,
+          offset: offset,
+        ),
+        5000,
+      );
 
   /// Bytes del CSV de observaciones (GET /admin/analytics/observations.csv) con
   /// el header Authorization (Flutter Web ignora headers en `<a download>`, así

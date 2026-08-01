@@ -237,10 +237,14 @@ class Copy {
     'activos_30d': 'Activos (últimos 30 días)',
     'observaciones_totales': 'Observaciones totales',
     'observaciones_confirmadas': 'Observaciones confirmadas',
+    // CR-030 añadió el total crudo; sin etiqueta salía "Observaciones capturadas"
+    // sin explicar la diferencia con las confirmadas (CR-034).
+    'observaciones_capturadas': 'Observaciones subidas (incluye las no revisadas)',
     'instituciones_activas': 'Instituciones activas',
     // educativo
     'distribucion_identidad_e3': 'Distribución por nivel de observador',
     'proporcion_no_rechazadas': 'Proporción de observaciones no retiradas',
+    'proporcion_confirmada': 'Avance de revisión',
     // ecológico
     'arboles_unicos': 'Árboles distintos',
     'arboles_serie_temporal': 'Árboles con seguimiento en el tiempo',
@@ -252,6 +256,17 @@ class Copy {
     'eventos_w3': 'Eventos realizados',
     'menciones_mediaticas': 'Menciones en medios',
   };
+
+  /// Etiqueta de identidad E3/L3 (wire del backend) → legible (CR-034: el
+  /// desglose del panel público la mostraba cruda dentro de un `{...}`).
+  static String identidadE3(String wire) =>
+      const {
+        'nuevo_observador': 'Nuevo observador',
+        'observador': 'Observador',
+        'observador_experimentado': 'Observador experimentado',
+        'veterano_del_mezquite': 'Veterano del mezquite',
+      }[wire] ??
+      _humanizeKey(wire);
 
   /// Nivel de paxtle (wire del backend) → etiqueta legible.
   static String nivelG4(String wire) =>

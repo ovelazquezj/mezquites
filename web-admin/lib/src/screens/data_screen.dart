@@ -75,13 +75,14 @@ class _DataScreenState extends ConsumerState<DataScreen> {
         desde: desde,
         hasta: hasta,
       );
-      final rows = await api.analyticsObservations(
+      // CR-034: trae TODO paginando contra el backend; el limit fijo de 1000
+      // escondía el resto (el CSV ya exportaba completo, la tabla no).
+      final rows = await api.analyticsObservationsAll(
         estadoRevision: _estadoRevision,
         municipio: mun,
         nivelG4: _nivelG4,
         desde: desde,
         hasta: hasta,
-        limit: 1000,
       );
       return _DataBundle(summary, rows);
     }();

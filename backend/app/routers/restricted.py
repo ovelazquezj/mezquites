@@ -37,6 +37,7 @@ def restricted_observations(
         ),
     ),
     limit: int = Query(2000, le=20000),
+    offset: int = Query(0, ge=0),
     user: CurrentUser = Depends(require_role(*EXACT_LOCATION_ROLES)),
     db: Session = Depends(get_db),
 ) -> list[RestrictedObservation]:
@@ -44,7 +45,9 @@ def restricted_observations(
     ``EXACT_LOCATION_ROLES`` (CR-025): todos los roles de la consola (incluido ``evaluador``).
 
     CR-026: ``estado_revision`` permite al mapa de la consola conmutar entre confirmadas y el resto;
-    omitirlo devuelve todo, para no ocultar la cola de revisión."""
+    omitirlo devuelve todo, para no ocultar la cola de revisión.
+
+    CR-034: ``offset`` permite recorrer el dataset completo por páginas."""
     _ = latest_snapshot_label(db)
     rows = db.execute(
         text(
@@ -56,10 +59,10 @@ def restricted_observations(
             WHERE (CAST(:estado AS text) IS NULL OR estado = :estado)
               AND (CAST(:estado_revision AS text) IS NULL OR estado_revision = :estado_revision)
             ORDER BY captured_at DESC
-            LIMIT :limit
+            LIMIT :limit OFFSET :offset
             """
         ),
-        {"estado": estado, "estado_revision": estado_revision, "limit": limit},
+        {"estado": estado, "estado_revision": estado_revision, "limit": limit, "offset": offset},
     ).mappings().all()
 
     return [

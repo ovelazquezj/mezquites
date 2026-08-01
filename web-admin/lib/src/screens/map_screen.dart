@@ -82,13 +82,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   void initState() {
     super.initState();
-    _gridFuture = ref.read(apiClientProvider).publicGrid();
+    // CR-034: el tope del backend (5000 filas escaneadas para el binning). Las
+    // CELDAS del calor son muchas menos; la deuda de agregar sin tope queda
+    // anotada para cuando el piloto rebase 5000 confirmadas.
+    _gridFuture = ref.read(apiClientProvider).publicGrid(limit: 5000);
   }
 
+  // CR-034: trae TODO paginando contra el backend; el limit fijo de 2000
+  // escondía pines del modo exacto.
   Future<List<RestrictedObservation>> _fetchExact() =>
-      ref.read(apiClientProvider).restrictedObservations(
+      ref.read(apiClientProvider).restrictedObservationsAll(
             estadoRevision: _filter.query,
-            limit: 2000,
           );
 
   void _setMode(_MapMode mode) {

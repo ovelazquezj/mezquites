@@ -7,6 +7,7 @@ import '../ui/copy.dart';
 import '../widgets/paged_table.dart';
 import '../widgets/caveat_banner.dart';
 import '../widgets/estado_filter.dart';
+import '../widgets/paxtle_pie_chart.dart';
 
 /// Dashboard PÚBLICO (Q5.B). Indicadores Q6 + observaciones abiertas. Muestra
 /// el caveat de origen ciudadano y el sello "última actualización Qn". Filtro
@@ -37,8 +38,9 @@ class _PublicDashboardScreenState
     final api = ref.read(apiClientProvider);
     _future = () async {
       final indicators = await api.publicIndicators(estado: _estado);
-      final observations =
-          await api.publicObservations(estado: _estado, limit: 200);
+      // CR-034: trae TODO paginando contra el backend; el limit fijo de 200
+      // escondía el resto de las observaciones.
+      final observations = await api.publicObservationsAll(estado: _estado);
       return _PublicData(indicators, observations);
     }();
   }
@@ -87,7 +89,14 @@ class _PublicDashboardScreenState
                 const SizedBox(height: 16),
                 _IndicatorGroup(title: 'Social', data: ind.social),
                 _IndicatorGroup(title: 'Educativo', data: ind.educativo),
-                _IndicatorGroup(title: 'Ecológico', data: ind.ecologico),
+                // CR-034: la distribución de niveles no va como texto en el
+                // grupo — la cuenta el pastel de aquí abajo.
+                _IndicatorGroup(
+                  title: 'Ecológico',
+                  data: ind.ecologico,
+                  exclude: const {'distribucion_niveles'},
+                ),
+                _PaxtlePieCard(ecologico: ind.ecologico),
                 _IndicatorGroup(
                     title: 'Organizacional', data: ind.organizacional),
                 const SizedBox(height: 16),
@@ -108,14 +117,28 @@ class _PublicData {
 }
 
 class _IndicatorGroup extends StatelessWidget {
-  const _IndicatorGroup({required this.title, required this.data});
+  const _IndicatorGroup({
+    required this.title,
+    required this.data,
+    this.exclude = const {},
+  });
 
   final String title;
   final Map<String, dynamic> data;
 
+  /// Claves que esta tarjeta NO pinta (porque las cuenta otro widget, como el
+  /// pastel de niveles de paxtle).
+  final Set<String> exclude;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final entradas =
+        data.entries.where((e) => !exclude.contains(e.key)).toList();
+    // CR-034: los valores anidados (mapas) se pintaban con toString() y salían
+    // como "{leve: 3, moderado: 1}" — ilegibles. Van aparte, como desglose.
+    final escalares = entradas.where((e) => e.value is! Map).toList();
+    final desgloses = entradas.where((e) => e.value is Map).toList();
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -124,17 +147,25 @@ class _IndicatorGroup extends StatelessWidget {
           children: [
             Text(title, style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
-            if (data.isEmpty)
+            if (entradas.isEmpty)
               Text('Sin datos.', style: theme.textTheme.bodyMedium)
-            else
+            else ...[
               Wrap(
                 spacing: 24,
                 runSpacing: 12,
                 children: [
-                  for (final e in data.entries)
+                  for (final e in escalares)
                     _Metric(label: e.key, value: e.value),
                 ],
               ),
+              for (final d in desgloses) ...[
+                const SizedBox(height: 12),
+                _Breakdown(
+                  groupKey: d.key,
+                  data: (d.value as Map).cast<String, dynamic>(),
+                ),
+              ],
+            ],
           ],
         ),
       ),
@@ -147,17 +178,120 @@ class _Metric extends StatelessWidget {
   final String label;
   final dynamic value;
 
+  /// Las proporciones del backend viajan como fracción (0.1234); mostrarlas
+  /// así confundía. Se presentan como porcentaje redondeado (CR-034).
+  String get _display => value is num && label.startsWith('proporcion')
+      ? '${((value as num) * 100).round()} %'
+      : '$value';
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('$value',
+        Text(_display,
             style: theme.textTheme.titleLarge
                 ?.copyWith(color: theme.colorScheme.primary)),
         Text(Copy.indicatorLabel(label), style: theme.textTheme.bodySmall),
       ],
+    );
+  }
+}
+
+/// Desglose legible de un indicador anidado (CR-034): título traducido + una
+/// línea "Etiqueta — n" por entrada, con las claves wire traducidas.
+class _Breakdown extends StatelessWidget {
+  const _Breakdown({required this.groupKey, required this.data});
+
+  final String groupKey;
+  final Map<String, dynamic> data;
+
+  /// Orden fijo de escala cuando la clave lo tiene; lo demás, como venga.
+  static const _ordenes = <String, List<String>>{
+    'distribucion_niveles': PaxtlePieChart.nivelesOrdenados,
+    'distribucion_identidad_e3': [
+      'nuevo_observador',
+      'observador',
+      'observador_experimentado',
+      'veterano_del_mezquite',
+    ],
+  };
+
+  String _sub(String key) => switch (groupKey) {
+        'distribucion_niveles' => Copy.nivelG4(key),
+        'distribucion_identidad_e3' => Copy.identidadE3(key),
+        _ => Copy.indicatorLabel(key),
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final orden = _ordenes[groupKey];
+    final claves = data.keys.toList();
+    if (orden != null) {
+      claves.sort((a, b) {
+        final ia = orden.indexOf(a);
+        final ib = orden.indexOf(b);
+        return (ia < 0 ? orden.length : ia) - (ib < 0 ? orden.length : ib);
+      });
+    }
+    return Column(
+      key: Key('breakdown-$groupKey'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(Copy.indicatorLabel(groupKey), style: theme.textTheme.bodySmall),
+        const SizedBox(height: 4),
+        if (claves.isEmpty)
+          Text('Sin datos.', style: theme.textTheme.bodyMedium)
+        else
+          Wrap(
+            spacing: 16,
+            runSpacing: 4,
+            children: [
+              for (final k in claves)
+                Text('${_sub(k)} — ${data[k]}',
+                    style: theme.textTheme.bodyMedium),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+/// Tarjeta del pastel de niveles de paxtle (CR-034). El agregado viene del
+/// servidor sobre TODAS las confirmadas (mismo universo que el mapa público);
+/// el nivel es autodeclarado por quien observa (gate #8).
+class _PaxtlePieCard extends StatelessWidget {
+  const _PaxtlePieCard({required this.ecologico});
+
+  final Map<String, dynamic> ecologico;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final crudo = ecologico['distribucion_niveles'];
+    final conteos = crudo is Map
+        ? crudo.cast<String, num>()
+        : const <String, num>{};
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Nivel de paxtle declarado', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 4),
+            Text(
+              'De las observaciones confirmadas que publica este panel. El '
+              'nivel lo declara quien observa, sin validación por expertos.',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            PaxtlePieChart(conteos: conteos),
+          ],
+        ),
+      ),
     );
   }
 }
