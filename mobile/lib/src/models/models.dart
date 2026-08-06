@@ -41,18 +41,52 @@ class AuthSession {
 /// aquí el valor solo se usa como etiqueta local de "de quién es esta captura". Si
 /// el token es ilegible devuelve `null` y quien lo use debe tolerarlo.
 String? accountIdFromJwt(String token) {
+  final json = _jwtPayload(token);
+  if (json is Map && json['sub'] is String) return json['sub'] as String;
+  return null;
+}
+
+/// Decodifica el payload (segunda parte) de un JWT, **sin verificar la firma**
+/// (mismo criterio que [accountIdFromJwt]: la firma la comprueba el backend en
+/// cada petición; aquí los claims solo se usan como pista local). Devuelve
+/// `null` si el token es ilegible.
+dynamic _jwtPayload(String token) {
   try {
     final partes = token.split('.');
     if (partes.length < 2) return null;
     var payload = partes[1].replaceAll('-', '+').replaceAll('_', '/');
     // base64url sin relleno: se completa a múltiplo de 4.
     payload = payload.padRight((payload.length + 3) ~/ 4 * 4, '=');
-    final json = jsonDecode(utf8.decode(base64.decode(payload)));
-    if (json is Map && json['sub'] is String) return json['sub'] as String;
-    return null;
+    return jsonDecode(utf8.decode(base64.decode(payload)));
   } catch (_) {
     return null;
   }
+}
+
+/// Lee el claim `exp` (segundos UNIX) del JWT como fecha UTC (CR-035).
+/// `null` si el token es ilegible o no trae `exp` — tolerante, mismo espíritu
+/// que [accountIdFromJwt]: quien lo use debe soportar no saberlo.
+DateTime? expiryFromJwt(String token) {
+  final json = _jwtPayload(token);
+  if (json is Map && json['exp'] is num) {
+    return DateTime.fromMillisecondsSinceEpoch(
+      ((json['exp'] as num) * 1000).round(),
+      isUtc: true,
+    );
+  }
+  return null;
+}
+
+/// ¿El token ya venció? (CR-035, disparador **proactivo**: permite encender el
+/// aviso al abrir la app sin esperar el primer 401). Sin `exp` legible devuelve
+/// `false`: no se molesta al voluntario por un token que no sabemos leer — el
+/// backend seguirá siendo la autoridad y el 401 real lo detectará el cliente.
+/// [now] inyectable para pruebas deterministas.
+bool tokenVencido(String token, {DateTime Function()? now}) {
+  final exp = expiryFromJwt(token);
+  if (exp == null) return false;
+  final ahora = (now ?? DateTime.now)().toUtc();
+  return !ahora.isBefore(exp);
 }
 
 /// Borrador de las etiquetas de captura (Q2/Q3) listas para POST /observations.

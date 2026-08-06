@@ -31,6 +31,18 @@ class ApiClient {
   /// Fija el bearer token tras login/registro/recover.
   void setToken(String? token) => _token = token;
 
+  /// CR-035: se invoca ante un 401 **con token puesto** — la señal reactiva de
+  /// "la sesión venció". El guard `_token != null` importa: sin token no hay
+  /// sesión que vencer (un login fallido desde un dispositivo limpio también
+  /// responde 401 y NO debe encender el aviso). Un re-login fallido con el token
+  /// viejo aún en memoria sí re-dispara — idempotente e inocuo, el flag ya
+  /// estaba encendido.
+  void Function()? onSessionExpired;
+
+  void _avisarSiSesionVencida(http.Response r) {
+    if (r.statusCode == 401 && _token != null) onSessionExpired?.call();
+  }
+
   Uri _uri(String path, [Map<String, String>? query]) =>
       Uri.parse('$baseUrl$path').replace(queryParameters: query);
 
@@ -48,6 +60,7 @@ class ApiClient {
           ? <String, dynamic>{}
           : (json.decode(r.body) as Map).cast<String, dynamic>();
     }
+    _avisarSiSesionVencida(r);
     throw ApiException(r.statusCode, 'Error de la API', body: r.body);
   }
 
@@ -55,6 +68,7 @@ class ApiClient {
     if (r.statusCode >= 200 && r.statusCode < 300) {
       return json.decode(r.body) as List<dynamic>;
     }
+    _avisarSiSesionVencida(r);
     throw ApiException(r.statusCode, 'Error de la API', body: r.body);
   }
 

@@ -21,14 +21,19 @@ import 'observation_form.dart';
 /// El submit es fire-and-forget: encola localmente como "pendiente" y dispara el
 /// POST sin bloquear la UI. NUNCA muestra estado de validación individual (gate #9).
 class CaptureScreen extends ConsumerStatefulWidget {
-  const CaptureScreen({super.key});
+  const CaptureScreen({super.key, @visibleForTesting this.initialShot});
+
+  /// SOLO pruebas (CR-035): arranca con una captura ya hecha para poder ejercitar
+  /// el flujo de `_submit` (formulario → SnackBar) sin cámara. En producción
+  /// siempre es `null`: la única entrada real sigue siendo la cámara (gate #4).
+  final CaptureResult? initialShot;
 
   @override
   ConsumerState<CaptureScreen> createState() => _CaptureScreenState();
 }
 
 class _CaptureScreenState extends ConsumerState<CaptureScreen> {
-  CaptureResult? _shot;
+  late CaptureResult? _shot = widget.initialShot;
 
   void _onCaptured(CaptureResult result) => setState(() => _shot = result);
 
@@ -48,10 +53,20 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
       final subida = await queue.registrar(draft);
       if (!mounted) return;
       ref.invalidate(myObservationsProvider);
+      // CR-035: si no subió POR la sesión vencida, el texto no puede prometer
+      // "se enviará sola" — con 401 no se enviará hasta volver a entrar. Se
+      // miran los dos flags (cola y global) porque cualquiera puede encenderse
+      // primero según de dónde vino el 401.
+      final sesionVencida = ref.read(pendingQueueProvider).sesionExpirada ||
+          ref.read(sessionExpiredProvider);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            subida ? Copy.captureUploaded : Copy.captureSavedOffline,
+            subida
+                ? Copy.captureUploaded
+                : sesionVencida
+                    ? Copy.captureSavedSessionExpired
+                    : Copy.captureSavedOffline,
           ),
         ),
       );

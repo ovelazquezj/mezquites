@@ -46,10 +46,19 @@ final onboardingSeenProvider =
   return OnboardingController(ref.watch(sessionStoreProvider));
 });
 
+/// CR-035: la sesión venció (401 con token puesto, o `exp` del JWT ya pasado).
+/// NO cierra sesión: solo enciende el aviso; el voluntario decide cuándo volver
+/// a entrar (gate #3: sin señal debe poder seguir capturando a su cola local).
+final sessionExpiredProvider = StateProvider<bool>((ref) => false);
+
 /// Cliente de la API REST.
 final apiClientProvider = Provider<ApiClient>((ref) {
   final config = ref.watch(appConfigProvider);
   final client = ApiClient(baseUrl: config.apiBaseUrl);
+  // CR-035: cualquier 401 con sesión enciende el aviso global. `ref.read`
+  // diferido dentro del callback ⇒ sin ciclo entre providers.
+  client.onSessionExpired =
+      () => ref.read(sessionExpiredProvider.notifier).state = true;
   ref.onDispose(client.close);
   return client;
 });
@@ -70,7 +79,12 @@ enum GoogleSignInOutcome { success, cancelled, error }
 /// Rastreador de tiempo de sesión (CR-010 #7). Se arranca al hacer login y se
 /// detiene (enviando el tramo en curso) al cerrar sesión.
 final sessionTrackerProvider = Provider<SessionTracker>((ref) {
-  return SessionTracker(ref.watch(apiClientProvider));
+  return SessionTracker(
+    ref.watch(apiClientProvider),
+    // CR-035: con la sesión vencida deja de enviar tramos (el backend los
+    // rechazaría con más 401).
+    sesionVencida: () => ref.read(sessionExpiredProvider),
+  );
 });
 
 /// Estado de autenticación del voluntario (CR-002). Identidad real por Google; la app guarda solo
@@ -290,6 +304,13 @@ final pendingQueueProvider =
     accountId: () => ref.read(authProvider)?.accountId,
     onCuentaEliminada: () => ref.read(authProvider.notifier).logout(),
   );
+  // CR-035: cualquier cambio de sesión invalida el aviso de sesión vencida. Un
+  // login nuevo (incluso de la misma cuenta: el objeto AuthSession es otro)
+  // apaga el aviso y reanuda la cola pausada por el 401; un logout solo apaga.
+  ref.listen<AuthSession?>(authProvider, (prev, next) {
+    ref.read(sessionExpiredProvider.notifier).state = false;
+    if (next != null) controller.sesionRenovada();
+  });
   // Al construirse, publica lo que ya hubiera guardado de una sesión anterior.
   controller.refresh();
   return controller;

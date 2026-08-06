@@ -12,11 +12,18 @@ import '../api/api_client.dart';
 ///
 /// Reloj inyectable ([now]) para pruebas deterministas.
 class SessionTracker with WidgetsBindingObserver {
-  SessionTracker(this._api, {DateTime Function()? now})
+  SessionTracker(this._api, {DateTime Function()? now, this.sesionVencida})
       : _now = now ?? DateTime.now;
 
   final ApiClient _api;
   final DateTime Function() _now;
+
+  /// CR-035: con la sesión vencida no tiene sentido enviar el tramo — el
+  /// backend lo rechazaría con otro 401. El **primer** 401 sí llega a pasar
+  /// (ese POST es un disparador reactivo válido del aviso de sesión); con el
+  /// flag ya encendido se deja de hacer ruido. Tras volver a entrar el flag se
+  /// apaga y el envío se reanuda solo.
+  final bool Function()? sesionVencida;
 
   /// Inicio del tramo de foreground en curso (null = no hay tramo abierto).
   DateTime? _segmentStart;
@@ -60,6 +67,9 @@ class SessionTracker with WidgetsBindingObserver {
     final end = _now();
     // Tramos de duración no positiva no se envían (ruido).
     if (!end.isAfter(start)) return;
+    // Sesión vencida: el tramo se cierra pero NO se envía (CR-035). El tiempo
+    // se pierde — aceptable, la sesión es inválida.
+    if (sesionVencida?.call() == true) return;
     lastSent = (startedAt: start, endedAt: end);
     try {
       await _api.postSession(startedAt: start, endedAt: end);

@@ -825,3 +825,40 @@ validación de expertos — gate #8). Sin migración; el despliegue requiere bac
 backend). Pruebas: `api_client_test.dart::publicObservationsAll recorre offsets hasta la página
 corta (CR-034)` y `::publicGrid pide el tope del backend (5000) por defecto (CR-034)`. Queda solo la
 deuda del *binning* del calor (≤5000 filas escaneadas, en ambos clientes).
+
+---
+
+## CR-035 — Sesión vencida: aviso visible y re-ingreso amable (2026-08-06)
+
+**Origen:** reporte de voluntarios (*"no podemos subir fotos"*). Diagnóstico en producción: tokens de
+7 días (CR-027) venciendo **en lote** el 2026-08-05 (120 `POST /observations` → 401 en un día) y la
+app "logueada" en silencio — CR-031 pausa la cola y conserva las fotos, pero el aviso solo aparecía
+con cola no vacía, era texto pasivo sin botón, y `sesionRenovada()` no lo llamaba nadie. Diseño y
+decisiones en [`CR-035-sesion-vencida-reingreso.md`](../change-requests/CR-035-sesion-vencida-reingreso.md).
+**Solo app del voluntario; sin backend, sin migración.** Restricción dura: detectar la sesión vencida
+**nunca** cierra sesión ni bloquea la captura offline (gate #3).
+
+| # | Criterio | Implementación | Prueba |
+|---|---|---|---|
+| **AC1** Un 401 autenticado enciende el aviso; un login fallido sin token NO | `ApiClient.onSessionExpired` (guard `_token != null`) en `_decode`/`_decodeList` — cubre uploader, tracker y providers de una vez; cableado en `apiClientProvider` | `cr035_sesion_vencida_test.dart` (JSON, multipart con `MockClient.streaming`, y sin token) |
+| **AC2** Token restaurado ya vencido ⇒ aviso al abrir, sin esperar ningún 401 | `expiryFromJwt`/`tokenVencido` (`models.dart`, claim `exp`, reloj inyectable) + `_comprobarSesionVencida()` en `home_shell.dart` (postFrame y `resumed`) | `cr035_ui_test.dart::JWT vencido al primer frame` |
+| **AC3** Aviso en las 4 pestañas, NO descartable, NO bloquea nada (gate #3) | `session_expired_banner.dart` (nuevo; no usa `InfoNote` a propósito) montado en el body de `HomeShell` | `cr035_ui_test.dart` (4 pestañas, sin botón de cierre, capturar sigue posible) |
+| **AC4** Nunca cierra sesión ni vacía la cola | `sessionExpiredProvider` es un aviso, no estado de auth; `AuthController` intacto | `cr035_ui_test.dart` + AC9/AC17 de CR-031 (vigentes) |
+| **AC5** "Volver a entrar" → login → aviso fuera + cola reanuda sola | botón `session_relogin` → `push(WelcomeScreen)`; `ref.listen(authProvider)` en `pendingQueueProvider` apaga el flag y llama **`sesionRenovada()`** (por fin con caller) | `cr035_ui_test.dart::re-login reanuda la cola` |
+| **AC6** Capturar con sesión vencida guarda y lo dice honesto | `capture_screen.dart`: SnackBar `captureSavedSessionExpired` (mira flag de cola Y global) | `cr035_ui_test.dart::SnackBar honesto` |
+| **AC7** La tarjeta de pendientes ofrece "Volver a entrar" | `pending_uploads_card.dart` (`pending_relogin`) | `cr035_ui_test.dart` |
+| **AC8** El logout manual apaga el aviso | el mismo `ref.listen` (cualquier cambio de sesión invalida el aviso) | `cr035_ui_test.dart::logout apaga` |
+| **AC9** Sin `POST /me/sessions` mientras esté vencida; reanuda al re-entrar | `SessionTracker(sesionVencida:)` — el PRIMER 401 sigue pasando (disparador reactivo) | `cr035_sesion_vencida_test.dart` |
+| **AC10** Ningún texto nuevo menciona "revisión" (gate #9) | `Copy.sessionExpiredBanner`/`sessionExpiredRelogin`/`captureSavedSessionExpired` | `cr035_ui_test.dart` (prueba de copy) |
+| **AC11** Otra cuenta de Google: capturas ajenas ni se suben ni se borran (D8/D1) | sin cambio de código (`next(accountId:)` ya filtra); documentado en §6 del CR | AC10 de CR-031 (aislamiento por cuenta) |
+
+**Gates:** ninguno se enmienda. **#3** protagonista (nada se bloquea, jamás logout forzado); **#9**
+con prueba de copy; **#4** intacto — el hook de prueba `CaptureScreen(initialShot:)` es
+`@visibleForTesting` (en producción siempre `null`; la cámara sigue siendo la única entrada).
+`isSessionExpired` del móvil = **solo 401** (a diferencia del `isAuthError` de la consola,
+401||403||410): la pregunta del móvil es "¿se cura re-entrando?" — el 403 no (ya es
+`necesitaAtencion`) y el 410 no (cuenta eliminada, camino D6).
+
+**179 pruebas móviles verdes** (152 previas + 27 nuevas: 16 en `cr035_sesion_vencida_test.dart`, 11
+en `cr035_ui_test.dart`), 2026-08-06. `web-admin`, `backend`, `welcome_screen.dart`, `AuthController`
+y `pending_uploader.dart` sin tocar.

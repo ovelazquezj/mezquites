@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/providers.dart';
 import '../copy.dart';
+import '../screens/welcome_screen.dart';
 
 /// Tarjeta de "capturas por subir" (CR-031 W4).
 ///
@@ -75,7 +76,11 @@ class PendingUploadsCard extends ConsumerWidget {
               ),
 
             // La sesión venció: la cola NO se perdió, solo hay que volver a entrar.
-            if (estado.sesionExpirada)
+            // CR-035: esta tarjeta (flag de la cola, tras un 401 del motor) y el
+            // banner global (flag `sessionExpiredProvider`) son dos vistas del
+            // MISMO hecho y se apagan juntos: cualquier cambio de sesión limpia
+            // ambos (ver el listen de `pendingQueueProvider`).
+            if (estado.sesionExpirada) ...[
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
@@ -84,6 +89,19 @@ class PendingUploadsCard extends ConsumerWidget {
                   style: theme.textTheme.bodySmall,
                 ),
               ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  key: const Key('pending_relogin'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const WelcomeScreen(),
+                    ),
+                  ),
+                  child: const Text(Copy.sessionExpiredRelogin),
+                ),
+              ),
+            ],
 
             // Alguna no se pudo enviar por su contenido: con solo el contador (D5),
             // "Reportar un problema" es la vía para que el equipo la recupere.

@@ -169,6 +169,23 @@ class Copy {
       'Tu sesión expiró. Vuelve a entrar y tus observaciones se enviarán solas; '
       'no se ha perdido ninguna.';
 
+  // --- Sesión vencida (CR-035) ---
+  // Gate #9: estos textos hablan de entrar/guardar/enviar, JAMÁS de "revisión"
+  // ni veredictos — son avisos de sesión/subida, no de validación.
+
+  /// Banner global, no descartable: la sesión venció pero nada se bloquea.
+  static const sessionExpiredBanner =
+      'Tu sesión expiró. Puedes seguir capturando: todo se guarda en tu '
+      'teléfono. Cuando tengas internet, vuelve a entrar para que se envíe.';
+
+  /// Botón del banner y de la tarjeta de pendientes.
+  static const sessionExpiredRelogin = 'Volver a entrar';
+
+  /// SnackBar tras capturar con la sesión vencida: no promete que "se enviará
+  /// sola" (con 401 no se enviará hasta volver a entrar).
+  static const captureSavedSessionExpired =
+      'Guardada en tu teléfono. Vuelve a entrar para que se envíe.';
+
   /// Alguna quedó marcada para revisar por el equipo (error permanente).
   static String pendingNeedsAttention(int n) => n == 1
       ? '1 observación no se pudo enviar. Repórtalo con el botón de "Reportar un '

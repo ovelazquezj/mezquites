@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/models.dart';
 import '../../services/pending/network_signal.dart';
 import '../../state/providers.dart';
+import '../widgets/session_expired_banner.dart';
 import 'capture_screen.dart';
 import 'heat_map_screen.dart';
 import 'learning_screen.dart';
@@ -45,8 +47,12 @@ class _HomeShellState extends ConsumerState<HomeShell>
     WidgetsBinding.instance.addObserver(this);
     _dejarDeEscucharRed = escucharVueltaDeRed(_intentarSubir);
     // Tras el primer frame: el provider ya está listo y no se toca estado durante
-    // el build.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _intentarSubir());
+    // el build. Primero la comprobación proactiva del token (CR-035): si ya
+    // venció, el aviso se enciende sin esperar a que un 401 lo delate.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _comprobarSesionVencida();
+      _intentarSubir();
+    });
   }
 
   @override
@@ -58,13 +64,29 @@ class _HomeShellState extends ConsumerState<HomeShell>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _intentarSubir();
+    if (state == AppLifecycleState.resumed) {
+      _comprobarSesionVencida();
+      _intentarSubir();
+    }
   }
 
   void _intentarSubir() {
     if (!mounted) return;
     // Sin await: subir nunca debe bloquear la interfaz (gate #3).
     ref.read(pendingQueueProvider.notifier).subirAhora();
+  }
+
+  /// Comprobación **proactiva** del token (CR-035): la app típica queda abierta
+  /// días y el JWT vence a los 7 (CR-027); con la cola vacía ningún 401 llega a
+  /// dispararse y la sesión vencida sería invisible. Aquí se lee el `exp` local
+  /// (sin red) al montar y al volver a primer plano. Solo enciende el aviso;
+  /// nunca cierra la sesión ni bloquea nada (gate #3).
+  void _comprobarSesionVencida() {
+    if (!mounted) return;
+    final s = ref.read(authProvider);
+    if (s != null && tokenVencido(s.token)) {
+      ref.read(sessionExpiredProvider.notifier).state = true;
+    }
   }
 
   static const _screens = <Widget>[
@@ -79,7 +101,14 @@ class _HomeShellState extends ConsumerState<HomeShell>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_index],
+      // El banner de sesión vencida (CR-035) va aquí, encima de los AppBar
+      // internos: se ve desde las 4 pestañas sin duplicarlo en cada una.
+      body: Column(
+        children: [
+          const SessionExpiredBanner(),
+          Expanded(child: _screens[_index]),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         key: const Key('home_nav'),
         selectedIndex: _index,
