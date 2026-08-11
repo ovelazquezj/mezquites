@@ -36,7 +36,7 @@ class WebCaptureService {
   /// viewType del HtmlElementView del preview en vivo.
   String get previewViewType => _camera.viewType;
 
-  Future<({double lat, double lon})> _currentPosition() async {
+  Future<({double lat, double lon, double? accuracy})> _currentPosition() async {
     if (_geo != null) return _geo.current();
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
@@ -53,7 +53,7 @@ class WebCaptureService {
     final pos = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(accuracy: LocationAccuracy.best),
     );
-    return (lat: pos.latitude, lon: pos.longitude);
+    return (lat: pos.latitude, lon: pos.longitude, accuracy: pos.accuracy);
   }
 
   /// Abre (o reabre, al cambiar de cámara) el preview en vivo y devuelve las cámaras
@@ -72,6 +72,7 @@ class WebCaptureService {
         imageBytes: bytes,
         lat: pos.lat,
         lon: pos.lon,
+        gpsAccuracyM: pos.accuracy,
         capturedAt: DateTime.now(),
       );
     } finally {
@@ -93,6 +94,7 @@ class WebCaptureService {
       imageBytes: bytes,
       lat: pos.lat,
       lon: pos.lon,
+      gpsAccuracyM: pos.accuracy,
       capturedAt: DateTime.now(),
     );
   }

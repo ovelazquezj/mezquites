@@ -172,3 +172,46 @@ def submit_observation(
         data={"payload": json.dumps(payload)},
         files={"image": fake_jpeg()},
     )
+
+
+# --- Límites administrativos sintéticos (CR-036) -------------------------------------------------
+
+# Cuadrados disjuntos con las claves INEGI reales de sus homólogos, para que los datos de prueba se
+# lean como los de producción. NO se usa el marco nacional (62 MB): una prueba no debe depender de
+# un artefacto así. La fidelidad del dataset real la verifica la prueba de aceptación de
+# `scripts/geo/preparar_limites_inegi.py` contra coordenadas reales.
+#            estado            municipio         ent   mun     lon0     lon1    lat0   lat1
+LIMITES_DEMO = [
+    ("Aguascalientes", "Aguascalientes",   "01", "001", -102.40, -102.20, 21.80, 22.00),
+    ("Aguascalientes", "Jesús María",      "01", "005", -102.60, -102.41, 21.80, 22.00),
+    ("Zacatecas",      "Jalpa",            "32", "019", -103.00, -102.90, 21.60, 21.70),
+]
+
+# Un punto interior de cada cuadrado, y uno fuera de todos.
+PUNTO_AGS = (21.90, -102.30)
+PUNTO_JESUS_MARIA = (21.90, -102.50)
+PUNTO_JALPA = (21.65, -102.95)
+PUNTO_FUERA = (19.43, -99.13)  # Ciudad de México
+
+
+def sembrar_limites(db_session, limites=None) -> None:
+    """Reemplaza `admin_boundary` por los cuadrados de prueba."""
+    from sqlalchemy import text as _text
+
+    db_session.execute(_text("DELETE FROM admin_boundary"))
+    for estado, municipio, cve_ent, cve_mun, x0, x1, y0, y1 in (limites or LIMITES_DEMO):
+        db_session.execute(
+            _text(
+                """
+                INSERT INTO admin_boundary (estado, municipio, cve_ent, cve_mun, geom)
+                VALUES (:estado, :municipio, :cve_ent, :cve_mun,
+                        ST_Multi(ST_MakeEnvelope(:x0, :y0, :x1, :y1, 4326))::geography)
+                """
+            ),
+            {
+                "estado": estado, "municipio": municipio,
+                "cve_ent": cve_ent, "cve_mun": cve_mun,
+                "x0": x0, "x1": x1, "y0": y0, "y1": y1,
+            },
+        )
+    db_session.commit()

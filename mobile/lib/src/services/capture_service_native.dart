@@ -23,7 +23,7 @@ class NativeCaptureService {
   Future<List<CameraDescription>> cameras() => availableCameras();
 
   /// Obtiene la ubicación real del dispositivo, pidiendo permiso si hace falta.
-  Future<({double lat, double lon})> _currentPosition() async {
+  Future<({double lat, double lon, double? accuracy})> _currentPosition() async {
     if (_geo != null) return _geo.current();
 
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -41,7 +41,7 @@ class NativeCaptureService {
     final pos = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(accuracy: LocationAccuracy.best),
     );
-    return (lat: pos.latitude, lon: pos.longitude);
+    return (lat: pos.latitude, lon: pos.longitude, accuracy: pos.accuracy);
   }
 
   /// Toma la foto con [controller] (cámara nativa) e inyecta el EXIF real.
@@ -54,6 +54,7 @@ class NativeCaptureService {
       imagePath: shot.path,
       lat: pos.lat,
       lon: pos.lon,
+      gpsAccuracyM: pos.accuracy,
       capturedAt: now,
     );
   }

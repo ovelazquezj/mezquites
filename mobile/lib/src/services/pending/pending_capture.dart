@@ -53,8 +53,7 @@ class PendingCapture {
     required this.flagDanio,
     required this.tamanio,
     required this.contexto,
-    this.estado,
-    this.municipio,
+    this.gpsAccuracyM,
     this.state = PendingState.enCola,
     this.intentos = 0,
     this.ultimoError,
@@ -81,8 +80,11 @@ class PendingCapture {
   final bool flagDanio;
   final String tamanio;
   final String contexto;
-  final String? estado;
-  final String? municipio;
+
+  /// CR-036: precisión del fix del GPS en metros. Estado y municipio ya no se
+  /// guardan: los deriva el servidor al recibir la captura, así que arrastrarlos
+  /// en la cola solo serviría para conservar una etiqueta equivocada.
+  final double? gpsAccuracyM;
 
   final PendingState state;
 
@@ -119,8 +121,7 @@ class PendingCapture {
         flagDanio: flagDanio,
         tamanio: tamanio,
         contexto: contexto,
-        estado: estado,
-        municipio: municipio,
+        gpsAccuracyM: gpsAccuracyM,
         state: state ?? this.state,
         intentos: intentos ?? this.intentos,
         ultimoError: ultimoError ?? this.ultimoError,
@@ -143,8 +144,7 @@ class PendingCapture {
         flagDanio: flagDanio,
         tamanio: Tamanio.byWire(tamanio),
         contexto: Contexto.byWire(contexto),
-        estado: estado,
-        municipio: municipio,
+        gpsAccuracyM: gpsAccuracyM,
         imageBytes: bytes,
         clientCaptureId: id,
       );
@@ -166,8 +166,7 @@ class PendingCapture {
         flagDanio: draft.flagDanio,
         tamanio: draft.tamanio.wire,
         contexto: draft.contexto.wire,
-        estado: draft.estado,
-        municipio: draft.municipio,
+        gpsAccuracyM: draft.gpsAccuracyM,
       );
 
   Map<String, dynamic> toJson() => {
@@ -181,8 +180,7 @@ class PendingCapture {
         'flag_danio': flagDanio,
         'tamanio': tamanio,
         'contexto': contexto,
-        if (estado != null) 'estado': estado,
-        if (municipio != null) 'municipio': municipio,
+        if (gpsAccuracyM != null) 'gps_accuracy_m': gpsAccuracyM,
         'state': state.wire,
         'intentos': intentos,
         if (ultimoError != null) 'ultimo_error': ultimoError,
@@ -201,8 +199,11 @@ class PendingCapture {
         flagDanio: j['flag_danio'] as bool? ?? false,
         tamanio: j['tamanio'] as String,
         contexto: j['contexto'] as String,
-        estado: j['estado'] as String?,
-        municipio: j['municipio'] as String?,
+        // CR-036: las capturas guardadas ANTES de este cambio traen `estado`/`municipio` y no
+        // traen `gps_accuracy_m`. Se leen sin romper y simplemente se ignoran esos dos campos: el
+        // servidor va a derivar la geografía de todos modos. Una cola pendiente en un teléfono real
+        // no puede perderse por un cambio de esquema (CR-031).
+        gpsAccuracyM: (j['gps_accuracy_m'] as num?)?.toDouble(),
         state: PendingState.byWire(j['state'] as String? ?? 'en_cola'),
         intentos: (j['intentos'] as num?)?.toInt() ?? 0,
         ultimoError: j['ultimo_error'] as String?,

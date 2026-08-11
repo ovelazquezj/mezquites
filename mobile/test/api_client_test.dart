@@ -155,8 +155,11 @@ void main() {
     expect(peticiones[1].queryParameters['offset'], '5000');
   });
 
-  test('publicGrid pide el tope del backend (5000) por defecto (CR-034)',
-      () async {
+  test('publicGrid ya no manda limit: el backend agrega en SQL (CR-036)', () async {
+    // CR-034 pedía aquí `limit=5000`, el tope de filas que el backend escaneaba para armar el
+    // mapa de calor en memoria. CR-036 movió esa agregación a SQL: ya no hay nada que topar, y
+    // seguir mandando el parámetro sugeriría un límite que no existe. El mapa del voluntario deja
+    // de truncarse en silencio al crecer el dataset — la última deuda viva de CR-034.
     late Uri pedida;
     final mock = MockClient((req) async {
       pedida = req.url;
@@ -164,7 +167,7 @@ void main() {
     });
     final api = ApiClient(baseUrl: 'http://x/api/v1', httpClient: mock);
     await api.publicGrid();
-    expect(pedida.queryParameters['limit'], '5000');
+    expect(pedida.queryParameters.containsKey('limit'), isFalse);
   });
 
   test('injectExif escribe EXIF GPS/fecha en un JPEG real', () async {

@@ -18,6 +18,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from ..db import get_db
+from ..geo_filtros import CLAUSULA_GEO, params_geo
 from ..deps import CurrentUser, require_role
 from ..models import EXACT_LOCATION_ROLES
 from ..schemas import RestrictedObservation
@@ -29,6 +30,9 @@ router = APIRouter(prefix="/restricted", tags=["restricted"])
 @router.get("/observations", response_model=list[RestrictedObservation])
 def restricted_observations(
     estado: str | None = Query(None),
+    municipio: str | None = Query(None),
+    cve_ent: str | None = Query(None, min_length=2, max_length=2),
+    cve_mun: str | None = Query(None, min_length=3, max_length=3),
     estado_revision: str | None = Query(
         None,
         description=(
@@ -56,13 +60,22 @@ def restricted_observations(
                    nivel_g4, flag_cuscuta, flag_danio, estado, municipio,
                    captured_at, estado_revision
             FROM observation
-            WHERE (CAST(:estado AS text) IS NULL OR estado = :estado)
-              AND (CAST(:estado_revision AS text) IS NULL OR estado_revision = :estado_revision)
+            WHERE (CAST(:estado_revision AS text) IS NULL OR estado_revision = :estado_revision)
+            """
+            + CLAUSULA_GEO
+            + """
             ORDER BY captured_at DESC
             LIMIT :limit OFFSET :offset
             """
         ),
-        {"estado": estado, "estado_revision": estado_revision, "limit": limit, "offset": offset},
+        {
+            **params_geo(
+                estado=estado, municipio=municipio, cve_ent=cve_ent, cve_mun=cve_mun
+            ),
+            "estado_revision": estado_revision,
+            "limit": limit,
+            "offset": offset,
+        },
     ).mappings().all()
 
     return [

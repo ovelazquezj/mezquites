@@ -180,6 +180,7 @@ class Copy {
   static const dataSummaryTotal = 'Total de observaciones';
   static const dataSummaryByRevision = 'Por estado de revisión';
   static const dataSummaryByNivel = 'Por nivel de paxtle';
+  static const dataSummaryByEstado = 'Por estado';
   static const dataSummaryByMunicipio = 'Por municipio';
   // Aviso para roles con ubicación exacta: el CSV trae las coordenadas (CR-025).
   static const dataExactNote =

@@ -107,7 +107,16 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
           ),
           Expanded(
             child: shot != null
-                ? ObservationForm(capture: shot, onSubmit: _submit)
+                ? ObservationForm(
+                    capture: shot,
+                    onSubmit: _submit,
+                    // CR-036: le pide al servidor el nombre del lugar solo para MOSTRARLO. Si no
+                    // hay red devuelve null y la tarjeta enseña las coordenadas; la captura
+                    // offline (CR-031) no depende de esta llamada.
+                    resolverLugar: (double lat, double lon) => ref
+                        .read(apiClientProvider)
+                        .geoResolve(lat: lat, lon: lon),
+                  )
                 : CapturePane(onCaptured: _onCaptured),
           ),
         ],

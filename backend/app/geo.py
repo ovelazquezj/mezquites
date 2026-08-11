@@ -10,8 +10,12 @@
   Ya NO reutiliza árboles cercanos (la consulta ``ST_DWithin`` de 10 m queda retirada); la tabla
   ``tree`` se conserva, pero cada captura registra su propio árbol.
 - ``compute_observation_seq`` — posición en la serie temporal del árbol (gap > 30 días, R3).
-- ``derive_estado_municipio`` — join espacial a ``admin_boundary`` (Q8); deriva estado/municipio
-  del EXIF. Sin límites cargados ⇒ (None, None) sin romper el flujo.
+- ``resolver_ubicacion`` — CR-036: join espacial a ``admin_boundary`` (Q8) que devuelve estado,
+  municipio y **claves INEGI**. Es la única fuente de verdad de la geografía de una observación: lo
+  que declare el cliente no se consulta. Sin límites cargados, o con un punto fuera de todos,
+  devuelve una ``Ubicacion`` vacía y el flujo de submit continúa (gate #3).
+  ``derive_estado_municipio`` se conserva como envoltorio de compatibilidad.
+- ``listar_estados`` / ``listar_municipios`` — catálogo para ``/geo/*`` y los filtros de la consola.
 
 Las funciones que tocan PostGIS reciben una ``Session`` SQLAlchemy.
 """
@@ -19,6 +23,7 @@ Las funciones que tocan PostGIS reciben una ``Session`` SQLAlchemy.
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from functools import lru_cache
 
 from pyproj import Transformer
@@ -100,26 +105,95 @@ def compute_observation_seq(db: Session, tree_id: uuid.UUID, captured_at) -> int
     return int(row) + 1
 
 
-def derive_estado_municipio(db: Session, *, lat: float, lon: float) -> tuple[str | None, str | None]:
-    """Deriva (estado, municipio) por join espacial a ``admin_boundary`` (Q8).
+@dataclass(frozen=True)
+class Ubicacion:
+    """Resultado de resolver un punto contra ``admin_boundary`` (CR-036).
 
-    Si no hay límites cargados o el punto no cae en ninguno, devuelve (None, None) sin romper el
-    flujo de submit (el escalamiento no depende de tener los límites cargados).
+    ``resuelto`` es False cuando el punto no cae en ningún municipio: entonces los cuatro campos van
+    en ``None``. No es un error — el submit continúa (gate #3), simplemente la observación queda sin
+    dimensión geográfica en vez de con una inventada.
     """
-    row = db.execute(
+
+    estado: str | None = None
+    municipio: str | None = None
+    cve_ent: str | None = None
+    cve_mun: str | None = None
+
+    @property
+    def resuelto(self) -> bool:
+        return self.cve_ent is not None
+
+
+# El punto se compara como `geography` contra la columna `geography`: así la consulta **usa el
+# índice GiST**. La versión anterior casteaba a `geometry` dentro del WHERE (`ST_Contains(
+# geom::geometry, ...)`), lo que lo inhabilitaba — con la tabla vacía daba igual, pero con los 2 478
+# municipios cargados sería un escaneo secuencial con un test caro por fila.
+#
+# El ORDER BY hace determinista el desempate cuando un punto cae exactamente sobre una frontera
+# compartida (mismo resultado siempre, en vez de "la que devuelva el índice primero").
+_SQL_RESOLVER = text(
+    """
+    SELECT estado, municipio, cve_ent, cve_mun
+    FROM admin_boundary
+    WHERE ST_Intersects(geom, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography)
+    ORDER BY cve_ent, cve_mun
+    LIMIT 1
+    """
+)
+
+
+def resolver_ubicacion(db: Session, *, lat: float, lon: float) -> Ubicacion:
+    """Resuelve un punto a su municipio por join espacial a ``admin_boundary`` (Q8, CR-036).
+
+    Es la **única** fuente de verdad de estado/municipio: lo que declare el cliente no se consulta.
+    Sin límites cargados, o con un punto fuera de todos, devuelve una ``Ubicacion`` vacía y el flujo
+    de submit continúa igual.
+    """
+    row = db.execute(_SQL_RESOLVER, {"lon": lon, "lat": lat}).first()
+    if row is None:
+        return Ubicacion()
+    return Ubicacion(estado=row[0], municipio=row[1], cve_ent=row[2], cve_mun=row[3])
+
+
+def derive_estado_municipio(db: Session, *, lat: float, lon: float) -> tuple[str | None, str | None]:
+    """Compatibilidad: solo (estado, municipio). Prefiere ``resolver_ubicacion``."""
+    u = resolver_ubicacion(db, lat=lat, lon=lon)
+    return u.estado, u.municipio
+
+
+def listar_estados(db: Session) -> list[dict[str, str]]:
+    """Catálogo de entidades presentes en ``admin_boundary`` (CR-036).
+
+    Sale de un ``SELECT DISTINCT`` sobre la capa municipal: no hace falta una tabla aparte de
+    entidades, porque cada municipio ya trae su clave y el nombre de su estado.
+    """
+    rows = db.execute(
         text(
             """
-            SELECT estado, municipio
+            SELECT DISTINCT cve_ent, estado
             FROM admin_boundary
-            WHERE ST_Contains(
-                geom::geometry,
-                ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)
-            )
-            LIMIT 1
+            WHERE cve_ent IS NOT NULL
+            ORDER BY estado
+            """
+        )
+    ).all()
+    return [{"cve_ent": r[0], "estado": r[1]} for r in rows]
+
+
+def listar_municipios(db: Session, *, cve_ent: str | None = None) -> list[dict[str, str]]:
+    """Catálogo de municipios, opcionalmente acotado a una entidad (CR-036)."""
+    rows = db.execute(
+        text(
+            """
+            SELECT cve_ent, cve_mun, estado, municipio
+            FROM admin_boundary
+            WHERE cve_mun IS NOT NULL
+              AND (CAST(:cve_ent AS text) IS NULL OR cve_ent = :cve_ent)
+            ORDER BY estado, municipio
             """
         ),
-        {"lon": lon, "lat": lat},
-    ).first()
-    if row is None:
-        return None, None
-    return row[0], row[1]
+        {"cve_ent": cve_ent},
+    ).all()
+    return [
+        {"cve_ent": r[0], "cve_mun": r[1], "estado": r[2], "municipio": r[3]} for r in rows
+    ]

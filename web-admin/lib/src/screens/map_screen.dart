@@ -10,6 +10,9 @@ import '../ui/copy.dart';
 
 /// Encuadre inicial: **Aguascalientes** (igual que el móvil, CR-009). El centro
 /// y el zoom son del catálogo de la ciudad; NO son coords de ningún árbol.
+/// Encuadre de respaldo: solo se usa cuando **no hay datos que encuadrar** (mapa vacío). Con
+/// datos, el mapa se ajusta a ellos — CR-036: un mezquite en Zacatecas quedaba fuera de cuadro
+/// porque el centro estaba fijo en Aguascalientes.
 const LatLng kAguascalientesCenter = LatLng(21.8853, -102.2916);
 const double kAguascalientesZoom = 12;
 
@@ -70,6 +73,29 @@ class MapScreen extends ConsumerStatefulWidget {
   ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
+/// Encuadre que contiene todos los puntos, con un margen para que ninguno quede pegado al borde.
+/// `null` si no hay puntos: entonces se usa el centro de respaldo.
+LatLngBounds? encuadreDe(Iterable<LatLng> puntos) {
+  if (puntos.isEmpty) return null;
+  var minLat = puntos.first.latitude, maxLat = puntos.first.latitude;
+  var minLon = puntos.first.longitude, maxLon = puntos.first.longitude;
+  for (final p in puntos) {
+    if (p.latitude < minLat) minLat = p.latitude;
+    if (p.latitude > maxLat) maxLat = p.latitude;
+    if (p.longitude < minLon) minLon = p.longitude;
+    if (p.longitude > maxLon) maxLon = p.longitude;
+  }
+  // Un solo punto (o todos iguales) daría un bounds degenerado y un zoom absurdo: se abre un
+  // margen mínimo de ~1 km para que el mapa quede a una escala legible.
+  const margenMin = 0.01;
+  final padLat = ((maxLat - minLat) * 0.1).clamp(margenMin, 5.0);
+  final padLon = ((maxLon - minLon) * 0.1).clamp(margenMin, 5.0);
+  return LatLngBounds(
+    LatLng(minLat - padLat, minLon - padLon),
+    LatLng(maxLat + padLat, maxLon + padLon),
+  );
+}
+
 class _MapScreenState extends ConsumerState<MapScreen> {
   _MapMode _mode = _MapMode.heat;
   // CR-026: de entrada, la consola muestra lo mismo que el público.
@@ -82,10 +108,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   void initState() {
     super.initState();
-    // CR-034: el tope del backend (5000 filas escaneadas para el binning). Las
-    // CELDAS del calor son muchas menos; la deuda de agregar sin tope queda
-    // anotada para cuando el piloto rebase 5000 confirmadas.
-    _gridFuture = ref.read(apiClientProvider).publicGrid(limit: 5000);
+    // CR-036: el backend agrega el calor en SQL, así que ya no hay tope de filas escaneadas
+    // (cierra la deuda que CR-034 dejó anotada).
+    _gridFuture = ref.read(apiClientProvider).publicGrid();
   }
 
   // CR-034: trae TODO paginando contra el backend; el limit fijo de 2000
@@ -222,6 +247,30 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 }
 
 /// El `FlutterMap` con OSM + la capa de celdas + leyenda en overlay.
+/// Opciones del mapa ajustadas a los datos: si hay puntos, encuadra sobre ellos; si no, cae al
+/// centro de respaldo. Antes el centro estaba fijo en Aguascalientes y una observación de otro
+/// estado quedaba fuera de cuadro sin que nadie lo notara.
+MapOptions _opcionesEncuadradas(Iterable<LatLng> puntos) {
+  final bounds = encuadreDe(puntos);
+  const interaccion = InteractionOptions(
+    flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+  );
+  if (bounds == null) {
+    return const MapOptions(
+      initialCenter: kAguascalientesCenter,
+      initialZoom: kAguascalientesZoom,
+      interactionOptions: interaccion,
+    );
+  }
+  return MapOptions(
+    initialCameraFit: CameraFit.bounds(
+      bounds: bounds,
+      padding: const EdgeInsets.all(32),
+    ),
+    interactionOptions: interaccion,
+  );
+}
+
 class _MapWithCells extends StatelessWidget {
   const _MapWithCells({required this.cells});
 
@@ -234,12 +283,8 @@ class _MapWithCells extends StatelessWidget {
         Positioned.fill(
           child: FlutterMap(
             key: const Key('heat_map'),
-            options: const MapOptions(
-              initialCenter: kAguascalientesCenter,
-              initialZoom: kAguascalientesZoom,
-              interactionOptions: InteractionOptions(
-                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-              ),
+            options: _opcionesEncuadradas(
+              cells.map((c) => LatLng(c.lat, c.lon)),
             ),
             children: [
               TileLayer(
@@ -317,12 +362,8 @@ class _MapWithExact extends StatelessWidget {
         Positioned.fill(
           child: FlutterMap(
             key: const Key('exact_map'),
-            options: const MapOptions(
-              initialCenter: kAguascalientesCenter,
-              initialZoom: kAguascalientesZoom,
-              interactionOptions: InteractionOptions(
-                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-              ),
+            options: _opcionesEncuadradas(
+              observations.map((o) => LatLng(o.lat, o.lon)),
             ),
             children: [
               TileLayer(

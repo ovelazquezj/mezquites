@@ -17,11 +17,16 @@ class MonitorScreen extends ConsumerStatefulWidget {
 
 class _MonitorScreenState extends ConsumerState<MonitorScreen> {
   late Future<ReviewStats> _future;
+  late Future<AnalyticsSummary> _porEstadoFuture;
 
   @override
   void initState() {
     super.initState();
     _future = ref.read(apiClientProvider).reviewStats();
+    // CR-036: el Monitor no tenía ninguna dimensión geográfica. Con datos de más de un estado,
+    // "¿de dónde viene lo que estamos revisando?" es una pregunta operativa, no analítica.
+    // Se reusa `summary` (mismos roles que `review/stats`) en vez de duplicar el conteo.
+    _porEstadoFuture = ref.read(apiClientProvider).analyticsSummary();
   }
 
   @override
@@ -80,6 +85,47 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
                     label: 'Veredictos emitidos (incluye re-revisiones)',
                     value: s.revisionesTotales),
               ],
+            );
+          },
+        ),
+        const SizedBox(height: 24),
+        // CR-036: desglose por entidad. Con el dataset ya multi-estado, saber cuánto entra de
+        // fuera de Aguascalientes es parte de operar la cola, no un lujo analítico.
+        FutureBuilder<AnalyticsSummary>(
+          future: _porEstadoFuture,
+          builder: (context, snap) {
+            final resumen = snap.data;
+            // Si falla, el Monitor no se rompe: simplemente no pinta el desglose. Las métricas
+            // de la cola, que son lo esencial de esta pantalla, vienen de otra petición.
+            if (resumen == null || resumen.porEstado.isEmpty) {
+              return const SizedBox.shrink();
+            }
+            final entradas = resumen.porEstado.entries.toList()
+              ..sort((a, b) => b.value.compareTo(a.value));
+            return Card(
+              key: const Key('monitor-por-estado'),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Por estado',
+                        style: Theme.of(context).textTheme.titleMedium,),
+                    const SizedBox(height: 8),
+                    for (final e in entradas)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(e.key == 'sin_dato' ? 'Sin ubicación' : e.key),
+                            Text('${e.value}'),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             );
           },
         ),

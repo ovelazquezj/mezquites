@@ -38,8 +38,7 @@ void main() {
         flagDanio: true,
         tamanio: 'mediano',
         contexto: 'campo_abierto',
-        estado: 'Aguascalientes',
-        municipio: 'Aguascalientes',
+        gpsAccuracyM: 8.0,
       );
 
   group('AC5 — la captura sobrevive al cierre de la app', () {
@@ -226,7 +225,7 @@ void main() {
       expect(ida.capturedAt.toUtc(), DateTime.utc(2026, 7, 29, 15, 20));
       expect(ida.nivelG4, 'leve');
       expect(ida.flagDanio, isTrue);
-      expect(ida.estado, 'Aguascalientes');
+      expect(ida.gpsAccuracyM, 8.0);
       expect(ida.intentos, 3);
       expect(ida.state, PendingState.necesitaAtencion);
     });

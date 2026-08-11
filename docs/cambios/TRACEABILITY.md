@@ -33,7 +33,7 @@
 | **Q6** Dashboard expone indicadores social/educativo/ecológico automáticos | backend | 2 | `backend/tests/test_indicators.py::test_indicators_compute_automatically` | ✅ |
 | **Q6** Ningún indicador dispara aprobación/reprobación (U1) | backend | 2 | `backend/tests/test_indicators.py::test_indicators_have_no_threshold_logic` (AST: sin umbrales en código) | ✅ |
 | **Q6** Indicadores organizacionales capturados manualmente en la web admin (amendment) | web admin | 4 | `POST /admin/indicators/organizational` desde `org_indicators_screen.dart`; `web-admin/test/api_client_test.dart` (sin umbrales, U1) | ✅ |
-| **Q8** Toda observación atribuible a estado y municipio | backend | 2 | `derive_estado_municipio` (join `admin_boundary`); `/restricted` y filtros exponen estado/municipio · admin_boundary se carga por separado | 🟡 (lógica ✅; carga de límites = dato operativo) |
+| **Q8** Toda observación atribuible a estado y municipio **por geolocalización** | backend | 2–CR-036 | `geo.resolver_ubicacion` (join `admin_boundary`, límites INEGI nacionales cargados); el servidor deriva SIEMPRE, el cliente ya no declara: `backend/tests/test_cr036_geografia_derivada.py` | ✅ (CR-036 cierra la carga de límites, pendiente desde el Inc. 2) |
 | **Q8** Dashboards y rankings con filtro geográfico | backend | 2 | `backend/tests/test_rankings_profile.py::test_rankings_geo_filter` + `test_indicators.py::test_indicators_filter_by_estado` | ✅ |
 | **Q8** Agregar un estado no requiere nueva infraestructura (RC1) | infra | 2 | estado = filtro (`WHERE estado=...`), sin multi-tenancy: revisión + filtros geográficos ✅ | ✅ |
 
@@ -862,3 +862,90 @@ con prueba de copy; **#4** intacto — el hook de prueba `CaptureScreen(initialS
 **179 pruebas móviles verdes** (152 previas + 27 nuevas: 16 en `cr035_sesion_vencida_test.dart`, 11
 en `cr035_ui_test.dart`), 2026-08-06. `web-admin`, `backend`, `welcome_screen.dart`, `AuthController`
 y `pending_uploader.dart` sin tocar.
+
+---
+
+## CR-036 — Geografía derivada en el servidor + alcance nacional (2026-08-10)
+
+**Origen:** hallazgo del usuario (*"por vez primera se han detectado registros fuera del estado"*).
+Diagnóstico en producción **antes** de tocar código: **39 observaciones al oeste de −102.867** (el
+punto más occidental de Aguascalientes) etiquetadas "Calvillo, Aguascalientes", capturadas por una
+cuenta entre el 6 y el 8 de agosto. Los 20 rechazos de ese grupo fueron por **calidad de foto**, no
+por geografía: el error de etiqueta pasó la revisión humana sin que nadie pudiera verlo.
+
+**Naturaleza:** **cumplimiento** del criterio sellado **Q8-D1** (*"atribuible a estado y municipio
+por geolocalización"*), en 🟡 desde el Incremento 2 por falta de los límites. **Ningún gate se
+enmienda.** Diseño y decisiones en
+[`CR-036-geografia-derivada-y-alcance-nacional.md`](../change-requests/CR-036-geografia-derivada-y-alcance-nacional.md).
+
+**El hallazgo grande no eran las 39.** El ensayo del backfill se corrió en la Fase 0 **sin escribir
+en producción** (se exportaron las coordenadas por lectura y se resolvieron contra los límites en
+local): **235 filas mal etiquetadas de 2 342**, en exactamente dos transiciones.
+
+| Antes | Después | Filas | de ellas confirmadas |
+|---|---|---|---|
+| Aguascalientes / **Jesús María** | Aguascalientes / **Aguascalientes** | **196** | 144 |
+| Aguascalientes / **Calvillo** | **Zacatecas / Jalpa** | **39** | 19 |
+
+El **57.8 % de lo que el dashboard contaba como Jesús María** está en el municipio de
+Aguascalientes. Ese error llevaba meses invisible porque cae dentro del estado y suena plausible;
+las 39 solo se vieron porque cruzaron una línea estatal. **0 observaciones quedaron sin resolver.**
+
+| # | Criterio | Implementación | Prueba |
+|---|---|---|---|
+| **AC1** | `admin_boundary` con cobertura nacional | Marco Geoestadístico INEGI 2025, capa municipal: **2 478 municipios / 32 entidades / 0 geometrías inválidas**; `scripts/geo/preparar_limites_inegi.py` (descarga selectiva por *range requests*: 245 MB de 2.77 GB) | prueba de aceptación del propio script (8/8 puntos de control) |
+| **AC2** | El servidor deriva **ignorando al cliente** | `geo.resolver_ubicacion` + precedencia invertida en `routers/observations.py` | `test_cr036_geografia_derivada.py` (3 casos: etiqueta falsa, estado inventado, cliente que no manda nada) |
+| **AC3** | Punto fuera de todo polígono ⇒ sin geografía, sin bloquear (gate #3) | `Ubicacion` vacía; el submit continúa | `::test_ac3_*` (2 casos, incluido `admin_boundary` vacía) |
+| **AC4** | `cve_ent`/`cve_mun` como clave de agrupación | migración **0009**; `geo_filtros.py` | `::test_ac2_*` + `cr036_filtros_geograficos_test.dart` |
+| **AC5** | El cluster real resuelve a **Zacatecas** | límites a resolución original | prueba de aceptación del preparador (4 coordenadas reales del cluster) |
+| **AC6** | `GET /geo/resolve` | `routers/geo.py` | `::test_ac6_*` (3: resuelto, fuera de cobertura = **200 no 404**, validación de rango) |
+| **AC7** | `GET /geo/estados` y `/geo/municipios` | mismo router; catálogo por `SELECT DISTINCT` sobre la capa municipal | `::test_ac7_*` (2, incluye que son públicos) |
+| **AC8** | `municipio` en los 3 endpoints públicos | `routers/public.py` + `indicators.py` | suites de `public`/`indicators` sin regresión |
+| **AC9** | `summary` gana `por_estado` y `por_municipio_cve` | `routers/analytics.py` | `test_cr010_analytics.py` (actualizada) |
+| **AC10** | Las 4 rutas de analítica filtran por geografía | `geo_filtros.CLAUSULA_GEO` | `cr036_filtros_geograficos_test.dart::las 4 rutas…` |
+| **AC11** | `participation.csv` declara que el filtro solo aplica a observaciones | nota emitida **solo con filtro activo** (sin filtro, el CSV sale byte a byte igual que antes) | `routers/analytics.py` |
+| **AC12** | `/public/grid` agrega en SQL, **sin tope de 5 000** | binning equivalente a `obfuscate_to_grid`; el parámetro `limit` desaparece | `test_public_grid.py` **sin cambios** — compara coordenadas exactas de celda y pasa: el SQL produce las mismas celdas que el Python |
+| **AC13** | La captura no tiene selectores de ubicación | `observation_form.dart`; **`municipios.dart` eliminado** | `observation_form_test.dart::AC13` |
+| **AC14** | Con red: nombre del lugar + coordenadas | `GeoLugar.etiqueta` | `::AC14` |
+| **AC15** | Sin red: coordenadas + aviso honesto; captura intacta | `ApiClient.geoResolve` **nunca lanza** | `::AC15` (2 casos, incl. sin resolvedor) |
+| **AC16** | Precisión del GPS capturada y enviada | los dos `capture_service_*`; `gps_accuracy_m` con CHECK ≥ 0 | `::AC16` (2) + `::test_ac16_*` backend (3) |
+| **AC17** | Ningún catálogo local | `municipios.dart` borrado; el estado de una institución sale de `/geo/estados` | `cr010_movil_test.dart` (actualizada) |
+| **AC18/19** | Filtros estado+municipio en Panel público y Datos | `widgets/geo_filter.dart` (dependientes, por clave) | `cr036_filtros_geograficos_test.dart` (3, incl. limpieza al cambiar estado y degradación si el catálogo falla) |
+| **AC20** | Las dos descargas heredan los filtros | `data_screen.dart` + `api_client.dart` | `::las 4 rutas…` |
+| **AC21** | Tarjeta "Por estado" en Datos | `_SummaryCards` (antes que la de municipio) | `data_screen.dart` |
+| **AC22** | Los mapas encuadran sobre los datos | `encuadreDe` + `CameraFit.bounds`; el centro de Aguascalientes queda solo de respaldo | `::AC22` (3: vacío, dos estados, punto único) |
+| **AC23** | Filtro geográfico en Revisión; desglose en Monitor | `review_screen.dart`, `monitor_screen.dart` | análisis + suite de consola |
+| **AC24** | Backfill con simulacro y guarda | `backend/app/backfill_geografia.py` (`--simulacro` / `--aplicar --esperado N`) | `test_cr036_backfill.py` (6: conteo exacto, no escribe en simulacro, corrige y llena claves, conserva lo no resuelto, total invariante, ningún veredicto tocado) |
+| **AC25** | Q8 pasa de 🟡 a ✅ | esta sección | — |
+
+**Decisiones de implementación.**
+
+(a) **`ST_Subdivide` resultó innecesario.** Estaba previsto en el CR, pero medido da **1.7–11.4 ms**
+por consulta con la geometría sin simplificar (62 MB de tabla, 148 GB libres en el volumen). Los
+límites se cargan a **resolución original**: degradarlos habría comprometido justo la frontera que
+este CR necesita resolver bien.
+
+(b) Se corrigió que `derive_estado_municipio` casteaba a `geometry` dentro del `WHERE`, lo que
+**inhabilitaba el índice GiST**; con la tabla vacía daba igual, con 2 478 polígonos habría sido un
+escaneo secuencial con un test caro por fila.
+
+(c) Los límites de prueba son **sintéticos** (3 cuadrados con claves INEGI reales): una prueba no
+debe depender de un artefacto de 62 MB. La fidelidad del dataset real la verifica el preparador
+contra coordenadas reales de producción.
+
+(d) La cola offline (CR-031) **lee el formato anterior sin romperse**: hay teléfonos con capturas
+guardadas con `estado`/`municipio`; se ignoran y se acepta la ausencia de `gps_accuracy_m`. Una cola
+pendiente no puede perderse por un cambio de esquema.
+
+(e) `estado`/`municipio` **siguen aceptándose** en el submit aunque se ignoren: los bundles PWA en
+caché los siguen enviando, y rechazar el POST los dejaría sin poder subir.
+
+**Deuda cerrada de paso:** `/public/grid` ya no escanea un tope de 5 000 filas (deuda anotada en
+CR-034) — en **los dos** clientes.
+
+**Deuda anotada:** editar estado/municipio desde la consola (decisión del usuario: fuera de este CR);
+aviso de baja precisión en la consola (el dato ya se captura); actualización de los límites cuando
+INEGI publique una versión nueva del marco.
+
+**584 pruebas verdes** (21 contrato · 9 mock · **235** backend · **183** móvil · **136** consola),
+2026-08-10. Delta: +16 backend, +4 móvil, +8 consola.

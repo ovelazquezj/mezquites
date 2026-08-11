@@ -12,13 +12,23 @@ import io
 import json
 from datetime import datetime, timezone
 
-from .helpers import auth_header, fake_jpeg, register
+from .helpers import PUNTO_AGS, PUNTO_JESUS_MARIA, auth_header, fake_jpeg, register
 
+# Dentro del cuadrado sintético del municipio de Aguascalientes (ver helpers.LIMITES_DEMO).
 EXACT_LAT = 21.881234
 EXACT_LON = -102.291987
 
+# CR-036: el municipio ya NO se declara en el payload — lo deriva el servidor de las coordenadas.
+# Estas pruebas eligen el municipio ELIGIENDO EL PUNTO, que es como funciona en producción.
+_PUNTOS = {
+    "Aguascalientes": PUNTO_AGS,
+    "Jesús María": PUNTO_JESUS_MARIA,
+}
 
-def _submit(client, token, *, lat, lon, nivel_g4="leve", municipio=None, **extra) -> str:
+
+def _submit(client, token, *, lat=None, lon=None, nivel_g4="leve", municipio=None, **extra) -> str:
+    if municipio is not None and lat is None:
+        lat, lon = _PUNTOS[municipio]
     payload = {
         "lat": lat,
         "lon": lon,
@@ -28,8 +38,6 @@ def _submit(client, token, *, lat, lon, nivel_g4="leve", municipio=None, **extra
         "flag_danio": extra.get("flag_danio", False),
         "tamanio": "mediano",
         "contexto": "campo_abierto",
-        "estado": "Aguascalientes",
-        "municipio": municipio,
     }
     resp = client.post(
         "/api/v1/observations",
@@ -41,11 +49,11 @@ def _submit(client, token, *, lat, lon, nivel_g4="leve", municipio=None, **extra
     return resp.json()["observation_id"]
 
 
-def test_summary_counts(client, db_session):
+def test_summary_counts(client, db_session, limites):
     volunteer = register(client)
-    _submit(client, volunteer["token"], lat=21.88, lon=-102.29, nivel_g4="leve", municipio="Aguascalientes")
-    _submit(client, volunteer["token"], lat=21.89, lon=-102.30, nivel_g4="severo", municipio="Jesús María")
-    _submit(client, volunteer["token"], lat=21.90, lon=-102.31, nivel_g4="leve", municipio="Jesús María")
+    _submit(client, volunteer["token"], nivel_g4="leve", municipio="Aguascalientes")
+    _submit(client, volunteer["token"], nivel_g4="severo", municipio="Jesús María")
+    _submit(client, volunteer["token"], nivel_g4="leve", municipio="Jesús María")
 
     analista = register(client, role="analista")
     resp = client.get(
@@ -61,10 +69,10 @@ def test_summary_counts(client, db_session):
     assert s["por_municipio"]["Aguascalientes"] == 1
 
 
-def test_summary_filter_by_municipio(client, db_session):
+def test_summary_filter_by_municipio(client, db_session, limites):
     volunteer = register(client)
-    _submit(client, volunteer["token"], lat=21.88, lon=-102.29, municipio="Aguascalientes")
-    _submit(client, volunteer["token"], lat=21.89, lon=-102.30, municipio="Jesús María")
+    _submit(client, volunteer["token"], municipio="Aguascalientes")
+    _submit(client, volunteer["token"], municipio="Jesús María")
 
     analista = register(client, role="analista")
     resp = client.get(
@@ -76,7 +84,7 @@ def test_summary_filter_by_municipio(client, db_session):
     assert resp.json()["total"] == 1
 
 
-def test_csv_uses_exact_coords_for_console(client, db_session):
+def test_csv_uses_exact_coords_for_console(client, db_session, limites):
     """CR-025: el CSV presenta la ubicación EXACTA del árbol a la consola (aquí, un evaluador)."""
     from backend.app.geo import obfuscate_to_grid
 
@@ -115,7 +123,7 @@ def test_csv_uses_exact_coords_for_console(client, db_session):
 
 def test_csv_filter_by_nivel(client, db_session):
     volunteer = register(client)
-    _submit(client, volunteer["token"], lat=21.88, lon=-102.29, nivel_g4="leve", municipio="Aguascalientes")
+    _submit(client, volunteer["token"], nivel_g4="leve", municipio="Aguascalientes")
     _submit(client, volunteer["token"], lat=21.89, lon=-102.30, nivel_g4="severo", municipio="Aguascalientes")
 
     analista = register(client, role="analista")

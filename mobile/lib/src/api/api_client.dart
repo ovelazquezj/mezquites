@@ -168,6 +168,35 @@ class ApiClient {
     return Rankings.fromJson(_decode(r));
   }
 
+  // --- Geografía derivada (CR-036) ---
+
+  /// Pregunta al servidor a qué estado/municipio pertenece un punto.
+  ///
+  /// Solo sirve para MOSTRARLE al voluntario dónde va a quedar su registro: la ubicación que se
+  /// guarda la resuelve el servidor otra vez al recibir el POST. Por eso, si esto falla —sin señal,
+  /// que es lo normal en campo— **no pasa nada**: se devuelve `null`, la pantalla enseña las
+  /// coordenadas y la captura sigue su curso (CR-031).
+  Future<GeoLugar?> geoResolve({required double lat, required double lon}) async {
+    try {
+      final r = await _http.get(
+        _uri('/geo/resolve', {'lat': '$lat', 'lon': '$lon'}),
+        headers: _headers(),
+      );
+      if (r.statusCode != 200) return null;
+      return GeoLugar.fromJson(_decode(r));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Catálogo de entidades federativas con límites cargados (CR-036).
+  Future<List<String>> geoEstados() async {
+    final r = await _http.get(_uri('/geo/estados'), headers: _headers());
+    return _decodeList(r)
+        .map((e) => (e as Map)['estado'] as String)
+        .toList();
+  }
+
   // --- Vistas de datos públicas ---
 
   /// Observaciones públicas individuales con la ubicación del mezquite
@@ -219,14 +248,13 @@ class ApiClient {
   /// CR-034: default = 5000, el tope del backend (es el máximo de FILAS que
   /// escanea el binning, no de celdas; la deuda de agregar sin tope queda
   /// anotada para cuando el piloto rebase 5000 confirmadas).
-  Future<List<GridCell>> publicGrid({
-    String? estado,
-    int limit = 5000,
-  }) async {
+  /// CR-036: sin `limit`. El backend agrega el mapa de calor en SQL y ya no escanea un tope de
+  /// filas, así que el mapa del voluntario deja de truncarse en silencio al crecer el dataset —
+  /// la última deuda que quedaba viva de CR-034.
+  Future<List<GridCell>> publicGrid({String? estado}) async {
     final r = await _http.get(
       _uri('/public/grid', {
         if (estado != null) 'estado': estado,
-        'limit': '$limit',
       }),
       headers: _headers(json: false),
     );

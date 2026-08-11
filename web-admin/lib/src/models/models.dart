@@ -497,6 +497,7 @@ class AnalyticsSummary {
     required this.porEstadoRevision,
     required this.porNivelG4,
     required this.porMunicipio,
+    required this.porEstado,
     required this.snapshotQuarter,
   });
 
@@ -512,6 +513,10 @@ class AnalyticsSummary {
   /// Conteo por municipio (sin coords; gate #5).
   final Map<String, int> porMunicipio;
 
+  /// CR-036: conteo por entidad federativa. El desglose que faltaba desde que el dataset dejó de
+  /// ser de un solo estado.
+  final Map<String, int> porEstado;
+
   final String snapshotQuarter;
 
   static Map<String, int> _intMap(dynamic v) => ((v ?? {}) as Map)
@@ -522,6 +527,7 @@ class AnalyticsSummary {
         porEstadoRevision: _intMap(j['por_estado_revision']),
         porNivelG4: _intMap(j['por_nivel_g4']),
         porMunicipio: _intMap(j['por_municipio']),
+        porEstado: _intMap(j['por_estado']),
         snapshotQuarter: (j['snapshot_quarter'] ?? '') as String,
       );
 }
@@ -666,4 +672,39 @@ class OrganizationalIndicatorKey {
     OrganizationalIndicatorKey(
         'menciones_mediaticas', 'Menciones en medios'),
   ];
+}
+
+/// Entidad federativa del catálogo geográfico (`GET /geo/estados`, CR-036).
+class GeoEstado {
+  const GeoEstado({required this.cveEnt, required this.estado});
+
+  final String cveEnt;
+  final String estado;
+
+  factory GeoEstado.fromJson(Map<String, dynamic> j) => GeoEstado(
+        cveEnt: j['cve_ent'] as String,
+        estado: j['estado'] as String,
+      );
+}
+
+/// Municipio del catálogo geográfico (`GET /geo/municipios`, CR-036).
+class GeoMunicipio {
+  const GeoMunicipio({
+    required this.cveEnt,
+    required this.cveMun,
+    required this.estado,
+    required this.municipio,
+  });
+
+  final String cveEnt;
+  final String cveMun;
+  final String estado;
+  final String municipio;
+
+  factory GeoMunicipio.fromJson(Map<String, dynamic> j) => GeoMunicipio(
+        cveEnt: j['cve_ent'] as String,
+        cveMun: j['cve_mun'] as String,
+        estado: j['estado'] as String,
+        municipio: j['municipio'] as String,
+      );
 }

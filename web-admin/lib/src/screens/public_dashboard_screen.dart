@@ -6,7 +6,7 @@ import '../state/session.dart';
 import '../ui/copy.dart';
 import '../widgets/paged_table.dart';
 import '../widgets/caveat_banner.dart';
-import '../widgets/estado_filter.dart';
+import '../widgets/geo_filter.dart';
 import '../widgets/paxtle_pie_chart.dart';
 
 /// Dashboard PÚBLICO (Q5.B). Indicadores Q6 + observaciones abiertas. Muestra
@@ -25,7 +25,7 @@ class PublicDashboardScreen extends ConsumerStatefulWidget {
 
 class _PublicDashboardScreenState
     extends ConsumerState<PublicDashboardScreen> {
-  String? _estado;
+  GeoSeleccion _geo = const GeoSeleccion();
   late Future<_PublicData> _future;
 
   @override
@@ -37,10 +37,17 @@ class _PublicDashboardScreenState
   void _reload() {
     final api = ref.read(apiClientProvider);
     _future = () async {
-      final indicators = await api.publicIndicators(estado: _estado);
+      // CR-036: el filtro viaja por clave INEGI (estado y, si se eligió, municipio).
+      final indicators = await api.publicIndicators(
+        cveEnt: _geo.cveEnt,
+        cveMun: _geo.cveMun,
+      );
       // CR-034: trae TODO paginando contra el backend; el limit fijo de 200
       // escondía el resto de las observaciones.
-      final observations = await api.publicObservationsAll(estado: _estado);
+      final observations = await api.publicObservationsAll(
+        cveEnt: _geo.cveEnt,
+        cveMun: _geo.cveMun,
+      );
       return _PublicData(indicators, observations);
     }();
   }
@@ -58,10 +65,10 @@ class _PublicDashboardScreenState
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: 16),
-        EstadoFilter(
-          value: _estado,
+        GeoFilter(
+          value: _geo,
           onChanged: (v) => setState(() {
-            _estado = v;
+            _geo = v;
             _reload();
           }),
         ),

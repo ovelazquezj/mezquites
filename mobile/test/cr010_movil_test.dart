@@ -37,6 +37,17 @@ void main() {
       final store = await seededStore();
       http.Request? captured;
       final mock = MockClient((req) async {
+        // CR-036: el diálogo pide el catálogo de estados al servidor. Se responde aparte y NO se
+        // registra como `captured`, que sigue vigilando únicamente el POST del contrato.
+        if (req.url.path.endsWith('/geo/estados')) {
+          return http.Response(
+            json.encode([
+              {'cve_ent': '01', 'estado': 'Aguascalientes'},
+              {'cve_ent': '32', 'estado': 'Zacatecas'},
+            ]),
+            200,
+          );
+        }
         captured = req;
         return http.Response(
           json.encode({
@@ -77,6 +88,12 @@ void main() {
         find.byKey(const Key('institution_name_field')),
         'Mi Prepa',
       );
+      // CR-036: el estado se elige del catálogo del servidor (antes era una lista hardcodeada con
+      // una sola opción preseleccionada). Con alcance nacional ya hay más de una.
+      await tester.tap(find.byKey(const Key('institution_estado_field')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Aguascalientes').last);
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('institution_request_submit')));
       await tester.pumpAndSettle();
 

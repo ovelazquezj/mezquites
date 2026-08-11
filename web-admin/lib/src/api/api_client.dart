@@ -285,12 +285,16 @@ class ApiClient {
   /// Sin auth. Filtro geográfico por estado (Q8).
   Future<List<PublicObservation>> publicObservations({
     String? estado,
+    String? cveEnt,
+    String? cveMun,
     int limit = 500,
     int offset = 0,
   }) async {
     final r = await _http.get(
       _uri('/public/observations', {
         if (estado != null && estado.isNotEmpty) 'estado': estado,
+        if (cveEnt != null && cveEnt.isNotEmpty) 'cve_ent': cveEnt,
+        if (cveMun != null && cveMun.isNotEmpty) 'cve_mun': cveMun,
         'limit': '$limit',
         'offset': '$offset',
       }),
@@ -302,21 +306,37 @@ class ApiClient {
   }
 
   /// Dataset público COMPLETO (CR-034): pagina con el tope del backend (5000).
-  Future<List<PublicObservation>> publicObservationsAll({String? estado}) =>
+  Future<List<PublicObservation>> publicObservationsAll({
+    String? estado,
+    String? cveEnt,
+    String? cveMun,
+  }) =>
       _fetchAll(
-        (limit, offset) =>
-            publicObservations(estado: estado, limit: limit, offset: offset),
+        (limit, offset) => publicObservations(
+          estado: estado,
+          cveEnt: cveEnt,
+          cveMun: cveMun,
+          limit: limit,
+          offset: offset,
+        ),
         5000,
       );
 
   /// Mapa de calor público (CR-009/CR-010 #2): celdas de ~300 m (binning de
   /// agregación server-side). Agrega solo observaciones no-rechazadas.
   /// Sin auth (endpoint `public/*`).
-  Future<List<GridCell>> publicGrid({String? estado, int limit = 2000}) async {
+  /// CR-036: sin `limit` — el backend agrega en SQL y ya no escanea un tope de filas, así que
+  /// el mapa deja de truncarse en silencio al crecer el dataset.
+  Future<List<GridCell>> publicGrid({
+    String? estado,
+    String? cveEnt,
+    String? cveMun,
+  }) async {
     final r = await _http.get(
       _uri('/public/grid', {
         if (estado != null && estado.isNotEmpty) 'estado': estado,
-        'limit': '$limit',
+        if (cveEnt != null && cveEnt.isNotEmpty) 'cve_ent': cveEnt,
+        if (cveMun != null && cveMun.isNotEmpty) 'cve_mun': cveMun,
       }),
       headers: _headers(json: false),
     );
@@ -326,10 +346,17 @@ class ApiClient {
   }
 
   /// Indicadores Q6 públicos (con caveat de origen ciudadano). Sin auth.
-  Future<Indicators> publicIndicators({String? estado}) async {
+  Future<Indicators> publicIndicators({
+    String? estado,
+    String? cveEnt,
+    String? cveMun,
+  }) async {
     final r = await _http.get(
-      _uri('/public/indicators',
-          {if (estado != null && estado.isNotEmpty) 'estado': estado}),
+      _uri('/public/indicators', {
+        if (estado != null && estado.isNotEmpty) 'estado': estado,
+        if (cveEnt != null && cveEnt.isNotEmpty) 'cve_ent': cveEnt,
+        if (cveMun != null && cveMun.isNotEmpty) 'cve_mun': cveMun,
+      }),
       headers: _headers(json: false),
     );
     return Indicators.fromJson(_decode(r));
@@ -343,6 +370,8 @@ class ApiClient {
   /// las confirmadas.
   Future<List<RestrictedObservation>> restrictedObservations({
     String? estado,
+    String? cveEnt,
+    String? cveMun,
     String? estadoRevision,
     int limit = 2000,
     int offset = 0,
@@ -350,6 +379,8 @@ class ApiClient {
     final r = await _http.get(
       _uri('/restricted/observations', {
         if (estado != null && estado.isNotEmpty) 'estado': estado,
+        if (cveEnt != null && cveEnt.isNotEmpty) 'cve_ent': cveEnt,
+        if (cveMun != null && cveMun.isNotEmpty) 'cve_mun': cveMun,
         if (estadoRevision != null && estadoRevision.isNotEmpty)
           'estado_revision': estadoRevision,
         'limit': '$limit',
@@ -366,11 +397,15 @@ class ApiClient {
   Future<List<RestrictedObservation>> restrictedObservationsAll({
     String? estado,
     String? estadoRevision,
+    String? cveEnt,
+    String? cveMun,
   }) =>
       _fetchAll(
         (limit, offset) => restrictedObservations(
           estado: estado,
           estadoRevision: estadoRevision,
+          cveEnt: cveEnt,
+          cveMun: cveMun,
           limit: limit,
           offset: offset,
         ),
@@ -384,6 +419,8 @@ class ApiClient {
     String? estadoRevision,
     String? estado,
     String? municipio,
+    String? cveEnt,
+    String? cveMun,
     int limit = 100,
     int offset = 0,
   }) async {
@@ -393,6 +430,8 @@ class ApiClient {
           'estado_revision': estadoRevision,
         if (estado != null && estado.isNotEmpty) 'estado': estado,
         if (municipio != null && municipio.isNotEmpty) 'municipio': municipio,
+        if (cveEnt != null && cveEnt.isNotEmpty) 'cve_ent': cveEnt,
+        if (cveMun != null && cveMun.isNotEmpty) 'cve_mun': cveMun,
         'limit': '$limit',
         'offset': '$offset',
       }),
@@ -411,6 +450,8 @@ class ApiClient {
     String? estadoRevision,
     String? estado,
     String? municipio,
+    String? cveEnt,
+    String? cveMun,
   }) async {
     const porPagina = 1000;
     final todas = <ReviewQueueItem>[];
@@ -420,6 +461,8 @@ class ApiClient {
         estadoRevision: estadoRevision,
         estado: estado,
         municipio: municipio,
+        cveEnt: cveEnt,
+        cveMun: cveMun,
         limit: porPagina,
         offset: offset,
       );
@@ -474,6 +517,24 @@ class ApiClient {
     return ReviewStats.fromJson(_decode(r));
   }
 
+  // --- Catálogo geográfico (CR-036) ---
+
+  /// Entidades federativas con límites cargados. Alimenta los filtros de la consola.
+  Future<List<GeoEstado>> geoEstados() async {
+    final r = await _http.get(_uri('/geo/estados'), headers: _headers(json: false));
+    return _decodeList(r).map((e) => GeoEstado.fromJson((e as Map).cast())).toList();
+  }
+
+  /// Municipios de una entidad. Sin `cveEnt` devolvería los ~2 478 del país, que no le sirve a
+  /// ningún selector: la consola siempre acota por estado primero.
+  Future<List<GeoMunicipio>> geoMunicipios({required String cveEnt}) async {
+    final r = await _http.get(
+      _uri('/geo/municipios', {'cve_ent': cveEnt}),
+      headers: _headers(json: false),
+    );
+    return _decodeList(r).map((e) => GeoMunicipio.fromJson((e as Map).cast())).toList();
+  }
+
   // --- Analítica del analista (CR-010 #3): rol analista/administrador ---
 
   Map<String, String> _analyticsQuery({
@@ -482,6 +543,8 @@ class ApiClient {
     String? nivelG4,
     String? desde,
     String? hasta,
+    String? cveEnt,
+    String? cveMun,
     int? limit,
     int? offset,
   }) =>
@@ -489,6 +552,11 @@ class ApiClient {
         if (estadoRevision != null && estadoRevision.isNotEmpty)
           'estado_revision': estadoRevision,
         if (municipio != null && municipio.isNotEmpty) 'municipio': municipio,
+        // CR-036: el filtro geográfico viaja por CLAVE INEGI. Es la identidad estable: inmune a
+        // acentos y, sobre todo, a los homónimos — "Jesús María" existe en tres entidades y
+        // filtrar por nombre las fundiría en una sola.
+        if (cveEnt != null && cveEnt.isNotEmpty) 'cve_ent': cveEnt,
+        if (cveMun != null && cveMun.isNotEmpty) 'cve_mun': cveMun,
         if (nivelG4 != null && nivelG4.isNotEmpty) 'nivel_g4': nivelG4,
         if (desde != null && desde.isNotEmpty) 'desde': desde,
         if (hasta != null && hasta.isNotEmpty) 'hasta': hasta,
@@ -504,6 +572,8 @@ class ApiClient {
     String? nivelG4,
     String? desde,
     String? hasta,
+    String? cveEnt,
+    String? cveMun,
   }) async {
     final r = await _http.get(
       _uri('/admin/analytics/summary',
@@ -513,6 +583,8 @@ class ApiClient {
             nivelG4: nivelG4,
             desde: desde,
             hasta: hasta,
+            cveEnt: cveEnt,
+            cveMun: cveMun,
           )),
       headers: _headers(json: false),
     );
@@ -527,6 +599,8 @@ class ApiClient {
     String? nivelG4,
     String? desde,
     String? hasta,
+    String? cveEnt,
+    String? cveMun,
     int limit = 500,
     int offset = 0,
   }) async {
@@ -538,6 +612,8 @@ class ApiClient {
             nivelG4: nivelG4,
             desde: desde,
             hasta: hasta,
+            cveEnt: cveEnt,
+            cveMun: cveMun,
             limit: limit,
             offset: offset,
           )),
@@ -555,6 +631,8 @@ class ApiClient {
     String? nivelG4,
     String? desde,
     String? hasta,
+    String? cveEnt,
+    String? cveMun,
   }) =>
       _fetchAll(
         (limit, offset) => analyticsObservations(
@@ -563,6 +641,8 @@ class ApiClient {
           nivelG4: nivelG4,
           desde: desde,
           hasta: hasta,
+          cveEnt: cveEnt,
+          cveMun: cveMun,
           limit: limit,
           offset: offset,
         ),
@@ -579,6 +659,8 @@ class ApiClient {
     String? nivelG4,
     String? desde,
     String? hasta,
+    String? cveEnt,
+    String? cveMun,
   }) async {
     final r = await _http.get(
       _uri('/admin/analytics/observations.csv',
@@ -588,6 +670,8 @@ class ApiClient {
             nivelG4: nivelG4,
             desde: desde,
             hasta: hasta,
+            cveEnt: cveEnt,
+            cveMun: cveMun,
           )),
       headers: _headers(json: false),
     );
@@ -606,10 +690,14 @@ class ApiClient {
     String? municipio,
     String? desde,
     String? hasta,
+    String? cveEnt,
+    String? cveMun,
   }) async {
     final r = await _http.get(
       _uri('/admin/analytics/participation.csv', {
         if (municipio != null && municipio.isNotEmpty) 'municipio': municipio,
+        if (cveEnt != null && cveEnt.isNotEmpty) 'cve_ent': cveEnt,
+        if (cveMun != null && cveMun.isNotEmpty) 'cve_mun': cveMun,
         if (desde != null && desde.isNotEmpty) 'desde': desde,
         if (hasta != null && hasta.isNotEmpty) 'hasta': hasta,
       }),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/models.dart';
-import '../../models/municipios.dart';
 import '../../state/providers.dart';
 import '../copy.dart';
 import '../widgets/branded_app_bar.dart';
@@ -158,7 +157,7 @@ class _RequestInstitutionDialog extends ConsumerStatefulWidget {
 class _RequestInstitutionDialogState
     extends ConsumerState<_RequestInstitutionDialog> {
   final _nameController = TextEditingController();
-  String _estado = kEstadoDefault;
+  String? _estado;
   bool _sending = false;
   String? _error;
 
@@ -210,19 +209,32 @@ class _RequestInstitutionDialogState
             autofocus: true,
           ),
           const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            key: const Key('institution_estado_field'),
-            value: _estado,
-            isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: Copy.institutionRequestEstadoLabel,
-            ),
-            items: kEstados
-                .map((e) =>
-                    DropdownMenuItem<String>(value: e, child: Text(e)),)
-                .toList(),
-            onChanged: (v) => setState(() => _estado = v ?? kEstadoDefault),
-          ),
+          // CR-036: el catálogo viene del servidor (`/geo/estados`), ya no de una lista
+          // hardcodeada con una sola opción. Si no carga, se cae a un campo libre: registrar
+          // una institución no puede quedar bloqueado porque el catálogo no respondió.
+          ref.watch(geoEstadosProvider).when(
+                loading: () => const LinearProgressIndicator(),
+                error: (_, __) => TextField(
+                  key: const Key('institution_estado_field_libre'),
+                  decoration: const InputDecoration(
+                    labelText: Copy.institutionRequestEstadoLabel,
+                  ),
+                  onChanged: (v) => _estado = v.trim().isEmpty ? null : v.trim(),
+                ),
+                data: (estados) => DropdownButtonFormField<String>(
+                  key: const Key('institution_estado_field'),
+                  value: _estado,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: Copy.institutionRequestEstadoLabel,
+                  ),
+                  items: estados
+                      .map((e) =>
+                          DropdownMenuItem<String>(value: e, child: Text(e)),)
+                      .toList(),
+                  onChanged: (v) => setState(() => _estado = v),
+                ),
+              ),
           if (_error != null) ...[
             const SizedBox(height: 8),
             Text(

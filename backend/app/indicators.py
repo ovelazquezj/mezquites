@@ -23,6 +23,8 @@ from __future__ import annotations
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from .geo_filtros import CLAUSULA_GEO, clausula_geo, params_geo
+
 # Advertencia mostrada junto a los indicadores y al mapa público.
 # CR-026: lo publicado ya pasó por revisión humana, así que decir "sin validación" a secas era
 # inexacto. Lo que sigue SIN validar es la especie y el nivel de infestación, que continúan siendo
@@ -34,21 +36,28 @@ CAVEAT = (
 )
 
 
-def _estado_clause(col: str = "estado") -> str:
-    # CAST explícito: psycopg3 no infiere el tipo de un parámetro usado como `:p IS NULL`.
-    return f"(CAST(:estado AS text) IS NULL OR {col} = :estado)"
-
-
-def compute_indicators(db: Session, *, estado: str | None = None) -> dict:
-    """Computa los indicadores Q6. Filtrable por ``estado`` (Q8). Sin umbrales (U1).
+def compute_indicators(
+    db: Session,
+    *,
+    estado: str | None = None,
+    municipio: str | None = None,
+    cve_ent: str | None = None,
+    cve_mun: str | None = None,
+) -> dict:
+    """Computa los indicadores Q6. Filtrable por geografía (Q8). Sin umbrales (U1).
 
     CR-026: ``obs_filter`` restringe a **confirmadas**, de modo que los indicadores describen el
     mismo universo que el mapa público. ``raw_filter`` conserva el acceso al total sin filtrar, que
     se usa como denominador del avance de revisión.
+
+    CR-036: el filtro deja de ser solo por estado — el dataset es multi-estado y la consola necesita
+    bajar a municipio, por clave INEGI o por nombre.
     """
-    obs_filter = f"WHERE {_estado_clause()} AND estado_revision = 'confirmada'"
-    raw_filter = f"WHERE {_estado_clause()}"
-    params = {"estado": estado}
+    obs_filter = f"WHERE TRUE {CLAUSULA_GEO} AND estado_revision = 'confirmada'"
+    # Misma condición, calificada con el alias de la tabla para los JOIN.
+    CLAUSULA_GEO_O = clausula_geo("o")
+    raw_filter = f"WHERE TRUE {CLAUSULA_GEO}"
+    params = params_geo(estado=estado, municipio=municipio, cve_ent=cve_ent, cve_mun=cve_mun)
 
     social = {
         "registrados": db.execute(text("SELECT count(*) FROM account")).scalar_one(),
@@ -78,7 +87,7 @@ def compute_indicators(db: Session, *, estado: str | None = None) -> dict:
                 f"""
                 SELECT count(DISTINCT a.institution_id)
                 FROM observation o JOIN account a ON a.id = o.account_id
-                WHERE {_estado_clause('o.estado')} AND a.institution_id IS NOT NULL
+                WHERE TRUE {CLAUSULA_GEO_O} AND a.institution_id IS NOT NULL
                   AND o.estado_revision = 'confirmada'
                 """
             ),
@@ -135,7 +144,8 @@ def compute_indicators(db: Session, *, estado: str | None = None) -> dict:
     ).scalar_one()
     municipios = db.execute(
         text(
-            f"SELECT count(DISTINCT municipio) FROM observation {obs_filter} AND municipio IS NOT NULL"
+            f"SELECT count(DISTINCT coalesce(cve_ent || cve_mun, municipio)) FROM observation "
+            f"{obs_filter} AND municipio IS NOT NULL"
         ),
         params,
     ).scalar_one()
@@ -148,9 +158,20 @@ def compute_indicators(db: Session, *, estado: str | None = None) -> dict:
             params,
         ).all()
     }
+    # CR-036: con el dataset multi-estado, contar municipios distintos por NOMBRE fundiría
+    # homónimos de estados distintos ("Jesús María" existe en tres entidades). Se cuenta por clave
+    # cuando la hay, y se añade la cobertura de entidades, que antes no tenía sentido reportar.
+    estados_cubiertos = db.execute(
+        text(
+            f"SELECT count(DISTINCT coalesce(cve_ent, estado)) FROM observation {obs_filter} "
+            "AND (cve_ent IS NOT NULL OR estado IS NOT NULL)"
+        ),
+        params,
+    ).scalar_one()
     ecologico = {
         "arboles_unicos": arboles_unicos,
         "arboles_serie_temporal": arboles_serie,
+        "cobertura_estados": estados_cubiertos,
         "cobertura_municipios": municipios,
         "distribucion_niveles": niveles,
     }

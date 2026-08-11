@@ -218,9 +218,16 @@ class Observation(Base):
         PG_UUID(as_uuid=True), ForeignKey("tree.id")
     )
     observation_seq: Mapped[int | None] = mapped_column(Integer)
-    # dimensión geográfica (Q8)
+    # dimensión geográfica (Q8) — CR-036: la DERIVA EL SERVIDOR del punto capturado, contra
+    # `admin_boundary`. Los nombres son legibles; las claves INEGI son la identidad estable con la
+    # que agrupan los dashboards (dos municipios distintos pueden llamarse igual).
     estado: Mapped[str | None] = mapped_column(Text)
     municipio: Mapped[str | None] = mapped_column(Text)
+    cve_ent: Mapped[str | None] = mapped_column(Text)
+    cve_mun: Mapped[str | None] = mapped_column(Text)
+    # CR-036: precisión del fix del GPS en metros, tal como la reporta el dispositivo. Nullable: las
+    # observaciones históricas no la tienen y no hay forma de reconstruirla.
+    gps_accuracy_m: Mapped[float | None] = mapped_column(Float)
     # revisión humana (CR-001) — 'aceptada' por defecto; un humano la confirma/rechaza.
     estado_revision: Mapped[str] = mapped_column(Text, nullable=False, default="aceptada")
     model_version: Mapped[str | None] = mapped_column(Text)  # legado YOLO (inactivo)
@@ -249,9 +256,15 @@ class Observation(Base):
             "estado_revision IN ('aceptada','confirmada','rechazada')",
             name="ck_obs_estado_revision",
         ),
+        CheckConstraint(
+            "gps_accuracy_m IS NULL OR gps_accuracy_m >= 0",
+            name="ck_obs_gps_accuracy_no_negativa",
+        ),
         Index("observation_geom_gix", "geom", postgresql_using="gist"),
         Index("observation_tree_idx", "tree_id", "captured_at"),
         Index("observation_estado_revision_idx", "estado_revision"),
+        # CR-036: los dashboards agrupan y filtran por clave INEGI, no por nombre.
+        Index("observation_cve_idx", "cve_ent", "cve_mun"),
         # CR-031: la misma captura no puede registrarse dos veces (reintento tras una respuesta
         # perdida). PARCIAL: las filas sin id de captura —históricas o de un cliente anterior— quedan
         # fuera del índice. Se declara aquí y no solo en la migración 0008 para que la garantía exista
@@ -350,18 +363,37 @@ class PointsLedger(Base):
 
 
 class AdminBoundary(Base):
-    """Límites administrativos para el join geográfico (Q8). Cargados por separado (opcional)."""
+    """Límites administrativos para el join geográfico (Q8).
+
+    CR-036: se carga el **nivel municipal** del Marco Geoestadístico del INEGI (cobertura nacional).
+    No hay una capa aparte de entidades: cada municipio ya trae su ``cve_ent`` y el nombre del
+    estado, así que el catálogo de estados sale de un ``SELECT DISTINCT``. Una tabla, un nivel — sin
+    ambigüedad sobre qué fila gana en el punto-en-polígono.
+    """
 
     __tablename__ = "admin_boundary"
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     estado: Mapped[str | None] = mapped_column(Text)
     municipio: Mapped[str | None] = mapped_column(Text)
+    # Claves INEGI: identidad estable del área geoestadística ("01" / "001").
+    cve_ent: Mapped[str | None] = mapped_column(Text)
+    cve_mun: Mapped[str | None] = mapped_column(Text)
     geom = mapped_column(
         Geography(geometry_type="MULTIPOLYGON", srid=4326, spatial_index=False), nullable=False
     )
 
-    __table_args__ = (Index("admin_boundary_geom_gix", "geom", postgresql_using="gist"),)
+    __table_args__ = (
+        Index("admin_boundary_geom_gix", "geom", postgresql_using="gist"),
+        # Un municipio, una fila: una segunda carga no puede duplicar polígonos.
+        Index(
+            "ux_admin_boundary_cve",
+            "cve_ent",
+            "cve_mun",
+            unique=True,
+            postgresql_where=text("cve_ent IS NOT NULL AND cve_mun IS NOT NULL"),
+        ),
+    )
 
 
 class OrganizationalIndicator(Base):

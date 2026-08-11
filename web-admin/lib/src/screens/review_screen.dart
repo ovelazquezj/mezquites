@@ -8,6 +8,7 @@ import '../api/api_exception.dart';
 import '../models/models.dart';
 import '../state/session.dart';
 import '../ui/copy.dart';
+import '../widgets/geo_filter.dart';
 import '../widgets/paged_table.dart';
 
 /// Sección REVISIÓN (CR-001): cola de observaciones + detalle con visor de imagen
@@ -25,6 +26,7 @@ class ReviewScreen extends ConsumerStatefulWidget {
 
 class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   String? _estadoRevisionFilter;
+  GeoSeleccion _geo = const GeoSeleccion();
   late Future<List<ReviewQueueItem>> _future;
 
   // CR-033: la paginación vive AQUÍ y no en el PagedTable. Al recargar la cola
@@ -51,7 +53,11 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     // cola; el limit fijo de 200 escondía el resto de los registros.
     _future = ref
         .read(apiClientProvider)
-        .reviewQueueAll(estadoRevision: _estadoRevisionFilter);
+        .reviewQueueAll(
+          estadoRevision: _estadoRevisionFilter,
+          cveEnt: _geo.cveEnt,
+          cveMun: _geo.cveMun,
+        );
   }
 
   Future<void> _openDetail(ReviewQueueItem item) async {
@@ -103,6 +109,18 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 }),
               ),
           ],
+        ),
+        const SizedBox(height: 12),
+        // CR-036: el backend aceptaba filtro geográfico desde CR-010 y la consola nunca lo usó.
+        // Por eso las 39 capturas de Zacatecas pasaron por esta cola sin que nadie pudiera
+        // aislarlas: no había forma de preguntar "¿qué hay fuera de Aguascalientes?".
+        GeoFilter(
+          value: _geo,
+          onChanged: (v) => setState(() {
+            _geo = v;
+            _page = 0; // cambiar de filtro reinicia la página, como el de estado de revisión
+            _reload();
+          }),
         ),
         const SizedBox(height: 16),
         FutureBuilder<List<ReviewQueueItem>>(

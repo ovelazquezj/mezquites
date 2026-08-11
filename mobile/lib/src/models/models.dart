@@ -103,8 +103,7 @@ class ObservationDraft {
     required this.flagDanio,
     required this.tamanio,
     required this.contexto,
-    this.estado,
-    this.municipio,
+    this.gpsAccuracyM,
     this.imagePath,
     this.imageBytes,
     this.clientCaptureId,
@@ -120,10 +119,13 @@ class ObservationDraft {
   final Tamanio tamanio;
   final Contexto contexto;
 
-  /// Estado/municipio autodeclarados (CR-010 #5, gate #8). Pueden ser null
-  /// (el backend los deriva como respaldo).
-  final String? estado;
-  final String? municipio;
+  /// CR-036: precisión del fix del GPS en metros, tal como la reporta el
+  /// dispositivo. Nullable: no todos los navegadores la entregan.
+  ///
+  /// Estado y municipio **ya no viajan**: los deriva el servidor de las
+  /// coordenadas (CR-036). Antes eran autodeclarados por dos dropdowns, y ese
+  /// fue el mecanismo que etiquetó 39 capturas de Zacatecas como "Calvillo".
+  final double? gpsAccuracyM;
 
   /// Imagen capturada: por **ruta** (móvil nativo, con EXIF) o por **bytes** (web).
   final String? imagePath;
@@ -135,8 +137,8 @@ class ObservationDraft {
   /// segundo árbol. `null` solo en pruebas o en un envío que no pasa por la cola.
   final String? clientCaptureId;
 
-  /// Las etiquetas serializadas para el campo `payload` (multipart). Incluye
-  /// estado/municipio solo cuando están presentes (autodeclarados, CR-010 #5).
+  /// Las etiquetas serializadas para el campo `payload` (multipart). **No incluye
+  /// estado ni municipio**: los resuelve el servidor a partir de lat/lon (CR-036).
   Map<String, dynamic> toPayloadJson() => {
         'lat': lat,
         'lon': lon,
@@ -146,8 +148,7 @@ class ObservationDraft {
         'flag_danio': flagDanio,
         'tamanio': tamanio.wire,
         'contexto': contexto.wire,
-        if (estado != null) 'estado': estado,
-        if (municipio != null) 'municipio': municipio,
+        if (gpsAccuracyM != null) 'gps_accuracy_m': gpsAccuracyM,
         if (clientCaptureId != null) 'client_capture_id': clientCaptureId,
       };
 }
@@ -596,4 +597,42 @@ class Institution {
         .trim()
         .toLowerCase();
   }
+}
+
+/// Lugar resuelto por el servidor a partir de unas coordenadas (`GET /geo/resolve`, CR-036).
+///
+/// Es **informativo**: sirve para que el voluntario VEA dónde va a quedar su registro sin tener
+/// que seleccionarlo. Nunca viaja de vuelta en el submit — el servidor vuelve a resolver la
+/// ubicación al recibir la foto, así que esta respuesta no puede alterar el dato guardado.
+class GeoLugar {
+  const GeoLugar({
+    this.estado,
+    this.municipio,
+    this.cveEnt,
+    this.cveMun,
+    this.resuelto = false,
+  });
+
+  final String? estado;
+  final String? municipio;
+  final String? cveEnt;
+  final String? cveMun;
+
+  /// False cuando el punto no cae en ningún municipio con límites cargados.
+  final bool resuelto;
+
+  /// "Jalpa, Zacatecas" — vacío si no se resolvió.
+  String get etiqueta {
+    if (!resuelto) return '';
+    if (municipio != null && estado != null) return '$municipio, $estado';
+    return estado ?? municipio ?? '';
+  }
+
+  factory GeoLugar.fromJson(Map<String, dynamic> j) => GeoLugar(
+        estado: j['estado'] as String?,
+        municipio: j['municipio'] as String?,
+        cveEnt: j['cve_ent'] as String?,
+        cveMun: j['cve_mun'] as String?,
+        resuelto: j['resuelto'] as bool? ?? false,
+      );
 }

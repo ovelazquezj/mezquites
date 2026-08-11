@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..db import get_db
+from ..geo_filtros import CLAUSULA_GEO, params_geo
 from ..deps import CurrentUser, require_role
 from ..geo import obfuscate_to_grid
 from ..models import EXACT_LOCATION_ROLES, REVIEW_ROLES
@@ -63,22 +64,27 @@ _CSV_COLUMNS = [
 _CSV_COLUMNS_EXACT = _CSV_COLUMNS[:-2] + ["lat", "lon"]
 
 # WHERE compartido por summary y CSV (filtros opcionales). CAST a text/timestamptz para NULL-safe.
-_FILTER_WHERE = """
-    (CAST(:estado AS text) IS NULL OR estado = :estado)
-    AND (CAST(:municipio AS text) IS NULL OR municipio = :municipio)
+# CR-036: la parte geográfica se comparte con los endpoints públicos (`geo_filtros`) y admite
+# claves INEGI además de nombres.
+_FILTER_WHERE = (
+    "TRUE"
+    + CLAUSULA_GEO
+    + """
     AND (CAST(:nivel_g4 AS text) IS NULL OR nivel_g4 = :nivel_g4)
     AND (CAST(:estado_revision AS text) IS NULL OR estado_revision = :estado_revision)
     AND (CAST(:desde AS timestamptz) IS NULL OR captured_at >= CAST(:desde AS timestamptz))
     AND (CAST(:hasta AS timestamptz) IS NULL OR captured_at <= CAST(:hasta AS timestamptz))
 """
+)
 
 
 def _filter_params(
-    estado, municipio, nivel_g4, estado_revision, desde, hasta
+    estado, municipio, nivel_g4, estado_revision, desde, hasta, cve_ent=None, cve_mun=None
 ) -> dict:
     return {
-        "estado": estado,
-        "municipio": municipio,
+        **params_geo(
+            estado=estado, municipio=municipio, cve_ent=cve_ent, cve_mun=cve_mun
+        ),
         "nivel_g4": nivel_g4,
         "estado_revision": estado_revision,
         "desde": desde,
@@ -90,6 +96,8 @@ def _filter_params(
 def analytics_summary(
     estado: str | None = Query(None),
     municipio: str | None = Query(None),
+    cve_ent: str | None = Query(None, min_length=2, max_length=2),
+    cve_mun: str | None = Query(None, min_length=3, max_length=3),
     nivel_g4: str | None = Query(None),
     estado_revision: str | None = Query(None),
     desde: str | None = Query(None, description="ISO date/datetime: captured_at >= desde."),
@@ -98,7 +106,7 @@ def analytics_summary(
     db: Session = Depends(get_db),
 ) -> AnalyticsSummary:
     """Conteos agregados por estado_revision/municipio/nivel_g4 + total (CR-010). Descriptivo (#1)."""
-    params = _filter_params(estado, municipio, nivel_g4, estado_revision, desde, hasta)
+    params = _filter_params(estado, municipio, nivel_g4, estado_revision, desde, hasta, cve_ent, cve_mun)
 
     def _group_counts(column: str) -> dict[str, int]:
         rows = db.execute(
@@ -114,6 +122,20 @@ def analytics_summary(
     por_estado_revision = _group_counts("estado_revision")
     por_municipio = _group_counts("municipio")
     por_nivel_g4 = _group_counts("nivel_g4")
+    # CR-036: el dataset es multi-estado. `por_estado` es el desglose que faltaba; la versión por
+    # CLAVE del municipio es la única no ambigua — dos municipios de estados distintos pueden
+    # llamarse igual y `por_municipio` los sumaría en una sola entrada.
+    por_estado = _group_counts("estado")
+    por_municipio_cve = {
+        (f"{r[0]}:{r[1]}" if r[0] and r[1] else "sin_dato"): int(r[2])
+        for r in db.execute(
+            text(
+                "SELECT cve_ent, cve_mun, count(*) FROM observation "
+                f"WHERE {_FILTER_WHERE} GROUP BY cve_ent, cve_mun"
+            ),
+            params,
+        ).all()
+    }
     total = int(
         db.execute(
             text(f"SELECT count(*) FROM observation WHERE {_FILTER_WHERE}"), params
@@ -123,6 +145,8 @@ def analytics_summary(
         por_estado_revision=por_estado_revision,
         por_municipio=por_municipio,
         por_nivel_g4=por_nivel_g4,
+        por_estado=por_estado,
+        por_municipio_cve=por_municipio_cve,
         total=total,
     )
 
@@ -131,6 +155,8 @@ def analytics_summary(
 def analytics_observations(
     estado: str | None = Query(None),
     municipio: str | None = Query(None),
+    cve_ent: str | None = Query(None, min_length=2, max_length=2),
+    cve_mun: str | None = Query(None, min_length=3, max_length=3),
     nivel_g4: str | None = Query(None),
     estado_revision: str | None = Query(None),
     desde: str | None = Query(None, description="ISO date/datetime: captured_at >= desde."),
@@ -144,7 +170,7 @@ def analytics_observations(
     agregables; la ubicación exacta se consulta en ``/restricted/observations`` o el CSV.
 
     CR-034: ``offset`` permite recorrer el dataset completo por páginas."""
-    params = _filter_params(estado, municipio, nivel_g4, estado_revision, desde, hasta)
+    params = _filter_params(estado, municipio, nivel_g4, estado_revision, desde, hasta, cve_ent, cve_mun)
     params["limit"] = limit
     params["offset"] = offset
     rows = db.execute(
@@ -180,6 +206,8 @@ def analytics_observations(
 def analytics_csv(
     estado: str | None = Query(None),
     municipio: str | None = Query(None),
+    cve_ent: str | None = Query(None, min_length=2, max_length=2),
+    cve_mun: str | None = Query(None, min_length=3, max_length=3),
     nivel_g4: str | None = Query(None),
     estado_revision: str | None = Query(None),
     desde: str | None = Query(None, description="ISO date/datetime: captured_at >= desde."),
@@ -194,7 +222,7 @@ def analytics_csv(
     (``obfuscate_to_grid`` → columnas ``lat_celda_300m``/``lon_celda_300m``) se conserva ociosa: ningún
     rol con acceso cae en ella hoy. Gate #2: solo ``handle`` seudónimo, sin PII.
     """
-    params = _filter_params(estado, municipio, nivel_g4, estado_revision, desde, hasta)
+    params = _filter_params(estado, municipio, nivel_g4, estado_revision, desde, hasta, cve_ent, cve_mun)
     rows = db.execute(
         text(
             f"""
@@ -264,7 +292,7 @@ _PARTICIPATION_COLUMNS = [
 # OUTER JOIN: hay días con sesiones sin capturas (abrió la app y no subió nada) y días con capturas
 # cuya sesión no llegó a registrarse (el envío es fire-and-forget). Perder cualquiera de los dos
 # lados falsearía justo la comparación que la institución quiere hacer.
-_PARTICIPATION_SQL = """
+_PARTICIPATION_SQL = f"""
     WITH ses AS (
         SELECT account_id,
                (started_at AT TIME ZONE :tz)::date AS dia,
@@ -283,8 +311,7 @@ _PARTICIPATION_SQL = """
                count(*) FILTER (WHERE estado_revision = 'confirmada') AS confirmadas,
                count(*) FILTER (WHERE estado_revision = 'rechazada') AS rechazadas
         FROM observation
-        WHERE (CAST(:estado AS text) IS NULL OR estado = :estado)
-          AND (CAST(:municipio AS text) IS NULL OR municipio = :municipio)
+        WHERE TRUE{CLAUSULA_GEO}
           AND (CAST(:desde AS timestamptz) IS NULL OR captured_at >= CAST(:desde AS timestamptz))
           AND (CAST(:hasta AS timestamptz) IS NULL OR captured_at <= CAST(:hasta AS timestamptz))
         GROUP BY account_id, dia
@@ -310,6 +337,8 @@ _PARTICIPATION_SQL = """
 def participation_csv(
     estado: str | None = Query(None),
     municipio: str | None = Query(None),
+    cve_ent: str | None = Query(None, min_length=2, max_length=2),
+    cve_mun: str | None = Query(None, min_length=3, max_length=3),
     desde: str | None = Query(None, description="ISO date/datetime: >= desde."),
     hasta: str | None = Query(None, description="ISO date/datetime: <= hasta."),
     user: CurrentUser = Depends(_analyst),
@@ -337,8 +366,9 @@ def participation_csv(
         text(_PARTICIPATION_SQL),
         {
             "tz": get_settings().report_timezone,
-            "estado": estado,
-            "municipio": municipio,
+            **params_geo(
+                estado=estado, municipio=municipio, cve_ent=cve_ent, cve_mun=cve_mun
+            ),
             "desde": desde,
             "hasta": hasta,
         },
@@ -346,6 +376,18 @@ def participation_csv(
 
     buf = io.StringIO()
     writer = csv.writer(buf)
+    # CR-036 (AC11): una sesión de participación NO tiene ubicación —la geografía vive en las
+    # observaciones—, así que un filtro geográfico solo puede aplicarse a la mitad de observaciones
+    # del FULL OUTER JOIN. Sin decirlo, quien abra el archivo leería las sesiones como si también
+    # estuvieran acotadas al estado. La nota se emite **solo cuando hay filtro activo**: un CSV sin
+    # filtrar sale byte a byte como antes, sin romper a nadie que ya lo procese.
+    if any((estado, municipio, cve_ent, cve_mun)):
+        writer.writerow(
+            [
+                "# El filtro geográfico aplica solo a las observaciones; las sesiones no "
+                "tienen ubicación y se reportan completas."
+            ]
+        )
     writer.writerow(_PARTICIPATION_COLUMNS)
     for r in rows:
         writer.writerow(

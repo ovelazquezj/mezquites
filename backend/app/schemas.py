@@ -188,10 +188,17 @@ class ObservationCreate(BaseModel):
     # 7-8: campos adicionales V3
     tamanio: Literal["pequeno", "mediano", "grande", "no_estimable"]
     contexto: Literal["campo_abierto", "borde_cultivo", "urbano", "ripario", "otro"]
-    # CR-010: estado/municipio AUTODECLARADOS (gate #8). El móvil los auto-detecta del GPS y los
-    # preselecciona (editable). Si no vienen, el backend los DERIVA del EXIF (respaldo, Q8).
+    # CR-036: **el servidor deriva estado/municipio del punto capturado y estos campos se IGNORAN.**
+    # Se conservan en el esquema —sin retirarlos— porque los bundles PWA anteriores siguen
+    # enviándolos desde su caché y rechazar el POST los dejaría sin poder subir. Un cliente al día
+    # ya no los manda. (Antes, CR-010, eran autodeclarados por un dropdown; ese fue el origen de las
+    # 39 observaciones de Zacatecas etiquetadas "Calvillo".)
     estado: str | None = None
     municipio: str | None = None
+    # CR-036: precisión del fix del GPS en metros, como la reporta el dispositivo. Al retirar los
+    # dropdowns de la captura ya no queda ningún humano que pueda notar un fix malo cerca de un
+    # límite estatal: esta es la única señal de calidad de la ubicación que queda.
+    gps_accuracy_m: float | None = Field(default=None, ge=0)
     # CR-031: id que la app genera AL CAPTURAR y repite en cada reintento. Hace idempotente el
     # submit: si la respuesta se perdió, el reintento no crea un segundo árbol. Opcional para no
     # romper clientes anteriores a CR-031 (que simplemente no lo mandan).
@@ -497,7 +504,43 @@ class AnalyticsSummary(BaseModel):
     por_estado_revision: dict[str, int]
     por_municipio: dict[str, int]
     por_nivel_g4: dict[str, int]
+    # CR-036: desgloses de la dimensión geográfica ahora que el dataset es multi-estado.
+    # `por_estado` es nuevo. `por_municipio` conserva su forma (nombre → conteo) por compatibilidad,
+    # pero **su clave es ambigua entre estados** ("Jesús María" existe en Aguascalientes, Jalisco y
+    # Nayarit): `por_municipio_cve` es la versión desambiguada, con clave "cve_ent:cve_mun", y es la
+    # que debe usar cualquier consumidor nuevo.
+    por_estado: dict[str, int] = {}
+    por_municipio_cve: dict[str, int] = {}
     total: int
+
+
+# --- Geografía derivada (CR-036) ---
+
+
+class GeoResolucion(BaseModel):
+    """Respuesta de ``GET /geo/resolve``: a qué municipio pertenece un punto.
+
+    Es informativa para el cliente (le permite MOSTRAR el lugar antes de enviar). No es la que se
+    guarda: el servidor vuelve a resolver al recibir el POST, siempre.
+    """
+
+    estado: str | None = None
+    municipio: str | None = None
+    cve_ent: str | None = None
+    cve_mun: str | None = None
+    resuelto: bool = False
+
+
+class GeoEstado(BaseModel):
+    cve_ent: str
+    estado: str
+
+
+class GeoMunicipio(BaseModel):
+    cve_ent: str
+    cve_mun: str
+    estado: str
+    municipio: str
 
 
 # --- Sesiones de participación / evidencia (#7) — CR-010 ---

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../models/enums.dart';
 import '../../models/models.dart';
-import '../../models/municipios.dart';
 import '../../services/capture_service.dart';
 import '../copy.dart';
 import '../widgets/common.dart';
@@ -15,9 +14,15 @@ import '../widgets/g4_selector.dart';
 ///
 /// Gate #9: NO muestra estado de validación individual.
 /// Gate #8: nivel y flags son AUTODECLARADOS (la UI no afirma validación).
+/// Firma del resolvedor de lugar. Se inyecta (en vez de leer un provider aquí) para que el
+/// formulario siga siendo probable sin red ni `ProviderScope`, y para que un fallo de red sea
+/// simplemente `null` en lugar de una excepción que rompa la captura.
+typedef ResolverLugar = Future<GeoLugar?> Function(double lat, double lon);
+
 class ObservationForm extends StatefulWidget {
   const ObservationForm({
     super.key,
+    this.resolverLugar,
     required this.capture,
     required this.onSubmit,
   });
@@ -26,6 +31,11 @@ class ObservationForm extends StatefulWidget {
 
   /// Fire-and-forget: el caller encola y NO bloquea (Q5.A).
   final void Function(ObservationDraft draft) onSubmit;
+
+  /// CR-036: resuelve el nombre del lugar SOLO para mostrarlo. `null` ⇒ la tarjeta enseña
+  /// únicamente las coordenadas. Se inyecta (en vez de leer un provider aquí) para que el
+  /// formulario siga siendo probable sin red ni `ProviderScope`.
+  final ResolverLugar? resolverLugar;
 
   @override
   State<ObservationForm> createState() => _ObservationFormState();
@@ -38,21 +48,26 @@ class _ObservationFormState extends State<ObservationForm> {
   Tamanio? _tamanio;
   Contexto? _contexto;
 
-  // CR-010 #5: estado/municipio AUTODECLARADOS (gate #8). Estado por defecto =
-  // Aguascalientes; municipio AUTO-DETECTADO del GPS de la captura (lookup local
-  // por cercanía) y preseleccionado; editable por el usuario.
-  late String _estado;
-  String? _municipio;
+  // CR-036: el voluntario ya NO declara estado ni municipio — los deriva el servidor de las
+  // coordenadas. Aquí solo se PIDE el nombre del lugar para mostrárselo como confirmación. Si no
+  // hay red (lo normal en campo) queda en null y la tarjeta enseña las coordenadas: cero taps en
+  // ambos casos, y la captura offline (CR-031) no depende de esta llamada.
+  GeoLugar? _lugar;
+  bool _resolviendo = false;
 
   @override
   void initState() {
     super.initState();
-    _estado = kEstadoDefault;
-    _municipio = municipioMasCercano(
-      lat: widget.capture.lat,
-      lon: widget.capture.lon,
-      estado: _estado,
-    );
+    final resolver = widget.resolverLugar;
+    if (resolver == null) return;
+    _resolviendo = true;
+    resolver(widget.capture.lat, widget.capture.lon).then((lugar) {
+      if (!mounted) return;
+      setState(() {
+        _lugar = lugar;
+        _resolviendo = false;
+      });
+    });
   }
 
   bool get _complete =>
@@ -69,8 +84,7 @@ class _ObservationFormState extends State<ObservationForm> {
       flagDanio: _danio,
       tamanio: _tamanio!,
       contexto: _contexto!,
-      estado: _estado,
-      municipio: _municipio,
+      gpsAccuracyM: widget.capture.gpsAccuracyM,
       imagePath: widget.capture.imagePath,
       imageBytes: widget.capture.imageBytes,
     );
@@ -86,10 +100,32 @@ class _ObservationFormState extends State<ObservationForm> {
       children: [
         // 1-3: EXIF capturado (cámara nativa). Visible como confirmación.
         SectionCard(
-          title: 'Ubicación y momento',
+          title: Copy.captureUbicacionTitulo,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // CR-036: el lugar lo decide el servidor. Se muestra en grande porque es lo único
+              // que un voluntario puede verificar de un vistazo; las coordenadas van debajo, en
+              // pequeño, como respaldo verificable. Nunca se le pide que lo seleccione.
+              if (_lugar?.resuelto ?? false)
+                Text(
+                  _lugar!.etiqueta,
+                  key: const Key('captura_lugar'),
+                  style: theme.textTheme.titleMedium,
+                )
+              else if (_resolviendo)
+                Text(
+                  Copy.captureUbicacionResolviendo,
+                  key: const Key('captura_lugar_resolviendo'),
+                  style: theme.textTheme.bodySmall,
+                )
+              else
+                Text(
+                  Copy.captureUbicacionSinResolver,
+                  key: const Key('captura_lugar_sin_resolver'),
+                  style: theme.textTheme.bodySmall,
+                ),
+              const SizedBox(height: 4),
               Text(
                 'Lat ${widget.capture.lat.toStringAsFixed(5)}, '
                 'Lon ${widget.capture.lon.toStringAsFixed(5)}',
@@ -97,64 +133,6 @@ class _ObservationFormState extends State<ObservationForm> {
               ),
               Text(
                 widget.capture.capturedAt.toLocal().toString(),
-                style: theme.textTheme.bodySmall,
-              ),
-            ],
-          ),
-        ),
-
-        // Estado + municipio (CR-010 #5): autodeclarados (gate #8). El municipio
-        // viene PRESELECCIONADO por cercanía al GPS; el usuario puede corregirlo.
-        SectionCard(
-          title: 'Lugar',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              DropdownButtonFormField<String>(
-                key: const Key('dropdown_estado'),
-                value: _estado,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: Copy.captureEstadoLabel,
-                ),
-                items: kEstados
-                    .map((e) => DropdownMenuItem<String>(
-                          value: e,
-                          child: Text(e),
-                        ),)
-                    .toList(),
-                onChanged: (v) {
-                  if (v == null) return;
-                  setState(() {
-                    _estado = v;
-                    // Al cambiar de estado, re-detecta el municipio del GPS.
-                    _municipio = municipioMasCercano(
-                      lat: widget.capture.lat,
-                      lon: widget.capture.lon,
-                      estado: v,
-                    );
-                  });
-                },
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                key: const Key('dropdown_municipio'),
-                value: _municipio,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: Copy.captureMunicipioLabel,
-                ),
-                items: municipiosDe(_estado)
-                    .map((m) => DropdownMenuItem<String>(
-                          value: m,
-                          child: Text(m),
-                        ),)
-                    .toList(),
-                onChanged: (v) => setState(() => _municipio = v),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                Copy.captureMunicipioHint,
                 style: theme.textTheme.bodySmall,
               ),
             ],

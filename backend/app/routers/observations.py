@@ -27,7 +27,7 @@ from ..config import get_settings
 from ..db import get_db
 from ..deps import CurrentUser, require_role
 from ..gamification import refresh_identity_label
-from ..geo import assign_tree, compute_observation_seq, derive_estado_municipio
+from ..geo import assign_tree, compute_observation_seq, resolver_ubicacion
 from ..models import Observation, PointsLedger
 from ..schemas import ObservationCreate, ObservationMine, ObservationSubmitResponse
 from ..storage import get_storage, new_image_key
@@ -85,12 +85,14 @@ async def submit_observation(
     obs_id = uuid.uuid4()
 
     # (4) dimensión geográfica (Q8) — antes del tree para propagar al árbol.
-    # CR-010: si el cliente declara estado/municipio (auto-detectados del GPS y editables, gate #8),
-    # se usan; si no, se DERIVAN del EXIF por join espacial (respaldo, admin_boundary).
-    if data.estado or data.municipio:
-        estado, municipio = data.estado, data.municipio
-    else:
-        estado, municipio = derive_estado_municipio(db, lat=data.lat, lon=data.lon)
+    # CR-036: la deriva SIEMPRE el servidor del punto capturado. Lo que mande el cliente en
+    # `estado`/`municipio` se IGNORA — se conserva en el esquema solo para no romper a los bundles
+    # PWA anteriores, que siguen enviándolos desde su caché. Ese es justamente el mecanismo que
+    # produjo las 39 observaciones de Zacatecas etiquetadas "Calvillo": un teléfono no puede decidir
+    # en qué municipio está un árbol. Si el punto no cae en ningún polígono, la observación se
+    # guarda sin geografía en vez de con una inventada (gate #3: nada se bloquea).
+    ubicacion = resolver_ubicacion(db, lat=data.lat, lon=data.lon)
+    estado, municipio = ubicacion.estado, ubicacion.municipio
 
     # (3) tree_id (10 m) + observation_seq (serie temporal).
     tree_id = assign_tree(db, lat=data.lat, lon=data.lon, estado=estado, municipio=municipio)
@@ -122,6 +124,9 @@ async def submit_observation(
         observation_seq=seq,
         estado=estado,
         municipio=municipio,
+        cve_ent=ubicacion.cve_ent,
+        cve_mun=ubicacion.cve_mun,
+        gps_accuracy_m=data.gps_accuracy_m,
         estado_revision="aceptada",
         client_capture_id=data.client_capture_id,  # CR-031: sella la captura contra reintentos
     )

@@ -6,7 +6,7 @@ import '../models/models.dart';
 import '../state/session.dart';
 import '../ui/copy.dart';
 import '../widgets/paged_table.dart';
-import '../widgets/estado_filter.dart';
+import '../widgets/geo_filter.dart';
 
 /// Panel con **ubicación exacta** (Q5.B): observaciones con coords exactas del
 /// árbol (GET /restricted/observations). La ubicación exacta es información
@@ -22,7 +22,7 @@ class RestrictedDashboardScreen extends ConsumerStatefulWidget {
 
 class _RestrictedDashboardScreenState
     extends ConsumerState<RestrictedDashboardScreen> {
-  String? _estado;
+  GeoSeleccion _geo = const GeoSeleccion();
   late Future<List<RestrictedObservation>> _future;
 
   @override
@@ -36,7 +36,7 @@ class _RestrictedDashboardScreenState
         .read(apiClientProvider)
         // CR-034: trae TODO paginando contra el backend; el limit fijo de 500
         // escondía el resto de los registros.
-        .restrictedObservationsAll(estado: _estado);
+        .restrictedObservationsAll(cveEnt: _geo.cveEnt, cveMun: _geo.cveMun);
   }
 
   @override
@@ -53,10 +53,10 @@ class _RestrictedDashboardScreenState
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: 16),
-        EstadoFilter(
-          value: _estado,
+        GeoFilter(
+          value: _geo,
           onChanged: (v) => setState(() {
-            _estado = v;
+            _geo = v;
             _reload();
           }),
         ),

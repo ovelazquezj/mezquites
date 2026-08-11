@@ -96,11 +96,14 @@ class Copy {
   static const captureTamanioLabel = 'Tamaño del árbol';
   static const captureContextoLabel = 'Contexto del sitio';
 
-  // --- Estado / municipio (CR-010 #5; autodeclarados, gate #8) ---
-  static const captureEstadoLabel = 'Estado';
-  static const captureMunicipioLabel = 'Municipio';
-  static const captureMunicipioHint =
-      'Lo detectamos por tu ubicación; corrígelo si hace falta.';
+  // --- Ubicación de la captura ---
+  // CR-036: se retiran `captureEstadoLabel`, `captureMunicipioLabel` y `captureMunicipioHint`.
+  // El voluntario ya no selecciona el lugar: lo deriva el servidor de las coordenadas y aquí solo
+  // se le muestra, sin pedirle nada.
+  static const captureUbicacionTitulo = 'Ubicación y momento';
+  static const captureUbicacionResolviendo = 'Ubicando el lugar…';
+  static const captureUbicacionSinResolver =
+      'La ubicación se determinará al enviar.';
 
   static const captureSubmit = 'Registrar observación';
 

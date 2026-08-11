@@ -25,6 +25,7 @@ unidad construible** (Arquitecto, Dev backend, Dev web-admin, Dev móvil, Tester
 | [CR-013](CR-013-licencia-acerca-de.md) | Licencia **MIT** (copyright del Club, autoría Omar Velázquez) + pantalla **"Acerca de"** (versión `beta-2606`) en ambas apps | ✅ **Integrado en `main`** | CR-012 |
 | [CR-014](CR-014-despliegue-servidor-unico.md) | Despliegue en **un solo servidor** (cloud o propio): compose prod + Caddy (TLS) + runbook (hardware/software/Firebase) | 📋 **Propuesto — formalizado** (paquete listo para infra; sin desplegar) | CR-004 W1 |
 | [CR-025](CR-025-ubicacion-exacta-publica.md) | **Ubicación EXACTA pública** (retira la obfuscación del gate #5; conserva el calor + pines exactos; consola exacta para todos) | ✅ **Integrado en `main`** | CR-009, CR-023 |
+| [CR-036](CR-036-geografia-derivada-y-alcance-nacional.md) | **Geografía derivada en el servidor + alcance nacional** (límites INEGI en PostGIS, `/geo/*`, se retiran los dropdowns de la captura, filtros estado/municipio en la consola, backfill del histórico) | 🔨 **Aprobado — en construcción** (2026-08-10; migración 0009 + backfill) | CR-010, CR-026, CR-031 |
 
 **Secuencia acordada:** **CR-001** primero (funda los roles y enmienda gates); **CR-003** en paralelo
 (independiente, branding); **CR-002** al final (depende de los roles de CR-001 + Firebase externo).

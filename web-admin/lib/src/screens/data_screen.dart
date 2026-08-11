@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../services/download.dart';
 import '../state/session.dart';
 import '../ui/copy.dart';
+import '../widgets/geo_filter.dart';
 import '../widgets/paged_table.dart';
 
 /// Pantalla **Datos y descargas** del analista (CR-010 #3). Visible para
@@ -27,7 +28,9 @@ class DataScreen extends ConsumerStatefulWidget {
 class _DataScreenState extends ConsumerState<DataScreen> {
   // Filtros aplicados (los que viajan a la API).
   String? _estadoRevision;
-  final _municipioCtrl = TextEditingController();
+  // CR-036: estado y municipio dejan de ser texto libre. El municipio en texto no podía
+  // desambiguar homónimos entre entidades y el estado ni siquiera existía como filtro.
+  GeoSeleccion _geo = const GeoSeleccion();
   String? _nivelG4;
   final _desdeCtrl = TextEditingController();
   final _hastaCtrl = TextEditingController();
@@ -56,7 +59,6 @@ class _DataScreenState extends ConsumerState<DataScreen> {
 
   @override
   void dispose() {
-    _municipioCtrl.dispose();
     _desdeCtrl.dispose();
     _hastaCtrl.dispose();
     super.dispose();
@@ -64,13 +66,13 @@ class _DataScreenState extends ConsumerState<DataScreen> {
 
   void _reload() {
     final api = ref.read(apiClientProvider);
-    final mun = _municipioCtrl.text.trim();
     final desde = _desdeCtrl.text.trim();
     final hasta = _hastaCtrl.text.trim();
     _future = () async {
       final summary = await api.analyticsSummary(
         estadoRevision: _estadoRevision,
-        municipio: mun,
+        cveEnt: _geo.cveEnt,
+        cveMun: _geo.cveMun,
         nivelG4: _nivelG4,
         desde: desde,
         hasta: hasta,
@@ -79,7 +81,8 @@ class _DataScreenState extends ConsumerState<DataScreen> {
       // escondía el resto (el CSV ya exportaba completo, la tabla no).
       final rows = await api.analyticsObservationsAll(
         estadoRevision: _estadoRevision,
-        municipio: mun,
+        cveEnt: _geo.cveEnt,
+        cveMun: _geo.cveMun,
         nivelG4: _nivelG4,
         desde: desde,
         hasta: hasta,
@@ -92,7 +95,7 @@ class _DataScreenState extends ConsumerState<DataScreen> {
     setState(() {
       _estadoRevision = null;
       _nivelG4 = null;
-      _municipioCtrl.clear();
+      _geo = const GeoSeleccion();
       _desdeCtrl.clear();
       _hastaCtrl.clear();
       _reload();
@@ -104,7 +107,8 @@ class _DataScreenState extends ConsumerState<DataScreen> {
     try {
       final bytes = await ref.read(apiClientProvider).analyticsCsvBytes(
             estadoRevision: _estadoRevision,
-            municipio: _municipioCtrl.text.trim(),
+            cveEnt: _geo.cveEnt,
+            cveMun: _geo.cveMun,
             nivelG4: _nivelG4,
             desde: _desdeCtrl.text.trim(),
             hasta: _hastaCtrl.text.trim(),
@@ -131,12 +135,17 @@ class _DataScreenState extends ConsumerState<DataScreen> {
 
   /// CR-026: descarga la participación por día × voluntario (sesiones y horas
   /// frente al resultado de revisión). Usa solo los filtros que ese reporte
-  /// entiende: municipio y rango de fechas.
+  /// entiende: geografía y rango de fechas.
+  ///
+  /// CR-036: el filtro geográfico aplica **solo al lado de observaciones** — una sesión no tiene
+  /// ubicación. El backend lo declara en el propio CSV para que nadie lea las sesiones como si
+  /// también estuvieran acotadas al estado.
   Future<void> _downloadParticipationCsv() async {
     setState(() => _downloadingParticipation = true);
     try {
       final bytes = await ref.read(apiClientProvider).participationCsvBytes(
-            municipio: _municipioCtrl.text.trim(),
+            cveEnt: _geo.cveEnt,
+            cveMun: _geo.cveMun,
             desde: _desdeCtrl.text.trim(),
             hasta: _hastaCtrl.text.trim(),
           );
@@ -202,7 +211,8 @@ class _DataScreenState extends ConsumerState<DataScreen> {
           estadoRevisionItems: _estadoRevisionItems,
           nivelG4: _nivelG4,
           nivelItems: _nivelItems,
-          municipioCtrl: _municipioCtrl,
+          geo: _geo,
+          onGeo: (v) => setState(() => _geo = v),
           desdeCtrl: _desdeCtrl,
           hastaCtrl: _hastaCtrl,
           onEstadoRevision: (v) => setState(() => _estadoRevision = v),
@@ -287,7 +297,8 @@ class _Filters extends StatelessWidget {
     required this.estadoRevisionItems,
     required this.nivelG4,
     required this.nivelItems,
-    required this.municipioCtrl,
+    required this.geo,
+    required this.onGeo,
     required this.desdeCtrl,
     required this.hastaCtrl,
     required this.onEstadoRevision,
@@ -300,7 +311,8 @@ class _Filters extends StatelessWidget {
   final Map<String, String> estadoRevisionItems;
   final String? nivelG4;
   final Map<String, String> nivelItems;
-  final TextEditingController municipioCtrl;
+  final GeoSeleccion geo;
+  final ValueChanged<GeoSeleccion> onGeo;
   final TextEditingController desdeCtrl;
   final TextEditingController hastaCtrl;
   final ValueChanged<String?> onEstadoRevision;
@@ -347,15 +359,9 @@ class _Filters extends StatelessWidget {
                 onChanged: onNivel,
               ),
             ),
-            SizedBox(
-              width: 220,
-              child: TextField(
-                key: const Key('data-filter-municipio'),
-                controller: municipioCtrl,
-                decoration:
-                    const InputDecoration(labelText: Copy.dataFilterMunicipio),
-              ),
-            ),
+            // CR-036: estado + municipio, poblados desde `/geo/*`. El municipio depende del
+            // estado elegido: los nombres se repiten entre entidades.
+            GeoFilter(value: geo, onChanged: onGeo),
             SizedBox(
               width: 180,
               child: TextField(
@@ -421,6 +427,17 @@ class _SummaryCards extends StatelessWidget {
           title: Copy.dataSummaryByNivel,
           child: _Breakdown(data: summary.porNivelG4, labelOf: Copy.nivelG4),
         ),
+        // CR-036: el desglose por estado va ANTES que el de municipio — con datos de varias
+        // entidades es el corte que ordena la lectura, y sin él dos municipios homónimos de
+        // estados distintos se leerían como uno solo.
+        _SummaryCard(
+          title: Copy.dataSummaryByEstado,
+          child: _Breakdown(
+            key: const Key('data-summary-estado'),
+            data: summary.porEstado,
+            labelOf: (k) => k,
+          ),
+        ),
         _SummaryCard(
           title: Copy.dataSummaryByMunicipio,
           child: _Breakdown(data: summary.porMunicipio, labelOf: (k) => k),
@@ -459,7 +476,7 @@ class _SummaryCard extends StatelessWidget {
 }
 
 class _Breakdown extends StatelessWidget {
-  const _Breakdown({required this.data, required this.labelOf});
+  const _Breakdown({super.key, required this.data, required this.labelOf});
 
   final Map<String, int> data;
   final String Function(String) labelOf;

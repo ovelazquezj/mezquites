@@ -206,3 +206,16 @@ def client(engine, tmp_path, monkeypatch):
     yield test_client
     app.dependency_overrides.clear()
     auth_provider_module.set_auth_provider(None)
+
+
+@pytest.fixture()
+def limites(db_session):
+    """Límites administrativos sintéticos para las pruebas de geografía derivada (CR-036)."""
+    from sqlalchemy import text as _text
+
+    from .helpers import sembrar_limites
+
+    sembrar_limites(db_session)
+    yield
+    db_session.execute(_text("DELETE FROM admin_boundary"))
+    db_session.commit()

@@ -373,6 +373,18 @@ etiquetando su grado de soporte. Etiquetas usadas en toda la bitácora:
   infraestructura, sí segmentación lógica por geografía.
 - **Criterios de aceptación.** Toda observación es atribuible a estado y municipio por geolocalización;
   dashboards y rankings con filtro geográfico; agregar un estado no requiere nueva infraestructura.
+- **CUMPLIDO por CR-036 (2026-08-10) — no es enmienda.** El criterio estaba en 🟡 desde el Incremento 2:
+  la lógica existía (`derive_estado_municipio`) pero `admin_boundary` nunca se cargó, así que en la
+  práctica el estado y el municipio los **declaraba la app** desde un dropdown con una sola opción. El
+  disparador **S2** llegó solo: aparecieron **39 observaciones fuera de Aguascalientes** (Jalpa,
+  Zacatecas). Al resolver el histórico contra los límites reales del INEGI salieron **235 filas mal
+  etiquetadas de 2 342** — las 39 que cruzaban la línea estatal y **196 dentro del propio estado**
+  (municipio de Aguascalientes contadas como Jesús María), error invisible durante meses. CR-036 carga
+  el Marco Geoestadístico nacional (2 478 municipios), hace que **el servidor derive siempre** la
+  geografía del punto capturado, **retira los selectores de la app** (un teléfono no decide en qué
+  municipio está un árbol) y añade los filtros por estado/municipio en la consola. Se confirma en los
+  hechos lo que Q8-D1 selló: **escalar fue articulación, no re-arquitectura** — el alcance pasó a
+  nacional sin infraestructura nueva ni multi-tenancy.
 
 ---
 

@@ -23,6 +23,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from ..db import get_db
+from ..geo_filtros import CLAUSULA_GEO, params_geo
 from ..deps import CurrentUser, require_role
 from ..gamification import refresh_identity_label
 from ..models import REVIEW_ROLES, REVIEW_VERDICT_ROLES, HumanReview, Observation
@@ -54,6 +55,8 @@ def review_queue(
     ),
     municipio: str | None = Query(None),
     estado: str | None = Query(None),
+    cve_ent: str | None = Query(None, min_length=2, max_length=2),
+    cve_mun: str | None = Query(None, min_length=3, max_length=3),
     desde: str | None = Query(None, description="ISO date/datetime: captured_at >= desde."),
     hasta: str | None = Query(None, description="ISO date/datetime: captured_at <= hasta."),
     limit: int = Query(100, le=1000),
@@ -69,8 +72,9 @@ def review_queue(
                    flag_cuscuta, flag_danio, tamanio, contexto, estado, municipio
             FROM observation
             WHERE (CAST(:estado_revision AS text) IS NULL OR estado_revision = :estado_revision)
-              AND (CAST(:municipio AS text) IS NULL OR municipio = :municipio)
-              AND (CAST(:estado AS text) IS NULL OR estado = :estado)
+            """
+            + CLAUSULA_GEO
+            + """
               AND (CAST(:desde AS timestamptz) IS NULL OR captured_at >= CAST(:desde AS timestamptz))
               AND (CAST(:hasta AS timestamptz) IS NULL OR captured_at <= CAST(:hasta AS timestamptz))
             ORDER BY captured_at DESC
@@ -79,8 +83,9 @@ def review_queue(
         ),
         {
             "estado_revision": estado_revision,
-            "municipio": municipio,
-            "estado": estado,
+            **params_geo(
+                estado=estado, municipio=municipio, cve_ent=cve_ent, cve_mun=cve_mun
+            ),
             "desde": desde,
             "hasta": hasta,
             "limit": limit,

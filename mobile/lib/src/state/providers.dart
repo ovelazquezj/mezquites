@@ -360,3 +360,11 @@ final publicGridProvider = FutureProvider.autoDispose<List<GridCell>>(
 final evidenceProvider = FutureProvider.autoDispose<Evidence>(
   (ref) => ref.watch(apiClientProvider).evidence(),
 );
+
+
+/// Catálogo de entidades federativas (CR-036). Alimenta el selector de estado al registrar una
+/// institución: con alcance nacional, una escuela de Zacatecas ya puede darse de alta con su
+/// estado real en vez de con el único que ofrecía el catálogo hardcodeado.
+final geoEstadosProvider = FutureProvider<List<String>>(
+  (ref) => ref.read(apiClientProvider).geoEstados(),
+);
