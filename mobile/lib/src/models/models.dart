@@ -1,5 +1,7 @@
 import 'dart:convert';
-import 'dart:typed_data';
+
+// `foundation` trae `@immutable` y reexporta `dart:typed_data` (Uint8List).
+import 'package:flutter/foundation.dart';
 
 import 'enums.dart';
 
@@ -634,5 +636,55 @@ class GeoLugar {
         cveEnt: j['cve_ent'] as String?,
         cveMun: j['cve_mun'] as String?,
         resuelto: j['resuelto'] as bool? ?? false,
+      );
+}
+
+/// Las 5 etiquetas autodeclaradas de una captura, juntas y como valor (CR-037).
+///
+/// Existen como objeto propio para que **sobrevivan a "Repetir foto"** y al cambio de
+/// pestaña (CR-039): en ambos casos el formulario se desmonta y su `State` se destruye,
+/// así que quien las guarda es [CapturaEnCurso] en el provider. Sin esto, corregir una
+/// foto —o mirar el mapa un momento— castigaría al voluntario obligándolo a recapturar
+/// las 5 etiquetas del mismo árbol.
+///
+/// Vive aquí y no en la pantalla para que la capa de estado (`providers.dart`) pueda
+/// usarla sin importar la de interfaz.
+@immutable
+class EtiquetasCaptura {
+  const EtiquetasCaptura({
+    this.nivelG4,
+    this.cuscuta = false,
+    this.danio = false,
+    this.tamanio,
+    this.contexto,
+  });
+
+  final NivelG4? nivelG4;
+  final bool cuscuta;
+  final bool danio;
+  final Tamanio? tamanio;
+  final Contexto? contexto;
+
+  /// Los tres campos obligatorios (los dos toggles tienen valor siempre).
+  bool get completa => nivelG4 != null && tamanio != null && contexto != null;
+
+  /// `true` si el voluntario ya declaró algo. Lo usa el aviso de descarte para no
+  /// prometer que se pierden datos cuando aún no hay ninguno.
+  bool get hayAlgoDeclarado =>
+      nivelG4 != null || tamanio != null || contexto != null || cuscuta || danio;
+
+  EtiquetasCaptura copyWith({
+    NivelG4? nivelG4,
+    bool? cuscuta,
+    bool? danio,
+    Tamanio? tamanio,
+    Contexto? contexto,
+  }) =>
+      EtiquetasCaptura(
+        nivelG4: nivelG4 ?? this.nivelG4,
+        cuscuta: cuscuta ?? this.cuscuta,
+        danio: danio ?? this.danio,
+        tamanio: tamanio ?? this.tamanio,
+        contexto: contexto ?? this.contexto,
       );
 }

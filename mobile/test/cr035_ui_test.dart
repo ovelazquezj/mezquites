@@ -382,12 +382,16 @@ void main() {
         capturedAt: DateTime.utc(2026, 8, 1, 9),
       );
       await tester.pumpWidget(wrap(
-        CaptureScreen(initialShot: shot),
+        const CaptureScreen(),
         overrides: [
           pendingStoreProvider.overrideWithValue(store),
           apiClientProvider.overrideWithValue(apiQue(() => 401)),
           authProvider.overrideWith((ref) => _AuthFijo(sesion)),
           sessionStoreProvider.overrideWithValue(await SessionStore.create()),
+          // CR-039: la captura a medias vive en el provider, así que la prueba siembra
+          // estado REAL de la app en lugar del antiguo parámetro `initialShot`, que solo
+          // existía para las pruebas.
+          capturaEnCursoProvider.overrideWith((ref) => CapturaEnCurso(foto: shot)),
         ],
       ),);
       await tester.pumpAndSettle();

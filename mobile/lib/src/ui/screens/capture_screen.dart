@@ -18,36 +18,54 @@ import 'observation_form.dart';
 ///   - móvil nativo: cámara nativa con preview + EXIF real;
 ///   - web (teléfono/tablet): cámara del navegador (`image_picker`), por bytes.
 ///
-/// El submit es fire-and-forget: encola localmente como "pendiente" y dispara el
-/// POST sin bloquear la UI. NUNCA muestra estado de validación individual (gate #9).
+/// **CR-039 — la captura a medias vive en `capturaEnCursoProvider`, no aquí.** `HomeShell`
+/// monta las pestañas con `_screens[_index]`, así que cambiar de pestaña desmonta esta
+/// pantalla; con el estado local, asomarse al mapa un segundo tiraba la foto y las
+/// etiquetas sin avisar. Del provider salen los tres caminos de salida del formulario:
+/// **repetir** (suelta la foto, conserva las etiquetas), **descartar** (vacía todo, con
+/// confirmación) y **registrar** (encola y vacía todo).
+///
+/// El submit NO es fire-and-forget desde CR-031: guarda primero en el dispositivo y luego
+/// intenta subir. NUNCA muestra estado de validación individual (gate #9).
 class CaptureScreen extends ConsumerStatefulWidget {
-  const CaptureScreen({super.key, @visibleForTesting this.initialShot});
-
-  /// SOLO pruebas (CR-035): arranca con una captura ya hecha para poder ejercitar
-  /// el flujo de `_submit` (formulario → SnackBar) sin cámara. En producción
-  /// siempre es `null`: la única entrada real sigue siendo la cámara (gate #4).
-  final CaptureResult? initialShot;
+  const CaptureScreen({super.key});
 
   @override
   ConsumerState<CaptureScreen> createState() => _CaptureScreenState();
 }
 
 class _CaptureScreenState extends ConsumerState<CaptureScreen> {
-  late CaptureResult? _shot = widget.initialShot;
+  void _onCaptured(CaptureResult result) {
+    final actual = ref.read(capturaEnCursoProvider);
+    ref.read(capturaEnCursoProvider.notifier).state =
+        actual.copyWith(foto: result);
+  }
 
-  /// CR-037: las etiquetas del árbol viven AQUÍ, no dentro del formulario.
-  ///
-  /// "Repetir foto" desmonta el formulario (vuelve la cámara) y con él se iría su `State`.
-  /// Guardándolas en la pantalla, repetir cambia **solo la foto**: el voluntario que
-  /// corrige un encuadre no vuelve a declarar nivel, tamaño ni contexto del mismo árbol.
-  /// Se reinician al registrar, para que el siguiente árbol empiece en blanco.
-  EtiquetasCaptura _etiquetas = const EtiquetasCaptura();
-
-  void _onCaptured(CaptureResult result) => setState(() => _shot = result);
-
-  /// CR-037: descarta solo la foto y vuelve a la cámara, conservando las etiquetas.
+  /// CR-037: descarta solo la foto y vuelve a la cámara **conservando las etiquetas**.
   /// Es cámara otra vez, nunca galería (gate #4).
-  void _repetirFoto() => setState(() => _shot = null);
+  void _repetirFoto() {
+    final actual = ref.read(capturaEnCursoProvider);
+    ref.read(capturaEnCursoProvider.notifier).state = actual.sinFoto();
+  }
+
+  /// CR-039: abandona el árbol entero. Llega ya confirmado por el diálogo de
+  /// [CapturaPreview], así que aquí no se vuelve a preguntar.
+  ///
+  /// Ocurre **antes de enviar**: no se ha tocado la cola de CR-031 ni el servidor, así que
+  /// descartar es solo olvidar — no hay nada que deshacer en ninguna parte.
+  void _descartar() {
+    ref.read(capturaEnCursoProvider.notifier).state = const CapturaEnCurso();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text(Copy.captureDescartada)),
+    );
+  }
+
+  void _cambiarEtiquetas(EtiquetasCaptura etiquetas) {
+    final actual = ref.read(capturaEnCursoProvider);
+    ref.read(capturaEnCursoProvider.notifier).state =
+        actual.copyWith(etiquetas: etiquetas);
+  }
 
   /// Guarda la captura en el dispositivo y **luego** intenta subirla (CR-031).
   ///
@@ -58,13 +76,10 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
   /// almacenamiento disponible— y el mensaje dice lo que de verdad pasó.
   Future<void> _submit(ObservationDraft draft) async {
     // Libera la vista de inmediato: el voluntario puede seguir capturando aunque
-    // la subida tarde (gate #3: nada se bloquea). CR-037: y limpia las etiquetas,
-    // porque lo siguiente que capture ya es OTRO árbol — conservarlas aquí las
-    // heredaría en silencio al que venga.
-    setState(() {
-      _shot = null;
-      _etiquetas = const EtiquetasCaptura();
-    });
+    // la subida tarde (gate #3: nada se bloquea). CR-037: y vacía las etiquetas,
+    // porque lo siguiente que capture ya es OTRO árbol — conservarlas se las
+    // heredaría en silencio.
+    ref.read(capturaEnCursoProvider.notifier).state = const CapturaEnCurso();
     final queue = ref.read(pendingQueueProvider.notifier);
     try {
       final subida = await queue.registrar(draft);
@@ -99,7 +114,8 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final shot = _shot;
+    final enCurso = ref.watch(capturaEnCursoProvider);
+    final shot = enCurso.foto;
     return Scaffold(
       appBar: BrandedAppBar(
         title: Copy.captureTitle,
@@ -128,12 +144,11 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                     capture: shot,
                     onSubmit: _submit,
                     // CR-037: la foto se ve, se amplía y se puede repetir.
-                    etiquetasIniciales: _etiquetas,
-                    // Sin `setState`: es una copia para cuando el formulario se vuelva a
-                    // montar tras repetir la foto, no algo que este build esté pintando.
-                    // Repintar aquí en cada tecleo sería trabajo de más y nada cambiaría.
-                    onEtiquetasChanged: (e) => _etiquetas = e,
+                    // CR-039: y se puede abandonar sin enviarla.
+                    etiquetasIniciales: enCurso.etiquetas,
+                    onEtiquetasChanged: _cambiarEtiquetas,
                     onRepetirFoto: _repetirFoto,
+                    onDescartarCaptura: _descartar,
                     // CR-036: le pide al servidor el nombre del lugar solo para MOSTRARLO. Si no
                     // hay red devuelve null y la tarjeta enseña las coordenadas; la captura
                     // offline (CR-031) no depende de esta llamada.

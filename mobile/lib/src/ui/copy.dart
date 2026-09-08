@@ -124,6 +124,31 @@ class Copy {
   /// así que el aviso no descuadra el formulario.
   static const captureFotoError = 'No se pudo mostrar la foto.';
 
+  // --- Descartar la captura (CR-039) ---
+  //
+  // Antes no había salida: con la foto ya tomada, la única forma de salir del formulario
+  // era **enviarlo**. Quien se daba cuenta de que la captura estaba mal terminaba
+  // registrando la observación errónea a sabiendas.
+  //
+  // Descartar pide confirmación (a diferencia de "Repetir foto", que solo cuesta una foto)
+  // porque se pierde también lo ya declarado. Ocurre SIEMPRE antes de enviar: nada ha
+  // llegado al servidor ni a la cola, así que no hay nada que deshacer.
+
+  static const captureDescartar = 'Descartar';
+  static const captureDescartarTitulo = '¿Descartar esta captura?';
+
+  /// Cuando ya declaró algo: se pierden foto **y** etiquetas.
+  static const captureDescartarConDatos =
+      'Se perderán la fotografía y los datos que llevas de este árbol. No se envía nada.';
+
+  /// Recién tomada la foto, sin nada declarado todavía.
+  static const captureDescartarSoloFoto =
+      'Se perderá la fotografía que acabas de tomar. No se envía nada.';
+
+  static const captureDescartarConfirmar = 'Sí, descartar';
+  static const captureDescartarCancelar = 'Seguir con esta captura';
+  static const captureDescartada = 'Captura descartada. No se envió nada.';
+
   static const captureSubmit = 'Registrar observación';
 
   // --- Confirmación del envío (CR-031) ---

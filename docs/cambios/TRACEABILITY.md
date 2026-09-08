@@ -996,3 +996,51 @@ descartado explícitamente.
 Verificado además que el **build web de producción compila** (`flutter build web --release`) y que los
 textos nuevos están en el `main.dart.js` servido — la rama web del import condicional
 (`captura_imagen_web.dart`) no la compila `flutter test`, que corre sobre la rama io.
+
+---
+
+## CR-039 — Descartar la captura sin enviarla (2026-09-08)
+
+**Origen:** el mismo reporte de campo que CR-037 — *"no hay una opción para cancelar la captura de un
+árbol... el observador se ve obligado a terminar la captura y enviar la foto errónea"*. Confirmado:
+`ObservationForm` tenía **un solo botón** y `CaptureScreen` solo limpiaba la captura dentro de
+`_submit`; siendo una pestaña de `HomeShell`, tampoco había retroceso. **La única salida del
+formulario era enviarlo.** Había una escapatoria accidental —cambiar de pestaña destruía
+`CaptureScreen` y tiraba la captura **en silencio**—, indescubrible e indistinguible de un fallo.
+Diseño en [`CR-039-descartar-la-captura.md`](../change-requests/CR-039-descartar-la-captura.md).
+**Solo app del voluntario; sin backend, sin migración.**
+
+| # | Criterio | Implementación | Prueba |
+|---|---|---|---|
+| **AC1** El formulario ofrece "Descartar" | `CapturaPreview.onDescartar` → `ObservationForm.onDescartarCaptura` → `CaptureScreen._descartar` | `cr039_descartar_test.dart` |
+| **AC2** No actúa sin confirmar | `_confirmarDescarte` (`AlertDialog`); `onDescartar` se invoca **solo** con `true`, así que el caller no repregunta | ídem |
+| **AC3** Cancelar conserva foto y etiquetas | el diálogo devuelve `false` y no se toca el provider | ídem |
+| **AC4** Confirmar vacía foto **y** etiquetas + SnackBar; el árbol siguiente arranca en blanco | `capturaEnCursoProvider` ← `const CapturaEnCurso()` | ídem (recaptura vía el `onCaptured` del `CapturePane` real) |
+| **AC5** No encola ni envía nada | el descarte ocurre **antes** de `queue.registrar`: no hay nada que deshacer | ídem (`store.count() == 0`) |
+| **AC6** El aviso distingue "solo la foto" de "foto y datos" | `EtiquetasCaptura.hayAlgoDeclarado` elige el texto — prometer datos inexistentes sería falso | ídem |
+| **AC7** Cambiar de pestaña y volver **conserva** la captura | `capturaEnCursoProvider` (`StateProvider<CapturaEnCurso>`): el estado vive por encima del widget | ídem, sobre el `HomeShell` real |
+| **AC8** Lo descartado no resucita al volver | el provider queda vacío, no se resiembra | ídem |
+| **AC9** Gate #3: tras descartar se captura de inmediato | descartar solo cambia estado; nada se bloquea | ídem |
+| **AC10** Gate #9: los textos no insinúan veredicto | `Copy.captureDescartar*` hablan de captura y envío | prueba de copy |
+
+**Decisión de diseño con medición: `IndexedStack` DESCARTADO.** Era la solución evidente para que la
+captura sobreviviera al cambio de pestaña, pero mantiene montadas las 4 pestañas, y `HeatMapScreen`
+observa `publicObservationsProvider` (que desde CR-034 pagina el dataset confirmado **entero**),
+`publicGridProvider`, `publicIndicatorsProvider` y los tiles de OSM; `ProfileScreen` observa
+`profileProvider`/`feedbackProvider`. Habría disparado toda esa red **al abrir la app**, incluso para
+quien solo va a capturar una foto en el campo — un bug de estado cambiado por coste de datos en cada
+arranque. Subir la captura al provider cuesta lo mismo y **no modifica `home_shell.dart`**, así que
+ninguna otra pestaña cambia de comportamiento.
+
+**Seam de producción retirado:** `CaptureScreen(initialShot:)` (de CR-035, `@visibleForTesting`) ya no
+hace falta — las pruebas siembran estado real con `capturaEnCursoProvider.overrideWith(...)`. Se
+actualizaron sus 3 usos. Un parámetro menos en el widget y pruebas más fieles a producción.
+
+**Gates:** ninguno se enmienda. **#3** (descartar no bloquea; hay prueba de que se captura enseguida),
+**#4** (vuelve a la cámara, sin galería), **#9** (prueba de copy). Descartar es **siempre antes de
+enviar**, así que no roza la cola de CR-031, el log append-only de `human_review` ni la historia ARCO.
+
+**606 pruebas verdes** (21 contrato · 9 mock · 235 backend · **205** móvil · 136 consola), 2026-09-08.
+Delta: +10 móviles. Verificado además que el **build web de producción compila** y sirve los textos
+nuevos. ⚠️ Al verificar por `grep` sobre `main.dart.js`, dart2js **escapa los acentos**: "Sí, descartar"
+aparece como `Sí, descartar`.

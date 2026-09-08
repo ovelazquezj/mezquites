@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../models/models.dart';
 import '../../services/capture_service.dart';
 import '../copy.dart';
 import 'captura_imagen.dart';
@@ -29,6 +30,8 @@ class CapturaPreview extends StatelessWidget {
     super.key,
     required this.captura,
     this.onRepetir,
+    this.onDescartar,
+    this.etiquetas = const EtiquetasCaptura(),
   });
 
   final CaptureResult captura;
@@ -36,6 +39,15 @@ class CapturaPreview extends StatelessWidget {
   /// Vuelve a la cámara conservando las etiquetas ya elegidas. `null` oculta el botón
   /// (el formulario se puede montar suelto —p. ej. en pruebas— y la foto se sigue viendo).
   final VoidCallback? onRepetir;
+
+  /// CR-039: abandona el árbol entero (foto **y** etiquetas). Se invoca SOLO si el
+  /// voluntario confirma en el diálogo, así que el caller no vuelve a preguntar.
+  /// `null` oculta el botón.
+  final VoidCallback? onDescartar;
+
+  /// CR-039: solo para redactar el aviso de descarte. Si aún no hay nada declarado, el
+  /// texto no puede prometer que se pierden datos que no existen.
+  final EtiquetasCaptura etiquetas;
 
   /// Lado del recuadro de la miniatura. Pequeño a propósito: es un vistazo de control, y
   /// el juicio fino se hace en el visor ampliado.
@@ -54,6 +66,37 @@ class CapturaPreview extends StatelessWidget {
         style: theme.textTheme.bodySmall,
       ),
     );
+  }
+
+  /// Pregunta antes de tirar el trabajo. A diferencia de "Repetir foto" —que solo cuesta
+  /// una foto y se rehace en un toque— descartar pierde también lo declarado, y un toque
+  /// accidental no debería poder deshacer varios minutos de campo.
+  Future<void> _confirmarDescarte(BuildContext context) async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        key: const Key('captura_descartar_dialogo'),
+        title: const Text(Copy.captureDescartarTitulo),
+        content: Text(
+          etiquetas.hayAlgoDeclarado
+              ? Copy.captureDescartarConDatos
+              : Copy.captureDescartarSoloFoto,
+        ),
+        actions: [
+          TextButton(
+            key: const Key('captura_descartar_cancelar'),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text(Copy.captureDescartarCancelar),
+          ),
+          FilledButton(
+            key: const Key('captura_descartar_confirmar'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text(Copy.captureDescartarConfirmar),
+          ),
+        ],
+      ),
+    );
+    if (confirmado ?? false) onDescartar?.call();
   }
 
   void _ampliar(BuildContext context) {
@@ -142,6 +185,15 @@ class CapturaPreview extends StatelessWidget {
                   icon: const Icon(Icons.camera_alt_outlined),
                   label: const Text(Copy.captureFotoRepetir),
                 ),
+              if (onDescartar != null) ...[
+                const SizedBox(height: 4),
+                TextButton.icon(
+                  key: const Key('captura_foto_descartar'),
+                  onPressed: () => _confirmarDescarte(context),
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  label: const Text(Copy.captureDescartar),
+                ),
+              ],
             ],
           ),
         ),

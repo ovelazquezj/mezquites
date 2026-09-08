@@ -232,6 +232,8 @@ void main() {
         apiClientProvider.overrideWithValue(apiOk()),
         authProvider.overrideWith((ref) => _AuthFijo(sesion)),
         sessionStoreProvider.overrideWithValue(await SessionStore.create()),
+        // CR-039: se siembra la captura a medias como estado real de la app.
+        capturaEnCursoProvider.overrideWith((ref) => CapturaEnCurso(foto: captura)),
       ];
     }
 
@@ -248,7 +250,7 @@ void main() {
       superficieAmplia(tester);
       final store = await almacen();
       await tester.pumpWidget(wrap(
-        CaptureScreen(initialShot: captura),
+        const CaptureScreen(),
         overrides: await overrides(store),
       ),);
       await tester.pumpAndSettle();
@@ -275,7 +277,7 @@ void main() {
       superficieAmplia(tester);
       final store = await almacen();
       await tester.pumpWidget(wrap(
-        CaptureScreen(initialShot: captura),
+        const CaptureScreen(),
         overrides: await overrides(store),
       ),);
       await tester.pumpAndSettle();

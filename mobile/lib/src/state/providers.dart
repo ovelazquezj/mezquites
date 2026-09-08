@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/api_client.dart';
 import '../models/models.dart';
+import '../services/capture_service.dart';
 import '../services/google_auth_service.dart';
 import '../services/pending/pending_capture.dart';
 import '../services/pending/pending_store.dart';
@@ -315,6 +316,47 @@ final pendingQueueProvider =
   controller.refresh();
   return controller;
 });
+
+/// La captura que el voluntario tiene a medias: la foto tomada y lo que lleva declarado
+/// (CR-039).
+///
+/// **Por qué vive en un provider y no en el `State` de la pantalla.** `HomeShell` monta las
+/// pestañas con `_screens[_index]`, así que al cambiar de pestaña `CaptureScreen` se
+/// desmonta y su estado se destruye: mirar el mapa un segundo tiraba la foto y las
+/// etiquetas **sin avisar**. Era la única salida que existía del formulario, y era
+/// indistinguible de un fallo.
+///
+/// La alternativa evidente —`IndexedStack` en `HomeShell`— se **descartó con medición**:
+/// mantendría montadas las 4 pestañas, y `HeatMapScreen` observa `publicObservationsProvider`
+/// (que desde CR-034 pagina el dataset confirmado **entero**) y carga tiles de OSM. Eso
+/// dispararía toda esa red **al abrir la app**, incluso para quien solo va a capturar una
+/// foto en el campo. Subir la captura al provider cuesta lo mismo y no toca el
+/// comportamiento de ninguna otra pestaña.
+class CapturaEnCurso {
+  const CapturaEnCurso({this.foto, this.etiquetas = const EtiquetasCaptura()});
+
+  /// `null` ⇒ no hay captura a medias y la pantalla muestra la cámara.
+  final CaptureResult? foto;
+
+  final EtiquetasCaptura etiquetas;
+
+  bool get hayFoto => foto != null;
+
+  CapturaEnCurso copyWith({CaptureResult? foto, EtiquetasCaptura? etiquetas}) =>
+      CapturaEnCurso(
+        foto: foto ?? this.foto,
+        etiquetas: etiquetas ?? this.etiquetas,
+      );
+
+  /// Suelta la foto y **conserva** las etiquetas: es "Repetir foto" (CR-037), el mismo
+  /// árbol con otra fotografía.
+  CapturaEnCurso sinFoto() => CapturaEnCurso(etiquetas: etiquetas);
+}
+
+/// Estado de la captura a medias. Se vacía al registrar y al descartar (CR-039).
+final capturaEnCursoProvider = StateProvider<CapturaEnCurso>(
+  (ref) => const CapturaEnCurso(),
+);
 
 // --- Datos remotos (FutureProviders) ---
 

@@ -20,47 +20,6 @@ import '../widgets/g4_selector.dart';
 /// simplemente `null` en lugar de una excepción que rompa la captura.
 typedef ResolverLugar = Future<GeoLugar?> Function(double lat, double lon);
 
-/// Las 5 etiquetas autodeclaradas, juntas y como valor (CR-037).
-///
-/// Existen como objeto propio para que **sobrevivan a "Repetir foto"**: al repetir, el
-/// formulario se desmonta (vuelve la cámara) y su `State` se destruye, así que quien las
-/// guarda es la pantalla de captura y se las devuelve al volver. Sin esto, corregir una
-/// foto castigaría al voluntario obligándolo a recapturar las 5 etiquetas del mismo árbol.
-@immutable
-class EtiquetasCaptura {
-  const EtiquetasCaptura({
-    this.nivelG4,
-    this.cuscuta = false,
-    this.danio = false,
-    this.tamanio,
-    this.contexto,
-  });
-
-  final NivelG4? nivelG4;
-  final bool cuscuta;
-  final bool danio;
-  final Tamanio? tamanio;
-  final Contexto? contexto;
-
-  /// Los tres campos obligatorios (los dos toggles tienen valor siempre).
-  bool get completa => nivelG4 != null && tamanio != null && contexto != null;
-
-  EtiquetasCaptura copyWith({
-    NivelG4? nivelG4,
-    bool? cuscuta,
-    bool? danio,
-    Tamanio? tamanio,
-    Contexto? contexto,
-  }) =>
-      EtiquetasCaptura(
-        nivelG4: nivelG4 ?? this.nivelG4,
-        cuscuta: cuscuta ?? this.cuscuta,
-        danio: danio ?? this.danio,
-        tamanio: tamanio ?? this.tamanio,
-        contexto: contexto ?? this.contexto,
-      );
-}
-
 class ObservationForm extends StatefulWidget {
   const ObservationForm({
     super.key,
@@ -70,6 +29,7 @@ class ObservationForm extends StatefulWidget {
     this.etiquetasIniciales = const EtiquetasCaptura(),
     this.onEtiquetasChanged,
     this.onRepetirFoto,
+    this.onDescartarCaptura,
   });
 
   final CaptureResult capture;
@@ -93,6 +53,10 @@ class ObservationForm extends StatefulWidget {
   /// CR-037: vuelve a la cámara para tomar otra foto del mismo árbol. `null` oculta el
   /// botón (la miniatura se sigue viendo).
   final VoidCallback? onRepetirFoto;
+
+  /// CR-039: abandona el árbol entero sin enviar nada. Llega ya confirmado por el diálogo
+  /// de `CapturaPreview`. `null` oculta el botón.
+  final VoidCallback? onDescartarCaptura;
 
   @override
   State<ObservationForm> createState() => _ObservationFormState();
@@ -167,6 +131,10 @@ class _ObservationFormState extends State<ObservationForm> {
           child: CapturaPreview(
             captura: widget.capture,
             onRepetir: widget.onRepetirFoto,
+            onDescartar: widget.onDescartarCaptura,
+            // Solo para redactar el aviso de descarte: sin nada declarado, no puede
+            // prometer que se pierden datos que aún no existen.
+            etiquetas: _etiquetas,
           ),
         ),
 
