@@ -35,7 +35,19 @@ class CaptureScreen extends ConsumerStatefulWidget {
 class _CaptureScreenState extends ConsumerState<CaptureScreen> {
   late CaptureResult? _shot = widget.initialShot;
 
+  /// CR-037: las etiquetas del árbol viven AQUÍ, no dentro del formulario.
+  ///
+  /// "Repetir foto" desmonta el formulario (vuelve la cámara) y con él se iría su `State`.
+  /// Guardándolas en la pantalla, repetir cambia **solo la foto**: el voluntario que
+  /// corrige un encuadre no vuelve a declarar nivel, tamaño ni contexto del mismo árbol.
+  /// Se reinician al registrar, para que el siguiente árbol empiece en blanco.
+  EtiquetasCaptura _etiquetas = const EtiquetasCaptura();
+
   void _onCaptured(CaptureResult result) => setState(() => _shot = result);
+
+  /// CR-037: descarta solo la foto y vuelve a la cámara, conservando las etiquetas.
+  /// Es cámara otra vez, nunca galería (gate #4).
+  void _repetirFoto() => setState(() => _shot = null);
 
   /// Guarda la captura en el dispositivo y **luego** intenta subirla (CR-031).
   ///
@@ -46,8 +58,13 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
   /// almacenamiento disponible— y el mensaje dice lo que de verdad pasó.
   Future<void> _submit(ObservationDraft draft) async {
     // Libera la vista de inmediato: el voluntario puede seguir capturando aunque
-    // la subida tarde (gate #3: nada se bloquea).
-    setState(() => _shot = null);
+    // la subida tarde (gate #3: nada se bloquea). CR-037: y limpia las etiquetas,
+    // porque lo siguiente que capture ya es OTRO árbol — conservarlas aquí las
+    // heredaría en silencio al que venga.
+    setState(() {
+      _shot = null;
+      _etiquetas = const EtiquetasCaptura();
+    });
     final queue = ref.read(pendingQueueProvider.notifier);
     try {
       final subida = await queue.registrar(draft);
@@ -110,6 +127,13 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                 ? ObservationForm(
                     capture: shot,
                     onSubmit: _submit,
+                    // CR-037: la foto se ve, se amplía y se puede repetir.
+                    etiquetasIniciales: _etiquetas,
+                    // Sin `setState`: es una copia para cuando el formulario se vuelva a
+                    // montar tras repetir la foto, no algo que este build esté pintando.
+                    // Repintar aquí en cada tecleo sería trabajo de más y nada cambiaría.
+                    onEtiquetasChanged: (e) => _etiquetas = e,
+                    onRepetirFoto: _repetirFoto,
                     // CR-036: le pide al servidor el nombre del lugar solo para MOSTRARLO. Si no
                     // hay red devuelve null y la tarjeta enseña las coordenadas; la captura
                     // offline (CR-031) no depende de esta llamada.

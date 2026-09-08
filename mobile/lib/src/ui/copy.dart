@@ -105,6 +105,25 @@ class Copy {
   static const captureUbicacionSinResolver =
       'La ubicación se determinará al enviar.';
 
+  // --- Revisión de la foto antes de enviarla (CR-037) ---
+  //
+  // El voluntario NUNCA veía la fotografía que acababa de tomar: ni al capturar los
+  // datos ni después. El primer humano que la miraba era quien revisaba en la consola,
+  // y para entonces la observación ya estaba enviada. Estos textos acompañan la
+  // miniatura que cierra ese hueco.
+  //
+  // ⚠️ Gate #9: hablan de la FOTO (mirarla, ampliarla, repetirla), nunca de su suerte
+  // en revisión. "Repetir foto" vuelve a la cámara: jamás abre la galería (gate #4).
+
+  static const captureFotoTitulo = 'Revisa tu foto';
+  static const captureFotoAmpliar = 'Toca la foto para verla en grande';
+  static const captureFotoRepetir = 'Repetir foto';
+  static const captureFotoCerrar = 'Cerrar';
+
+  /// La imagen no se pudo decodificar. El recuadro conserva su tamaño igual (alto fijo),
+  /// así que el aviso no descuadra el formulario.
+  static const captureFotoError = 'No se pudo mostrar la foto.';
+
   static const captureSubmit = 'Registrar observación';
 
   // --- Confirmación del envío (CR-031) ---

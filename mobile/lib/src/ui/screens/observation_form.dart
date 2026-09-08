@@ -4,6 +4,7 @@ import '../../models/enums.dart';
 import '../../models/models.dart';
 import '../../services/capture_service.dart';
 import '../copy.dart';
+import '../widgets/captura_preview.dart';
 import '../widgets/common.dart';
 import '../widgets/g4_selector.dart';
 
@@ -19,12 +20,56 @@ import '../widgets/g4_selector.dart';
 /// simplemente `null` en lugar de una excepción que rompa la captura.
 typedef ResolverLugar = Future<GeoLugar?> Function(double lat, double lon);
 
+/// Las 5 etiquetas autodeclaradas, juntas y como valor (CR-037).
+///
+/// Existen como objeto propio para que **sobrevivan a "Repetir foto"**: al repetir, el
+/// formulario se desmonta (vuelve la cámara) y su `State` se destruye, así que quien las
+/// guarda es la pantalla de captura y se las devuelve al volver. Sin esto, corregir una
+/// foto castigaría al voluntario obligándolo a recapturar las 5 etiquetas del mismo árbol.
+@immutable
+class EtiquetasCaptura {
+  const EtiquetasCaptura({
+    this.nivelG4,
+    this.cuscuta = false,
+    this.danio = false,
+    this.tamanio,
+    this.contexto,
+  });
+
+  final NivelG4? nivelG4;
+  final bool cuscuta;
+  final bool danio;
+  final Tamanio? tamanio;
+  final Contexto? contexto;
+
+  /// Los tres campos obligatorios (los dos toggles tienen valor siempre).
+  bool get completa => nivelG4 != null && tamanio != null && contexto != null;
+
+  EtiquetasCaptura copyWith({
+    NivelG4? nivelG4,
+    bool? cuscuta,
+    bool? danio,
+    Tamanio? tamanio,
+    Contexto? contexto,
+  }) =>
+      EtiquetasCaptura(
+        nivelG4: nivelG4 ?? this.nivelG4,
+        cuscuta: cuscuta ?? this.cuscuta,
+        danio: danio ?? this.danio,
+        tamanio: tamanio ?? this.tamanio,
+        contexto: contexto ?? this.contexto,
+      );
+}
+
 class ObservationForm extends StatefulWidget {
   const ObservationForm({
     super.key,
     this.resolverLugar,
     required this.capture,
     required this.onSubmit,
+    this.etiquetasIniciales = const EtiquetasCaptura(),
+    this.onEtiquetasChanged,
+    this.onRepetirFoto,
   });
 
   final CaptureResult capture;
@@ -37,16 +82,27 @@ class ObservationForm extends StatefulWidget {
   /// formulario siga siendo probable sin red ni `ProviderScope`.
   final ResolverLugar? resolverLugar;
 
+  /// CR-037: etiquetas con las que arranca el formulario. Vienen llenas cuando el
+  /// voluntario acaba de repetir la foto del mismo árbol, y vacías en un árbol nuevo.
+  final EtiquetasCaptura etiquetasIniciales;
+
+  /// CR-037: avisa de cada cambio para que la pantalla las conserve si se repite la foto.
+  /// Opcional: sin él, el formulario funciona igual montado suelto (pruebas).
+  final ValueChanged<EtiquetasCaptura>? onEtiquetasChanged;
+
+  /// CR-037: vuelve a la cámara para tomar otra foto del mismo árbol. `null` oculta el
+  /// botón (la miniatura se sigue viendo).
+  final VoidCallback? onRepetirFoto;
+
   @override
   State<ObservationForm> createState() => _ObservationFormState();
 }
 
 class _ObservationFormState extends State<ObservationForm> {
-  NivelG4? _nivel;
-  bool _cuscuta = false;
-  bool _danio = false;
-  Tamanio? _tamanio;
-  Contexto? _contexto;
+  /// CR-037: sembradas con lo que traiga la pantalla. El formulario sigue siendo el dueño
+  /// de su estado mientras está montado (para poder probarlo suelto) y solo lo **espeja**
+  /// hacia arriba con `onEtiquetasChanged`.
+  late EtiquetasCaptura _etiquetas = widget.etiquetasIniciales;
 
   // CR-036: el voluntario ya NO declara estado ni municipio — los deriva el servidor de las
   // coordenadas. Aquí solo se PIDE el nombre del lugar para mostrárselo como confirmación. Si no
@@ -70,8 +126,13 @@ class _ObservationFormState extends State<ObservationForm> {
     });
   }
 
-  bool get _complete =>
-      _nivel != null && _tamanio != null && _contexto != null;
+  bool get _complete => _etiquetas.completa;
+
+  /// Actualiza las etiquetas y las espeja hacia la pantalla (CR-037).
+  void _actualizar(EtiquetasCaptura nuevas) {
+    setState(() => _etiquetas = nuevas);
+    widget.onEtiquetasChanged?.call(nuevas);
+  }
 
   void _submit() {
     if (!_complete) return;
@@ -79,11 +140,11 @@ class _ObservationFormState extends State<ObservationForm> {
       lat: widget.capture.lat,
       lon: widget.capture.lon,
       capturedAt: widget.capture.capturedAt,
-      nivelG4: _nivel!,
-      flagCuscuta: _cuscuta,
-      flagDanio: _danio,
-      tamanio: _tamanio!,
-      contexto: _contexto!,
+      nivelG4: _etiquetas.nivelG4!,
+      flagCuscuta: _etiquetas.cuscuta,
+      flagDanio: _etiquetas.danio,
+      tamanio: _etiquetas.tamanio!,
+      contexto: _etiquetas.contexto!,
       gpsAccuracyM: widget.capture.gpsAccuracyM,
       imagePath: widget.capture.imagePath,
       imageBytes: widget.capture.imageBytes,
@@ -98,6 +159,17 @@ class _ObservationFormState extends State<ObservationForm> {
       key: const Key('observation_form'),
       padding: const EdgeInsets.all(16),
       children: [
+        // CR-037: la foto, primero de todo. Es el sujeto de cuanto viene debajo y lo único
+        // que el voluntario NO podía ver: sin esto, la primera persona en mirarla era quien
+        // revisaba, con la observación ya enviada.
+        SectionCard(
+          title: Copy.captureFotoTitulo,
+          child: CapturaPreview(
+            captura: widget.capture,
+            onRepetir: widget.onRepetirFoto,
+          ),
+        ),
+
         // 1-3: EXIF capturado (cámara nativa). Visible como confirmación.
         SectionCard(
           title: Copy.captureUbicacionTitulo,
@@ -142,8 +214,8 @@ class _ObservationFormState extends State<ObservationForm> {
         // 4: nivel G4 (4 opciones + rango %, autodeclarado).
         SectionCard(
           child: G4Selector(
-            value: _nivel,
-            onChanged: (v) => setState(() => _nivel = v),
+            value: _etiquetas.nivelG4,
+            onChanged: (v) => _actualizar(_etiquetas.copyWith(nivelG4: v)),
           ),
         ),
 
@@ -153,15 +225,15 @@ class _ObservationFormState extends State<ObservationForm> {
             children: [
               SwitchListTile(
                 key: const Key('toggle_cuscuta'),
-                value: _cuscuta,
-                onChanged: (v) => setState(() => _cuscuta = v),
+                value: _etiquetas.cuscuta,
+                onChanged: (v) => _actualizar(_etiquetas.copyWith(cuscuta: v)),
                 title: const Text(Copy.captureCuscutaLabel),
                 contentPadding: EdgeInsets.zero,
               ),
               SwitchListTile(
                 key: const Key('toggle_danio'),
-                value: _danio,
-                onChanged: (v) => setState(() => _danio = v),
+                value: _etiquetas.danio,
+                onChanged: (v) => _actualizar(_etiquetas.copyWith(danio: v)),
                 title: const Text(Copy.captureDanioLabel),
                 contentPadding: EdgeInsets.zero,
               ),
@@ -173,7 +245,7 @@ class _ObservationFormState extends State<ObservationForm> {
         SectionCard(
           child: DropdownButtonFormField<Tamanio>(
             key: const Key('dropdown_tamanio'),
-            value: _tamanio,
+            value: _etiquetas.tamanio,
             isExpanded: true,
             decoration: const InputDecoration(
               labelText: Copy.captureTamanioLabel,
@@ -186,7 +258,7 @@ class _ObservationFormState extends State<ObservationForm> {
                   ),
                 )
                 .toList(),
-            onChanged: (v) => setState(() => _tamanio = v),
+            onChanged: (v) => _actualizar(_etiquetas.copyWith(tamanio: v)),
           ),
         ),
 
@@ -194,7 +266,7 @@ class _ObservationFormState extends State<ObservationForm> {
         SectionCard(
           child: DropdownButtonFormField<Contexto>(
             key: const Key('dropdown_contexto'),
-            value: _contexto,
+            value: _etiquetas.contexto,
             isExpanded: true,
             decoration: const InputDecoration(
               labelText: Copy.captureContextoLabel,
@@ -207,7 +279,7 @@ class _ObservationFormState extends State<ObservationForm> {
                   ),
                 )
                 .toList(),
-            onChanged: (v) => setState(() => _contexto = v),
+            onChanged: (v) => _actualizar(_etiquetas.copyWith(contexto: v)),
           ),
         ),
 

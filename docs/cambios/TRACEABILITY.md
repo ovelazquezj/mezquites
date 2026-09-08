@@ -949,3 +949,50 @@ INEGI publique una versión nueva del marco.
 
 **584 pruebas verdes** (21 contrato · 9 mock · **235** backend · **183** móvil · **136** consola),
 2026-08-10. Delta: +16 backend, +4 móvil, +8 consola.
+
+---
+
+## CR-037 — La foto se ve antes de enviarla (2026-09-08)
+
+**Origen:** el usuario reporta, revisando observaciones en la consola, que muchas fotos se rechazan
+por problemas evidentes de la imagen y el voluntario no puede darse cuenta. Al leer el código el
+hueco era mayor: `observation_form.dart` **nunca renderizaba la imagen** (solo la pasaba al draft) y
+**ninguna** pantalla del voluntario la mostraba — ni antes, ni durante la captura de datos, ni
+después de enviarla. El primer humano en verla era quien revisaba, con la observación ya registrada.
+Diseño y decisiones en [`CR-037-preview-de-la-foto.md`](../change-requests/CR-037-preview-de-la-foto.md).
+**Solo app del voluntario; sin backend, sin migración.**
+
+| # | Criterio | Implementación | Prueba |
+|---|---|---|---|
+| **AC1** El formulario muestra la foto capturada | `CapturaPreview` (nuevo) en una `SectionCard` al **principio** del `ListView` de `observation_form.dart` | `cr037_preview_foto_test.dart` |
+| **AC2** La miniatura tiene alto **real > 0** aunque la imagen no decodifique | `SizedBox(112×112)` fijo + `BoxFit.contain`; la prueba usa `tester.getSize`, no `findsOneWidget` | ídem (bytes de utilería ilegibles a propósito) |
+| **AC3** Tocar la miniatura abre el visor con zoom | `_VisorFotoCaptura` (`Dialog.fullscreen` + `InteractiveViewer`, pellizco/doble toque, 1×–8×), espejo del visor de CR-029 | ídem |
+| **AC4** El visor cierra y devuelve al formulario | botón `captura_foto_visor_cerrar` | ídem |
+| **AC5** "Repetir foto" avisa a la pantalla; sin callback no hay botón pero la foto se ve | `onRepetirFoto` opcional → `CaptureScreen._repetirFoto()` (`_shot = null`) | ídem |
+| **AC6** El formulario se siembra con etiquetas y espeja cada cambio | `EtiquetasCaptura` (valor inmutable, `copyWith`, `completa`) + `etiquetasIniciales`/`onEtiquetasChanged` | ídem |
+| **AC7** Repetir **conserva** las etiquetas del mismo árbol y no encola nada | las etiquetas viven en `_CaptureScreenState`, no en el `State` del formulario (que se destruye al volver la cámara) | ídem (ciclo completo: se invoca el `onCaptured` del `CapturePane` real, sin seam de producción nuevo) |
+| **AC8** Tras registrar, el árbol siguiente empieza en blanco | `_submit` limpia `_etiquetas` junto con `_shot` | ídem |
+| **AC9** Gate #4: ninguna acción de galería | "Repetir foto" reabre el mismo `CapturePane` | prueba de pantalla + grep sobre `main.dart.js` compilado: **0** ocurrencias |
+| **AC10** Gate #9: la tarjeta no insinúa veredicto | `Copy.captureFoto*` hablan de la foto, nunca de revisión | prueba de copy |
+
+**Gates:** ninguno se enmienda. **#4** protagonista (repetir = cámara, jamás galería); **#9** con
+prueba de copy; **#3** intacto — ampliar trabaja sobre la imagen que ya está en el dispositivo, sin
+red, así que funciona igual capturando sin señal.
+
+**Decisión de diseño con precedente:** `BoxFit.contain`, nunca `cover` — recortar una foto que el
+voluntario está a punto de juzgar puede esconder justo lo que la invalida (mismo criterio que el fix
+de CR-032). Y **alto fijo**, por la trampa que este repo ya pagó dos veces (CR-029 y el fix de
+CR-032: `Size(1048, 0)`, en el árbol e invisible).
+
+**Fuera de alcance:** la **orientación** de la foto (iba a ser CR-038) se **omitió por decisión del
+usuario** — con la miniatura, el voluntario ve que no puede enviarla así. Salvedad anotada: por el
+camino de respaldo (`image_picker`) el JPEG sí trae EXIF `Orientation` y no se verificó si Flutter Web
+la honra al pintar; de honrarla, esa minoría se vería bien en la miniatura y de lado en la consola.
+**Descartar** la captura completa es CR-039 (pendiente). Reparar las ~6 000 fotos ya capturadas:
+descartado explícitamente.
+
+**195 pruebas móviles verdes** (183 previas + 12 nuevas en `cr037_preview_foto_test.dart`),
+2026-09-08. `backend`, `web-admin`, `contract` y `mock-validator` no se tocan y no se re-corrieron.
+Verificado además que el **build web de producción compila** (`flutter build web --release`) y que los
+textos nuevos están en el `main.dart.js` servido — la rama web del import condicional
+(`captura_imagen_web.dart`) no la compila `flutter test`, que corre sobre la rama io.
