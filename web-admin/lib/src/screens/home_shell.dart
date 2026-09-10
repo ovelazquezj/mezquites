@@ -23,7 +23,8 @@ import 'users_screen.dart';
 /// rol** (CR-001):
 /// - Módulos de administración (instituciones/aliados/indicadores/cortes): solo
 ///   `admin_consorcio`/`administrador`.
-/// - Revisión de observaciones: `evaluador`/`administrador` (emiten veredicto).
+/// - Revisión de observaciones: `evaluador`/`analista`/`administrador` (CR-041; el
+///   analista entra en solo lectura, sin botones de veredicto).
 /// - Monitor de revisión: `evaluador`/`analista`/`administrador` (solo lectura).
 /// - Panel con ubicación exacta: solo `aliado_firmante` (gate #5).
 class HomeShell extends ConsumerStatefulWidget {
@@ -54,8 +55,13 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       if (session.canSeeData)
         _NavItem(Icons.table_chart_outlined, Copy.navData,
             () => const DataScreen()),
-      // Revisión de observaciones: evaluador/administrador (emiten veredicto).
-      if (session.canEmitVerdict)
+      // Revisión de observaciones: cualquier rol de revisión (CR-041). El analista
+      // entra en SOLO LECTURA: ve la cola, la fotografía y el historial, y puede
+      // dejar notas, pero los botones de veredicto siguen gateados por
+      // `canEmitVerdict` dentro del diálogo. Antes este menú se gateaba por
+      // `canEmitVerdict`, así que el analista nunca podía abrir una observación
+      // aunque el backend sí lo autorizara.
+      if (session.canReview)
         _NavItem(Icons.rate_review_outlined, Copy.navReview,
             () => const ReviewScreen()),
       // Monitor: cualquier rol de revisión (incluye analista, solo lectura).

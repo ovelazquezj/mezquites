@@ -17,11 +17,15 @@ Gate de rol: **SOLO ``administrador``** (no `admin_consorcio`). Endpoints:
 
 **CR-040 (administración de cuentas desde la consola):** el borrado de un usuario de consola pasa
 por este mismo endpoint, así que la búsqueda mira también el ``username`` (el handle de esas cuentas
-es autogenerado y nadie lo conoce) y el repunte cubre las **6** FKs a ``account`` — faltaban
+es autogenerado y nadie lo conoce) y el repunte cubre las FKs a ``account`` — faltaban
 ``participation_session`` (NOT NULL: el borrado fallaba para cualquiera con sesiones),
 ``problem_report`` y ``account_deletion.executed_by_account_id``. La cuenta de administrador
 principal (``BOOTSTRAP_ADMIN_USERNAME``) queda **protegida**: eliminarla dejaría el sistema sin
 forma de crear administradores desde la API.
+
+**CR-041:** ``observation_note.author_account_id`` es la **séptima** FK a ``account`` y se repunta
+igual: las notas de revisión son append-only (gate #7) y sobreviven a la cancelación, a nombre de la
+cuenta centinela.
 """
 
 from __future__ import annotations
@@ -44,6 +48,7 @@ from ..models import (
     AccountDeletion,
     HumanReview,
     Observation,
+    ObservationNote,
     ParticipationSession,
     PointsLedger,
     ProblemReport,
@@ -174,10 +179,11 @@ def delete_account(
     )
 
     # 2) Repunta TODO lo que apunta a la cuenta (no romper FKs) — la misma transacción.
-    #    Son las 6 FKs a `account.id` que existen en el modelo; si alguna se olvida, el DELETE
+    #    Son las 7 FKs a `account.id` que existen en el modelo; si alguna se olvida, el DELETE
     #    revienta con IntegrityError (500) justo para las cuentas más activas. CR-040 añadió
     #    `participation_session` (NOT NULL, sin ON DELETE ⇒ el borrado FALLABA para cualquier
-    #    voluntario con sesiones registradas), `problem_report` y `account_deletion`.
+    #    voluntario con sesiones registradas), `problem_report` y `account_deletion`; CR-041 añadió
+    #    la séptima, `observation_note` (NOT NULL: eliminar a un analista que dejó notas fallaría).
     db.query(PointsLedger).filter(PointsLedger.account_id == account_id).update(
         {PointsLedger.account_id: sentinel.id}, synchronize_session=False
     )
@@ -200,6 +206,12 @@ def delete_account(
     db.query(AccountDeletion).filter(
         AccountDeletion.executed_by_account_id == account_id
     ).update({AccountDeletion.executed_by_account_id: sentinel.id}, synchronize_session=False)
+    # CR-041: las notas de revisión son append-only (gate #7) y se CONSERVAN; lo que desaparece es
+    # el vínculo con la persona, igual que con el revisor de `human_review`. El texto queda a nombre
+    # de la cuenta centinela.
+    db.query(ObservationNote).filter(
+        ObservationNote.author_account_id == account_id
+    ).update({ObservationNote.author_account_id: sentinel.id}, synchronize_session=False)
 
     # 3) Auditoría sin PII (gate #7) — ANTES de borrar la fila (executed_by es FK válida).
     db.add(

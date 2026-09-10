@@ -311,6 +311,53 @@ class HumanReview(Base):
     )
 
 
+class ObservationNote(Base):
+    """Nota escrita sobre una observación, **independiente del veredicto** (CR-041, gate #7).
+
+    Por qué una tabla propia y no ``human_review.nota``: esa tabla exige ``veredicto`` NOT NULL con
+    un CHECK de tres valores, así que colar una nota sin veredicto obligaría a relajar el CHECK y a
+    inventar un veredicto falso — y contaminaría el contador de "veredictos emitidos" del Monitor,
+    que CR-029 dejó honesto tras el incidente de las re-revisiones. Separadas, el log de veredictos
+    queda exactamente como estaba.
+
+    Escriben y leen los tres roles de revisión (``REVIEW_ROLES``), **incluido el ``analista``**, que
+    hasta ahora no podía anotar nada sin emitir un veredicto que no le corresponde.
+
+    **Append-only** (mismo criterio que ``human_review``): no hay edición ni borrado. Lo escrito
+    queda con su autor y su fecha; si algo sale mal escrito, se corrige con otra nota.
+
+    Anotar **no** cambia ``observation.estado_revision``: desde CR-026 el veredicto decide el mapa
+    público, los puntos y las insignias del voluntario (gate #9). Una anotación no puede tener ese
+    efecto.
+    """
+
+    __tablename__ = "observation_note"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    observation_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("observation.id"), nullable=False
+    )
+    # Séptima FK a `account`: el borrado ARCO la repunta a la cuenta centinela (ver
+    # `routers/accounts.py`). Sin eso, eliminar a un analista con notas reventaría por FK.
+    author_account_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("account.id"), nullable=False
+    )
+    texto: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        # El límite y el "no vacío" se validan también en el esquema pydantic (422 limpio), pero la
+        # base los impone igual: una nota en blanco no dice nada y una sin techo es una puerta
+        # abierta a pegar un documento entero en la consola.
+        CheckConstraint(
+            "char_length(btrim(texto)) BETWEEN 1 AND 2000", name="ck_observation_note_texto"
+        ),
+        Index("observation_note_obs_idx", "observation_id", "created_at"),
+    )
+
+
 class ValidationEvent(Base):
     """Idempotencia y auditoría (§6.4). PK por observation_id ⇒ un resultado aplicado por obs.
 

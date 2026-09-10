@@ -390,6 +390,35 @@ class HumanReviewEntry {
       );
 }
 
+/// Una nota escrita sobre una observación, INDEPENDIENTE del veredicto (CR-041).
+///
+/// La nota de `HumanReviewEntry` viaja pegada a una decisión y solo la escribe quien
+/// emite veredicto; ésta la puede dejar cualquier rol de revisión (el analista incluido)
+/// sin mover `estado_revision`. Append-only: no hay edición ni borrado (gate #7).
+class ObservationNote {
+  ObservationNote({
+    required this.id,
+    required this.texto,
+    required this.autorHandle,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String texto;
+
+  /// Handle de quien la escribió. NUNCA su correo (gate #2).
+  final String autorHandle;
+  final DateTime createdAt;
+
+  factory ObservationNote.fromJson(Map<String, dynamic> j) => ObservationNote(
+        id: (j['id'] ?? '') as String,
+        texto: (j['texto'] ?? '') as String,
+        autorHandle: (j['autor_handle'] ?? '') as String,
+        createdAt: DateTime.tryParse((j['created_at'] ?? '') as String) ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+      );
+}
+
 /// Detalle de una observación en revisión + historial. SIN coord exacta (gate #5).
 class ReviewObservationDetail {
   ReviewObservationDetail({
@@ -405,6 +434,7 @@ class ReviewObservationDetail {
     required this.estado,
     required this.municipio,
     required this.historial,
+    this.notas = const [],
   });
 
   final String observationId;
@@ -419,6 +449,11 @@ class ReviewObservationDetail {
   final String? estado;
   final String? municipio;
   final List<HumanReviewEntry> historial;
+
+  /// Notas escritas sobre la observación (CR-041), de la más antigua a la más
+  /// reciente. Lista VACÍA si el backend aún no manda el campo: la consola se
+  /// despliega después del backend y no debe romperse contra uno anterior.
+  final List<ObservationNote> notas;
 
   factory ReviewObservationDetail.fromJson(Map<String, dynamic> j) =>
       ReviewObservationDetail(
@@ -436,6 +471,9 @@ class ReviewObservationDetail {
         municipio: j['municipio'] as String?,
         historial: ((j['historial'] ?? []) as List)
             .map((e) => HumanReviewEntry.fromJson((e as Map).cast<String, dynamic>()))
+            .toList(),
+        notas: ((j['notas'] ?? []) as List)
+            .map((e) => ObservationNote.fromJson((e as Map).cast<String, dynamic>()))
             .toList(),
       );
 }

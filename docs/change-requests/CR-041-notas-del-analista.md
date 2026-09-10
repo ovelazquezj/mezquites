@@ -1,6 +1,6 @@
 # CR-041 — Notas escritas sobre una observación (el analista por fin puede anotar)
 
-**Estado:** PROPUESTO (2026-09-10) · **Alcance:** backend + consola · **Con migración (0010)**
+**Estado:** integrado (2026-09-10) · **Alcance:** backend + consola · **Con migración (0010)**
 **Origen:** petición específica del usuario: *"un analista también pueda hacer observaciones"*,
 aclarada como **dejar notas escritas sobre una captura, sin cambiar su estado de revisión**.
 
@@ -140,14 +140,35 @@ veredicto**: anotar no es decidir.
 
 ---
 
-## 6. Decisiones que necesito de ti
+## 6. Decisiones tomadas (usuario, 2026-09-10)
 
-1. **¿Quién escribe notas?** Recomiendo los tres roles de revisión. Dejarlo solo en el analista
-   sería raro: el evaluador ya escribe notas hoy, junto a su veredicto.
-2. **¿Quién las lee?** Recomiendo los mismos tres, y nadie más.
-3. **¿Se pueden borrar?** Recomiendo que no, append-only. Si alguien escribe algo indebido, se
-   corrige con otra nota, como en el log de revisión.
-4. **Límite de longitud:** propongo 2 000 caracteres.
+1. **Escriben notas los tres roles de revisión**, no solo el analista. El evaluador ya escribe notas
+   hoy junto a su veredicto; dejarlo fuera del camino nuevo habría sido incoherente.
+2. **Las leen esos mismos tres**, y nadie más.
+3. **No se editan ni se borran.** Append-only, como el log de revisión. Si alguien escribe algo
+   indebido, se corrige con otra nota.
+4. **Límite de 2 000 caracteres**, y texto no vacío.
+
+**660 pruebas verdes** (21 contrato · 9 mock · **267** backend · 205 móvil · **158** consola),
+2026-09-10. Delta: 19 de backend y 13 de consola.
+
+### Notas de implementación que no son cosméticas
+
+- **La migración se verificó a mano contra un PostGIS real**, no solo por las pruebas: el `conftest`
+  crea el esquema con `create_all` y **nunca ejecuta la migración**, así que una suite verde no dice
+  nada sobre lo que pasará en producción. Se comprobaron el `upgrade`, el `downgrade` y de nuevo el
+  `upgrade`, y se compararon columnas, restricciones e índices de la base migrada contra una base
+  espejo creada con `create_all`: idénticos.
+- **El límite se valida en dos capas** y a propósito: sobre el texto crudo en el esquema de entrada,
+  y sobre el texto recortado en la restricción de la base. Consecuencia asumida: dos mil caracteres
+  más un salto de línea final se rechazan.
+- **La nota nueva se inserta en la lista con lo que devuelve el servidor**, en vez de recargar el
+  detalle. Recargar habría vuelto a pasar por el indicador de carga y a **descargar otra vez la
+  fotografía completa** solo para pintar un renglón.
+- **El mensaje de permisos es propio.** Reutilizar el que ya existía (*"Tu cuenta no puede emitir
+  veredictos"*) habría sido literalmente falso cuando lo que falla es guardar una nota.
+- **La sección de notas va debajo del historial y antes del bloque de veredicto**, para que el
+  contexto se lea antes de decidir.
 
 ---
 

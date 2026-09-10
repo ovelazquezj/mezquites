@@ -144,7 +144,8 @@ def db_session(engine):
         conn.execute(
             text(
                 "TRUNCATE problem_report, participation_session, account_deletion, points_ledger, "
-                "human_review, validation_event, observation, tree, account, institution, "
+                "observation_note, human_review, validation_event, observation, tree, account, "
+                "institution, "
                 "organizational_indicator, snapshot, admin_boundary RESTART IDENTITY CASCADE"
             )
         )

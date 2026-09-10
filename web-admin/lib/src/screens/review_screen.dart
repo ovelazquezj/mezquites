@@ -202,6 +202,13 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
   final _notaCtrl = TextEditingController();
   bool _busy = false;
 
+  // CR-041: notas escritas en esta sesión del diálogo. Se agregan a las que trajo el
+  // detalle en vez de recargarlo: recargar volvería a pasar por el spinner y a
+  // descargar la fotografía completa solo para pintar un renglón de texto.
+  final _notaNuevaCtrl = TextEditingController();
+  final List<ObservationNote> _notasNuevas = [];
+  bool _guardandoNota = false;
+
   @override
   void initState() {
     super.initState();
@@ -211,7 +218,113 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
   @override
   void dispose() {
     _notaCtrl.dispose();
+    _notaNuevaCtrl.dispose();
     super.dispose();
+  }
+
+  /// Guarda una nota (CR-041). No emite veredicto ni cambia `estado_revision`: el
+  /// diálogo se queda abierto y la nota aparece en la lista.
+  Future<void> _agregarNota() async {
+    final texto = _notaNuevaCtrl.text.trim();
+    if (texto.isEmpty || _guardandoNota) return;
+    setState(() => _guardandoNota = true);
+    try {
+      final nota = await ref.read(apiClientProvider).addObservationNote(
+            observationId: widget.observationId,
+            texto: texto,
+          );
+      if (!mounted) return;
+      setState(() {
+        _notasNuevas.add(nota);
+        _notaNuevaCtrl.clear();
+        _guardandoNota = false;
+      });
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text(Copy.notesAdded)));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _guardandoNota = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(switch (e.statusCode) {
+            422 => Copy.notesInvalid,
+            401 || 403 => Copy.notesForbidden,
+            _ => Copy.notesError,
+          }),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _guardandoNota = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text(Copy.notesError)));
+    }
+  }
+
+  /// Sección "Notas" (CR-041), visible para los TRES roles de revisión: el analista
+  /// no vota, pero sí puede dejar escrito lo que ve.
+  Widget _seccionNotas(ThemeData theme, ReviewObservationDetail d) {
+    final notas = [...d.notas, ..._notasNuevas];
+    final puedeGuardar =
+        !_guardandoNota && _notaNuevaCtrl.text.trim().isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        Text(Copy.notesTitle, style: theme.textTheme.titleLarge),
+        const SizedBox(height: 4),
+        Text(Copy.notesIntro, style: theme.textTheme.bodySmall),
+        const SizedBox(height: 8),
+        Column(
+          key: const Key('review-notas-lista'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (notas.isEmpty)
+              Text(
+                Copy.notesEmpty,
+                key: const Key('review-notas-vacio'),
+                style: theme.textTheme.bodySmall,
+              )
+            else
+              for (final n in notas)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text(
+                    '• ${n.autorHandle} · ${_fmtDate(n.createdAt)} — ${n.texto}',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          key: const Key('review-nota-nueva'),
+          controller: _notaNuevaCtrl,
+          maxLines: 3,
+          minLines: 2,
+          maxLength: 2000,
+          decoration: const InputDecoration(
+            labelText: Copy.notesFieldLabel,
+            alignLabelWithHint: true,
+          ),
+          onChanged: (_) => setState(() {}),
+        ),
+        // Gate #2: el texto es libre y nadie puede filtrarlo por software; el aviso
+        // va junto al campo, donde se escribe.
+        Text(
+          Copy.notesPrivacyWarning,
+          key: const Key('review-notas-aviso'),
+          style: theme.textTheme.bodySmall,
+        ),
+        const SizedBox(height: 8),
+        FilledButton.icon(
+          key: const Key('review-nota-agregar'),
+          onPressed: puedeGuardar ? _agregarNota : null,
+          icon: const Icon(Icons.note_add_outlined),
+          label: const Text(Copy.notesAddButton),
+        ),
+      ],
+    );
   }
 
   Future<void> _emit(String veredicto) async {
@@ -325,8 +438,15 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
                           style: theme.textTheme.bodyMedium,
                         ),
                       ),
+                  // CR-041: notas escritas, independientes del veredicto. Van debajo
+                  // del historial para que el contexto se lea ANTES de decidir.
+                  _seccionNotas(theme, d),
                   if (canVerdict) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    // Este campo NO es el de las notas de arriba: viaja con el veredicto
+                    // y se guarda en el log de revisión (CR-001, 1 891 notas en uso).
                     TextField(
                       key: const Key('review-nota'),
                       controller: _notaCtrl,

@@ -1118,3 +1118,71 @@ suspender sin eliminar.
 base** antes de este CR, con `pg_dump` previo y una guarda que abortaba si la sentencia afectaba algo
 distinto de una fila. No tenía actividad en ninguna de las seis tablas. Con este CR el mismo caso ya
 se resuelve desde la consola.
+
+---
+
+## CR-041 — Notas escritas sobre una observación: el analista por fin puede anotar (2026-09-10)
+
+**Origen:** petición específica del usuario —*"un analista también pueda hacer observaciones"*—
+**aclarada con él** como **dejar notas escritas sobre una captura, sin cambiar su estado de
+revisión**. Diseño en [`CR-041-notas-del-analista.md`](../change-requests/CR-041-notas-del-analista.md).
+**Backend + consola; con migración `0010`.**
+
+🔎 **Al investigar, las notas YA EXISTÍAN.** `human_review.nota` está desde CR-001, la consola la
+escribe y la muestra en el historial, y en **producción hay 1 891 notas sobre 6 367 filas** de
+revisión: la función estaba viva y en uso. **Pero la nota va pegada a un veredicto** — el único
+endpoint que la acepta es el de veredicto, restringido a evaluador/administrador — así que **sin
+veredicto no hay nota**. Y el `analista` **ni siquiera llegaba al detalle**: el menú **Revisión** se
+gateaba con `canEmitVerdict` en `home_shell.dart`, aunque el backend **sí lo autoriza**
+(`REVIEW_ROLES` incluye `analista` en cola, detalle e imagen) y el diálogo **ya escondía** los
+botones de veredicto a quien no puede emitirlos. La pantalla llevaba desde CR-001 preparada para un
+lector sin voto; sobraba el candado del menú.
+
+**Por qué no bastaba con abrir el menú:** para dejar una nota, el analista habría tenido que emitir
+un veredicto. Eso lo convertiría en revisor con voto contra su rol sellado, y no sería inocuo: desde
+CR-026 el veredicto decide qué aparece en el mapa público, cuánto suma el voluntario y qué insignias
+gana. **Una anotación no puede tener ese efecto.**
+
+| # | Criterio | Implementación | Prueba |
+|---|---|---|---|
+| **AC1** El analista ve "Revisión" en el menú | `home_shell.dart`: el gate pasa de `canEmitVerdict` a `canReview` | `widget_review_test.dart` (prueba previa **actualizada**: afirmaba la conducta vieja) |
+| **AC2** El analista abre el detalle y ve fotografía, datos e historial | el diálogo ya lo servía; solo faltaba la entrada | `widget_cr041_notas_test.dart` |
+| **AC3** El analista **no** ve los botones de veredicto | `canEmitVerdict` dentro del diálogo, sin cambios | ídem (y el evaluador sí los ve) |
+| **AC4** Escribe una nota, con autoría y fecha | `POST /review/observations/{id}/notas` → `ObservationNote` | `backend/tests/test_cr041_notas.py` + consola |
+| **AC5** Escribir una nota **NO** cambia `estado_revision` (gate #9) | el endpoint no toca `observation`, no escribe en `human_review` y no llama a `refresh_identity_label` | ídem: estado y `count(human_review)` idénticos antes y después; `/public/observations` y `/review/stats` **byte a byte iguales** |
+| **AC6** Evaluador y administrador también escriben notas | `Depends(_reviewer)` = `REVIEW_ROLES` | ídem |
+| **AC7** Rol sin revisión → 403; sin token → 401 | RBAC de `require_role` | ídem |
+| **AC8** El detalle devuelve las notas, de la más antigua a la más reciente, con autor | JOIN con `account`, mismo patrón que el historial | ídem |
+| **AC9** Vacía, solo espacios o >2 000 → 422; 2 000 exactos → 201 | `Field(max_length=2000)` + `CHECK char_length(btrim(texto)) BETWEEN 1 AND 2000` | ídem |
+| **AC10** Append-only: no hay editar ni borrar | no se crearon esas rutas | ídem (405, y ausencia verificada leyendo el OpenAPI de la app) |
+| **AC11** Las notas no salen de la consola | no se añadieron a ningún serializador público | ídem: una cadena centinela **no aparece** en `/public/observations`, `/public/grid`, `/public/indicators`, `/restricted/observations`, `/admin/analytics/observations`, `observations.csv`, `participation.csv`, ni en `/me/profile|feedback|evidence` |
+| **AC12** ARCO conserva las notas y repunta la autoría | 7ª FK a `account` repuntada al centinela en `delete_account` | ídem |
+| **AC13** Aviso de no escribir datos personales | `Copy.notesPrivacyWarning`, pegado al campo | `widget_cr041_notas_test.dart` |
+
+**Tabla nueva `observation_note` (migración `0010_notas_observacion`), append-only:**
+`id` · `observation_id` FK · `author_account_id` FK · `texto` · `created_at`, con
+`ck_observation_note_texto` e índice `observation_note_obs_idx (observation_id, created_at)`.
+
+**Por qué tabla nueva y no `human_review`:** esa tabla exige `veredicto` NOT NULL con un CHECK de
+tres valores. Colar notas sin veredicto obligaría a relajar el CHECK y a inventar un veredicto falso,
+y **contaminaría el contador del Monitor** ("Veredictos emitidos"), que CR-029 acababa de dejar
+honesto tras el incidente de las re-revisiones. Separar las tablas deja el log de veredictos intacto.
+
+⚠️ **La migración se verificó A MANO contra un PostGIS real, y hacía falta:** el `conftest` crea el
+esquema con `Base.metadata.create_all` y **nunca ejecuta la migración**, así que una suite verde no
+dice nada sobre lo que pasará en producción. Se comprobaron `upgrade`, `downgrade` y `upgrade` otra
+vez, y se compararon columnas, restricciones e índices de la base migrada contra una base espejo
+creada con `create_all`: **idénticos**.
+
+**Decisiones del usuario (2026-09-10):** escriben y leen **los tres roles de revisión**; **append-only**
+(ni edición ni borrado); **2 000 caracteres**. **Fuera de alcance:** que el analista emita veredicto,
+que el voluntario vea las notas, y las notas en las descargas.
+
+**Gates:** ninguno se enmienda. **#9** es el que este CR podía romper y no rompe (dos pruebas
+dedicadas). **#2**: el texto es libre y lo escribe personal de consola, así que *podría* contener
+datos de un tercero; se mitiga con el aviso en pantalla y manteniendo las notas **dentro de la
+consola** (verificado sobre 9 respuestas). **#1**: riesgo residual anotado, el mismo que ya corría
+`human_review.nota` desde CR-001. **#7**: append-only, con autor y fecha.
+
+**660 pruebas verdes** (21 contrato · 9 mock · **267** backend · 205 móvil · **158** consola),
+2026-09-10. Delta: +19 backend, +13 consola.

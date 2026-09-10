@@ -511,6 +511,21 @@ class ApiClient {
     return _decode(r);
   }
 
+  /// Escribe una nota sobre una observación (CR-041). La aceptan los tres roles de
+  /// revisión (evaluador/analista/administrador) y **no cambia el estado de revisión**:
+  /// ése es el punto entero del CR, anotar no es decidir (gate #9).
+  Future<ObservationNote> addObservationNote({
+    required String observationId,
+    required String texto,
+  }) async {
+    final r = await _http.post(
+      _uri('/review/observations/$observationId/notas'),
+      headers: _headers(),
+      body: json.encode({'texto': texto}),
+    );
+    return ObservationNote.fromJson(_decode(r));
+  }
+
   /// Métricas de la cola de revisión (Monitor del analista).
   Future<ReviewStats> reviewStats() async {
     final r = await _http.get(_uri('/review/stats'), headers: _headers(json: false));

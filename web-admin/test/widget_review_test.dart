@@ -153,7 +153,7 @@ void main() {
     expect(find.text(Copy.navRestricted), findsWidgets);
   });
 
-  testWidgets('analista ve Monitor pero NO la pestaña de Revisión (solo lectura)',
+  testWidgets('analista ve Monitor y Revisión (esta última en solo lectura, CR-041)',
       (tester) async {
     tester.view.physicalSize = const Size(1400, 1000);
     tester.view.devicePixelRatio = 1.0;
@@ -163,8 +163,10 @@ void main() {
     await tester.pump();
 
     expect(find.text(Copy.navMonitor), findsWidgets);
-    // analista no emite veredicto → no se le ofrece la pestaña de Revisión.
-    expect(find.text(Copy.navReview), findsNothing);
+    // CR-041: el menú se gatea por `canReview`, no por `canEmitVerdict`. El analista
+    // entra a Revisión para mirar y anotar; los botones de veredicto los sigue
+    // escondiendo el diálogo (prueba aparte, más abajo).
+    expect(find.text(Copy.navReview), findsWidgets);
   });
 
   testWidgets('admin_consorcio NO ve Revisión ni Monitor', (tester) async {

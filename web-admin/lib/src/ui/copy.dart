@@ -172,6 +172,27 @@ class Copy {
   static const reviewRejected = 'Observación retirada del panel público.';
   static const reviewLocationNote =
       'En la revisión ves el estado y el municipio de cada observación.';
+
+  // --- Notas escritas sobre una observación (CR-041) ---
+  // La nota de arriba ("Nota (opcional)") viaja con el veredicto y solo la escribe
+  // quien decide. Éstas las puede dejar cualquiera de los tres roles de revisión, y
+  // NO cambian el estado de la observación.
+  static const notesTitle = 'Notas';
+  static const notesIntro =
+      'Comentarios escritos sobre esta observación. Quedan guardados con quien '
+      'los escribió y su fecha; no cambian si la observación queda confirmada o '
+      'retirada.';
+  static const notesEmpty = 'Todavía nadie ha escrito una nota aquí.';
+  static const notesFieldLabel = 'Escribe una nota';
+  static const notesAddButton = 'Agregar nota';
+  static const notesPrivacyWarning =
+      'No escribas datos personales de nadie: ni nombres, ni teléfonos, ni '
+      'correos, ni direcciones.';
+  static const notesAdded = 'Nota guardada.';
+  static const notesInvalid =
+      'La nota no puede ir vacía y no debe pasar de 2 000 caracteres.';
+  static const notesError = 'No se pudo guardar la nota. Inténtalo de nuevo.';
+  static const notesForbidden = 'Tu cuenta no puede escribir notas.';
   static const monitorIntro =
       'Métricas de la revisión de observaciones. Solo consulta.';
 

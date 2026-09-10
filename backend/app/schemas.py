@@ -450,8 +450,43 @@ class HumanReviewEntry(BaseModel):
     created_at: datetime
 
 
+# --- Notas sobre una observación (CR-041) ---
+
+# Techo del texto de una nota. Vive aquí y en el CHECK de `observation_note` (migración 0010).
+NOTA_MAX_CARACTERES = 2000
+
+
+class ObservationNoteIn(BaseModel):
+    """Nota escrita sobre una observación, sin veredicto (CR-041).
+
+    Se guarda recortada. Vacía o de solo espacios ⇒ 422: una nota en blanco no dice nada, y dejarla
+    pasar llenaría el detalle de renglones con autor y fecha pero sin contenido.
+    """
+
+    texto: str = Field(..., max_length=NOTA_MAX_CARACTERES)
+
+    @field_validator("texto")
+    @classmethod
+    def _texto_no_vacio(cls, v: str) -> str:
+        limpio = v.strip()
+        if not limpio:
+            raise ValueError("la nota no puede ir vacía")
+        if len(limpio) > NOTA_MAX_CARACTERES:
+            raise ValueError(f"la nota no puede exceder {NOTA_MAX_CARACTERES} caracteres")
+        return limpio
+
+
+class ObservationNoteOut(BaseModel):
+    """Una nota tal como la lee la consola: qué dice, quién la escribió y cuándo."""
+
+    id: uuid.UUID
+    texto: str
+    autor_handle: str
+    created_at: datetime
+
+
 class ReviewObservationDetail(BaseModel):
-    """Detalle para revisión: 8 etiquetas + metadata + estado + historial (sin coord exacta)."""
+    """Detalle para revisión: 8 etiquetas + metadata + estado + historial + notas (sin coord exacta)."""
 
     observation_id: uuid.UUID
     handle: str
@@ -465,6 +500,9 @@ class ReviewObservationDetail(BaseModel):
     estado: str | None
     municipio: str | None
     historial: list[HumanReviewEntry]
+    # CR-041: notas independientes del veredicto, de la más antigua a la más reciente. Por
+    # compatibilidad con clientes de consola anteriores al CR, el campo trae lista vacía por defecto.
+    notas: list[ObservationNoteOut] = Field(default_factory=list)
 
 
 class VerdictRequest(BaseModel):

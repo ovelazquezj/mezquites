@@ -5,9 +5,10 @@ observación; el veredicto y el etiquetado son **autoritativos en el backend** y
 el log append-only ``human_review`` (gate #7).
 
 RBAC (``deps.require_role``):
-- ``evaluador``, ``analista``, ``administrador``  → cola, detalle, imagen, stats.
+- ``evaluador``, ``analista``, ``administrador``  → cola, detalle, imagen, stats, **notas** (CR-041).
 - ``evaluador``, ``administrador``                → emitir veredicto (POST).
-- ``analista``                                    → **solo lectura** (recibe 403 al emitir veredicto).
+- ``analista``                                    → **sin voto** (recibe 403 al emitir veredicto),
+  pero sí puede anotar: la nota de CR-041 no cambia ``estado_revision`` (gate #9).
 
 La imagen de revisión se sirve **cruda** (con su EXIF original, incluido el GPS de la cámara) a
 todos los roles de revisión. El saneo de GPS (``exif.strip_gps``) quedó **ocioso** (CR-025): ya no
@@ -26,9 +27,17 @@ from ..db import get_db
 from ..geo_filtros import CLAUSULA_GEO, params_geo
 from ..deps import CurrentUser, require_role
 from ..gamification import refresh_identity_label
-from ..models import REVIEW_ROLES, REVIEW_VERDICT_ROLES, HumanReview, Observation
+from ..models import (
+    REVIEW_ROLES,
+    REVIEW_VERDICT_ROLES,
+    HumanReview,
+    Observation,
+    ObservationNote,
+)
 from ..schemas import (
     HumanReviewEntry,
+    ObservationNoteIn,
+    ObservationNoteOut,
     ReviewObservationDetail,
     ReviewQueueItem,
     ReviewStats,
@@ -134,6 +143,21 @@ def review_detail(
         {"oid": observation_id},
     ).mappings().all()
 
+    # CR-041: notas independientes del veredicto, en el mismo orden que el historial (de la más
+    # antigua a la más reciente): son un hilo de anotaciones y se leen como se escribieron.
+    notas_rows = db.execute(
+        text(
+            """
+            SELECT n.id, n.texto, a.handle AS autor_handle, n.created_at
+            FROM observation_note n
+            JOIN account a ON a.id = n.author_account_id
+            WHERE n.observation_id = :oid
+            ORDER BY n.created_at ASC
+            """
+        ),
+        {"oid": observation_id},
+    ).mappings().all()
+
     return ReviewObservationDetail(
         observation_id=obs.id,
         handle=obs.handle,
@@ -155,6 +179,67 @@ def review_detail(
             )
             for h in historial_rows
         ],
+        notas=[
+            ObservationNoteOut(
+                id=n["id"],
+                texto=n["texto"],
+                autor_handle=n["autor_handle"],
+                created_at=n["created_at"],
+            )
+            for n in notas_rows
+        ],
+    )
+
+
+@router.post(
+    "/observations/{observation_id}/notas",
+    response_model=ObservationNoteOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_observation_note(
+    observation_id: uuid.UUID,
+    body: ObservationNoteIn,
+    user: CurrentUser = Depends(_reviewer),
+    db: Session = Depends(get_db),
+) -> ObservationNoteOut:
+    """Escribe una nota sobre la observación, **sin emitir veredicto** (CR-041).
+
+    Roles: los tres de revisión (``REVIEW_ROLES``), **incluido el ``analista``**. Ese es el motivo
+    del CR: hasta ahora la única forma de dejar una nota era ``POST .../verdict``, restringido a
+    evaluador/administrador, así que el analista —solo lectura por decisión sellada— no podía anotar
+    nada sin convertirse en revisor con voto.
+
+    **No toca ``observation.estado_revision``, no escribe en ``human_review`` y no recomputa la
+    etiqueta L3.** Es el punto entero del CR: desde CR-026 el veredicto es lo que decide si la
+    observación aparece en el mapa público, cuánto suma en el perfil del voluntario, cuántos puntos
+    cuentan y qué insignias gana (gate #9). Anotar no puede tener ese efecto. Tampoco entra en el
+    contador de "veredictos emitidos" del Monitor, que CR-029 dejó honesto: una nota no es un
+    veredicto.
+
+    **Append-only** (gate #7): no hay endpoint de edición ni de borrado. Si algo queda mal escrito,
+    se corrige con otra nota, igual que en el log de revisión.
+
+    Gate #2: el texto es libre y lo escribe personal de consola, así que **no sale de la consola** —
+    ni al público, ni al panel restringido, ni a las dos descargas CSV.
+    """
+    obs = db.get(Observation, observation_id)
+    if obs is None:
+        raise HTTPException(status_code=404, detail="observación no encontrada")
+
+    nota = ObservationNote(
+        observation_id=observation_id,
+        author_account_id=user.account_id,
+        texto=body.texto,
+    )
+    db.add(nota)
+    db.commit()
+    db.refresh(nota)
+
+    return ObservationNoteOut(
+        id=nota.id,
+        texto=nota.texto,
+        autor_handle=user.handle,
+        created_at=nota.created_at,
     )
 
 
