@@ -8,6 +8,12 @@
 Gate de rol: SOLO ``administrador`` (no `admin_consorcio`, que gestiona la consola del consorcio).
 Gate #2 acotado: ``email`` SOLO es válido para `administrador`; el endpoint lo valida y nunca lo
 expone en las respuestas (solo `has_email`).
+
+**CR-040:** el cambio de rol tiene dos frenos, porque un administrador podía dejar el sistema sin
+administradores y sin vuelta atrás desde la API: no se cambia el **propio** rol (degradarse a
+`analista` es irreversible: quien podría revertirlo es un administrador) ni el de la **cuenta de
+administrador principal** (``BOOTSTRAP_ADMIN_USERNAME``). Las respuestas exponen ``protected`` para
+que la consola no ofrezca acciones que el backend va a rechazar.
 """
 
 from __future__ import annotations
@@ -18,6 +24,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from ..bootstrap import es_cuenta_protegida
+from ..config import get_settings
 from ..deps import CurrentUser, require_role
 from ..db import get_db
 from ..models import EMAIL_ALLOWED_ROLES, Account
@@ -45,6 +53,7 @@ def _to_response(account: Account) -> AdminUserResponse:
         role=account.role,
         has_email=bool(account.email),
         must_change_password=account.must_change_password,
+        protected=es_cuenta_protegida(account, get_settings()),
     )
 
 
@@ -124,6 +133,14 @@ def patch_user(
     if body.role is not None:
         if body.role not in _BACKEND_ROLES:
             raise HTTPException(status_code=400, detail="rol inválido")
+        # CR-040: dos frenos contra quedarse sin administradores (ver el encabezado del módulo).
+        if account.id == user.account_id:
+            raise HTTPException(status_code=400, detail="no puedes cambiar tu propio rol")
+        if es_cuenta_protegida(account, get_settings()):
+            raise HTTPException(
+                status_code=400,
+                detail="la cuenta de administrador principal no cambia de rol",
+            )
         # Si baja de administrador, el email deja de ser válido (gate #2 acotado): se limpia.
         if body.role not in EMAIL_ALLOWED_ROLES:
             account.email = None

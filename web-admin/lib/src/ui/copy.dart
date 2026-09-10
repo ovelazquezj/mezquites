@@ -82,6 +82,59 @@ class Copy {
   static const accountsConfirmCancel = 'Cancelar';
   static const accountsConfirmOk = 'Sí, eliminar';
 
+  /// Qué se elimina y qué se conserva al cancelar una cuenta (ARCO).
+  static String accountsConfirmBody({
+    required String nombre,
+    required String rol,
+    required int observaciones,
+  }) =>
+      'Cuenta "$nombre" ($rol). Se eliminará su identidad y se anonimizarán '
+      '$observaciones observación(es). El dato ecológico se conserva. Esta '
+      'acción no se puede deshacer.';
+
+  // --- Administración de cuentas del equipo (CR-040) ---
+  /// Marcas cortas del renglón: por qué una cuenta no se puede tocar.
+  static const userTagSelf = 'tú';
+  static const userTagProtected = 'cuenta principal';
+  static const userChangeRoleLabel = 'Rol';
+  static const userChangeRoleTooltip = 'Cambiar el rol de esta persona';
+  static const userSelfLocked =
+      'Es tu propia cuenta: no puedes cambiarte el rol ni eliminarte.';
+  static const userProtectedLocked =
+      'Es la cuenta principal de administración: no se puede cambiar ni eliminar.';
+  static const userRoleConfirmTitle = '¿Cambiar el rol?';
+  static const userRoleConfirmCancel = 'Cancelar';
+  static const userRoleConfirmOk = 'Sí, cambiar el rol';
+  static const userRoleEmailWarning =
+      'Además, al dejar de ser administrador se borra su correo de recuperación: '
+      'si olvida la contraseña, tendrás que restablecérsela tú.';
+  static const userRoleDone = 'Rol actualizado.';
+  static const userDelete = 'Eliminar';
+  static const userDeleteDone = 'Cuenta eliminada.';
+  static const userActionBlocked = 'No se puede modificar esa cuenta.';
+  static const userActionForbidden =
+      'No tienes permisos para esta acción (solo administrador).';
+  static const userRoleFailed = 'No se pudo cambiar el rol. Inténtalo de nuevo.';
+  static const userDeleteFailed =
+      'No se pudo eliminar la cuenta. Inténtalo de nuevo.';
+
+  /// Qué pasa al cambiar de rol a una persona del equipo.
+  static String userRoleConfirmBody({
+    required String nombre,
+    required String rolActual,
+    required String rolNuevo,
+    required bool pierdeCorreo,
+  }) =>
+      'La cuenta "$nombre" pasará de $rolActual a $rolNuevo. '
+      'Sus permisos cambian de inmediato.'
+      '${pierdeCorreo ? ' $userRoleEmailWarning' : ''}';
+
+  /// Qué se elimina al borrar una cuenta del equipo.
+  static String userDeleteConfirmBody(String nombre) =>
+      'La cuenta "$nombre" dejará de existir y esa persona ya no podrá entrar a '
+      'la consola. Las observaciones que haya revisado se conservan. Esta acción '
+      'no se puede deshacer.';
+
   // --- Legal: Términos y Aviso de privacidad (CR-006; APROBADOS, CR-020) ---
   static const legalIntro =
       'Términos y Condiciones y Aviso de privacidad del piloto, aprobados por el '

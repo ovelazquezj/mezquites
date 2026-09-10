@@ -67,6 +67,7 @@ class BackendUser {
     required this.role,
     required this.hasEmail,
     required this.mustChangePassword,
+    this.protected = false,
   });
 
   final String id;
@@ -76,6 +77,12 @@ class BackendUser {
   final bool hasEmail;
   final bool mustChangePassword;
 
+  /// CR-040: cuenta de administrador principal. El backend no deja eliminarla ni
+  /// cambiarle el rol (devuelve 400); la consola desactiva ambas acciones para
+  /// que nadie se quede sin manera de entrar. Falso si el backend no manda el
+  /// campo (tolerante a respuestas anteriores a CR-040).
+  final bool protected;
+
   factory BackendUser.fromJson(Map<String, dynamic> j) => BackendUser(
         id: (j['id'] ?? '') as String,
         handle: (j['handle'] ?? '') as String,
@@ -83,6 +90,7 @@ class BackendUser {
         role: (j['role'] ?? '') as String,
         hasEmail: (j['has_email'] ?? false) as bool,
         mustChangePassword: (j['must_change_password'] ?? false) as bool,
+        protected: (j['protected'] ?? false) as bool,
       );
 }
 
@@ -95,6 +103,7 @@ class BackendUserCreated extends BackendUser {
     required super.role,
     required super.hasEmail,
     required super.mustChangePassword,
+    super.protected,
     required this.tempPassword,
   });
 
@@ -107,13 +116,15 @@ class BackendUserCreated extends BackendUser {
         role: (j['role'] ?? '') as String,
         hasEmail: (j['has_email'] ?? false) as bool,
         mustChangePassword: (j['must_change_password'] ?? false) as bool,
+        protected: (j['protected'] ?? false) as bool,
         tempPassword: (j['temp_password'] ?? '') as String,
       );
 }
 
 /// Resumen de una cuenta para la pantalla ARCO de cancelación (CR-006). SOLO
-/// `administrador`. Gate #2: NUNCA expone PII (email/sub/username); solo `hasEmail`
-/// como señal y el conteo de observaciones que se anonimizarían al eliminar.
+/// `administrador`. Gate #2: NUNCA expone el email (solo `hasEmail` como señal) ni
+/// el nombre real; `username` es el nombre de acceso que el propio administrador
+/// asignó a un usuario de consola, no un dato personal.
 class AdminAccountSummary {
   AdminAccountSummary({
     required this.id,
@@ -122,6 +133,8 @@ class AdminAccountSummary {
     required this.authProvider,
     required this.hasEmail,
     required this.observations,
+    this.username,
+    this.protected = false,
   });
 
   final String id;
@@ -131,6 +144,18 @@ class AdminAccountSummary {
   final bool hasEmail;
   final int observations;
 
+  /// CR-040: nombre de acceso de un usuario de consola (evaluador/analista/
+  /// administrador). Null para una persona voluntaria, que solo tiene handle.
+  final String? username;
+
+  /// CR-040: cuenta de administrador principal — el backend rechaza eliminarla.
+  final bool protected;
+
+  /// Cómo nombrar la cuenta en pantalla: el nombre de acceso si lo tiene; si no,
+  /// el handle. Nadie conoce el `obs-XXXXXX` de un usuario de consola.
+  String get displayName =>
+      (username != null && username!.isNotEmpty) ? username! : handle;
+
   factory AdminAccountSummary.fromJson(Map<String, dynamic> j) =>
       AdminAccountSummary(
         id: (j['id'] ?? '') as String,
@@ -139,6 +164,8 @@ class AdminAccountSummary {
         authProvider: (j['auth_provider'] ?? '') as String,
         hasEmail: (j['has_email'] ?? false) as bool,
         observations: (j['observations'] ?? 0) as int,
+        username: j['username'] as String?,
+        protected: (j['protected'] ?? false) as bool,
       );
 }
 

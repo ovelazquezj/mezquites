@@ -18,10 +18,31 @@ import sys
 
 from sqlalchemy.orm import Session
 
-from .config import get_settings
+from .config import Settings, get_settings
 from .db import get_sessionmaker
 from .models import Account
 from .security import generate_handle, hash_password
+
+
+def es_cuenta_protegida(account: Account | None, settings: Settings) -> bool:
+    """¿Es la **cuenta de administrador principal** (la sembrada por bootstrap)?
+
+    CR-040: la consola ya administra cuentas de backend (buscar por `username`, eliminar por ARCO,
+    cambiar rol). Sin una cuenta blindada, un administrador puede dejar el sistema **sin ningún
+    administrador** — eliminando al último o degradándolo a `analista` — y entonces nadie puede
+    volver a crear uno desde la API (el alta de administradores exige ser administrador; solo
+    quedaría entrar al servidor a correr ``python -m backend.app.bootstrap``).
+
+    La cuenta protegida es la que coincide con ``BOOTSTRAP_ADMIN_USERNAME`` (config). Si la variable
+    no está configurada (o está vacía) **no hay cuenta protegida**: no se inventa una, porque
+    blindar la cuenta equivocada sería peor que no blindar ninguna.
+    """
+    if account is None:
+        return False
+    protegido = (settings.bootstrap_admin_username or "").strip()
+    if not protegido:
+        return False
+    return (account.username or "").strip() == protegido
 
 
 def ensure_admin(

@@ -84,6 +84,8 @@ Widget _accountsScreen(ApiClient api, String role) {
   );
 }
 
+/// Persona voluntaria: solo handle. **Sin `username`/`protected`** a propósito:
+/// comprueba que la pantalla tolera el JSON anterior a CR-040.
 const _accounts = [
   {
     'id': 'a1',
@@ -92,6 +94,41 @@ const _accounts = [
     'auth_provider': 'social_google',
     'has_email': false,
     'observations': 3,
+  },
+];
+
+/// CR-040: cuentas de consola. La búsqueda ahora también encuentra por nombre de
+/// acceso, y el renglón se nombra por él (nadie conoce el `obs-XXXXXX`).
+const _accountsDeConsola = [
+  {
+    'id': 'a-eva',
+    'handle': 'obs-eva',
+    'username': 'eva',
+    'role': 'evaluador',
+    'auth_provider': 'password',
+    'has_email': false,
+    'observations': 0,
+    'protected': false,
+  },
+  {
+    'id': 'a-root',
+    'handle': 'obs-root',
+    'username': 'root',
+    'role': 'administrador',
+    'auth_provider': 'password',
+    'has_email': true,
+    'observations': 0,
+    'protected': true,
+  },
+  {
+    'id': 'a-yo',
+    'handle': 'obs-administrador',
+    'username': 'jefa',
+    'role': 'administrador',
+    'auth_provider': 'password',
+    'has_email': true,
+    'observations': 0,
+    'protected': false,
   },
 ];
 
@@ -210,5 +247,97 @@ void main() {
 
     expect(rec.requests.any((r) => r.method == 'DELETE'), isFalse);
     expect(find.byKey(const Key('accounts-result')), findsNothing);
+  });
+
+  // --- CR-040 ---
+
+  testWidgets(
+      'CR-040: un usuario de consola se muestra por su nombre de acceso, no por el handle',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+        _accountsScreen(_api(accounts: _accountsDeConsola), 'administrador'));
+    await tester.pump();
+
+    await tester.enterText(
+        find.byKey(const Key('accounts-search-field')), 'eva');
+    await tester.tap(find.byKey(const Key('accounts-search')));
+    await tester.pumpAndSettle();
+
+    // La fila sigue identificándose por handle en las Key (CR-006)...
+    final fila = find.byKey(const Key('account-row-obs-eva'));
+    expect(fila, findsOneWidget);
+    // ...pero se NOMBRA por el nombre de acceso; el handle queda en el subtítulo
+    // para identificarla sin ambigüedad, junto al rol traducido.
+    expect(find.descendant(of: fila, matching: find.text('eva')),
+        findsOneWidget);
+    expect(find.descendant(of: fila, matching: find.textContaining('obs-eva')),
+        findsOneWidget);
+    expect(find.descendant(of: fila, matching: find.textContaining('Evaluador')),
+        findsOneWidget);
+  });
+
+  testWidgets(
+      'CR-040: no se puede eliminar la cuenta principal ni la propia',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+        _accountsScreen(_api(accounts: _accountsDeConsola), 'administrador'));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('accounts-search')));
+    await tester.pumpAndSettle();
+
+    // Protegida (cuenta principal de administración).
+    expect(
+        tester
+            .widget<OutlinedButton>(
+                find.byKey(const Key('account-delete-obs-root')))
+            .onPressed,
+        isNull);
+    // La propia cuenta (handle == el del token de la sesión).
+    expect(
+        tester
+            .widget<OutlinedButton>(
+                find.byKey(const Key('account-delete-obs-administrador')))
+            .onPressed,
+        isNull);
+    // Una cuenta cualquiera sí se puede eliminar.
+    expect(
+        tester
+            .widget<OutlinedButton>(
+                find.byKey(const Key('account-delete-obs-eva')))
+            .onPressed,
+        isNotNull);
+  });
+
+  testWidgets(
+      'CR-040: un JSON sin "username"/"protected" no rompe (tolerancia)',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+        _accountsScreen(_api(accounts: _accounts), 'administrador'));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('accounts-search')));
+    await tester.pumpAndSettle();
+
+    // Sin username → el título sigue siendo el handle, y el borrado disponible.
+    expect(find.text('obs-juan'), findsOneWidget);
+    expect(
+        tester
+            .widget<OutlinedButton>(
+                find.byKey(const Key('account-delete-obs-juan')))
+            .onPressed,
+        isNotNull);
   });
 }

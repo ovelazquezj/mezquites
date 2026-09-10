@@ -1044,3 +1044,77 @@ enviar**, así que no roza la cola de CR-031, el log append-only de `human_revie
 Delta: +10 móviles. Verificado además que el **build web de producción compila** y sirve los textos
 nuevos. ⚠️ Al verificar por `grep` sobre `main.dart.js`, dart2js **escapa los acentos**: "Sí, descartar"
 aparece como `Sí, descartar`.
+
+---
+
+## CR-040 — Administrar cuentas desde la consola: eliminar y cambiar de rol (2026-09-10)
+
+**Origen:** el usuario intentó eliminar por sí mismo una cuenta de administrador desde la consola y
+no pudo, y reportó además que *"no hay forma de realizar cambios a los permisos de usuario, para
+cambiar por ejemplo el rol"*. **Revisado en producción antes de tocar código: no era permisos.** El
+log de la API de ese día muestra `GET /admin/accounts?handle=kari` → **200 con lista vacía**: la
+búsqueda ARCO filtraba **solo por `handle`**, y el handle de un usuario de consola es autogenerado
+(`obs-XXXXXX`) y no se muestra en ninguna pantalla — se le conoce por su `username`. Sin fila no hay
+`id`, y sin `id` no hay `DELETE`. El cambio de rol, por su parte, estaba **construido y
+desconectado**: `PATCH /admin/users/{id}` y `patchUserRole` existían desde CR-002 y **ninguna
+pantalla los llamaba** (*"Cambiar rol"* aparece **cero** veces en el bundle desplegado).
+Diseño en [`CR-040-administracion-de-cuentas.md`](../change-requests/CR-040-administracion-de-cuentas.md).
+**Backend + consola; sin migración** (alembic sigue en `0009`).
+
+🔎 **El hallazgo grande no era lo reportado.** Al leer el borrado ARCO apareció que repuntaba a la
+centinela las observaciones, los puntos y las revisiones, pero **no** `participation_session` (**NOT
+NULL**, sin `ON DELETE`) ni `problem_report`. Como la app registra sesiones sola desde CR-010, **casi
+cualquier voluntario tiene filas ahí**: su cancelación habría reventado con IntegrityError y un 500,
+en el único flujo del sistema con un plazo legal detrás. No se disparó nunca porque la única cuenta
+eliminada hasta hoy tenía **cero filas en las seis tablas**. Durante la implementación apareció una
+séptima ruta del mismo fallo: `account_deletion.executed_by_account_id`, que impedía eliminar a un
+administrador que ya hubiera ejecutado cancelaciones — justo el flujo que este CR habilita.
+
+| # | Criterio | Implementación | Prueba |
+|---|---|---|---|
+| **AC1** La búsqueda encuentra por `username` parcial | `search_accounts`: `or_(handle ILIKE, username ILIKE)` | `backend/tests/test_cr040_admin_cuentas.py` |
+| **AC2** Sigue funcionando por `handle`, y el alias `q` también | primer término no vacío entre `handle` y `q` | ídem |
+| **AC3** La respuesta trae `username` y `protected` | `AdminAccountSummary` (defaults `null`/`false` ⇒ cliente viejo no rompe) | ídem |
+| **AC4** ARCO repunta las **6** FKs a `account` en la misma transacción | `delete_account`: observation, points_ledger, human_review, participation_session, problem_report, account_deletion | ídem |
+| **AC5** El reporte de problema conserva el diagnóstico y pierde el vínculo | `ProblemReport.handle` → `ANON_HANDLE`; user_agent/plataforma intactos | ídem |
+| **AC6** Un admin elimina a otro admin que ya ejecutó cancelaciones | `executed_by_account_id` → centinela; `deleted_account_id` **no se toca** | ídem |
+| **AC7** Eliminar la cuenta principal se rechaza | `es_cuenta_protegida` (400) | ídem |
+| **AC8** Sin `BOOTSTRAP_ADMIN_USERNAME` **ninguna** cuenta queda protegida | el helper devuelve `False` con la variable vacía | ídem |
+| **AC9** Cambiar el **propio** rol se rechaza | `patch_user` (400) | ídem |
+| **AC10** Cambiar el rol de la cuenta principal se rechaza | `patch_user` (400) | ídem |
+| **AC11** Bajar de administrador limpia el correo (gate #2) | lógica previa de CR-002, ahora cubierta | ídem |
+| **AC12** Ninguna respuesta expone un correo | solo `has_email` | ídem |
+| **AC13** El selector de rol envía el cambio **solo tras confirmar** | `users_screen.dart` → `patchUserRole` | `web-admin/test/widget_users_test.dart` |
+| **AC14** El borrado envía el motivo **solo tras confirmar** | diálogo compartido `ConfirmDeleteDialog` → `deleteAccount` | ídem |
+| **AC15** Ambas acciones deshabilitadas sobre la propia cuenta y la principal | `onChanged`/`onPressed` en `null` + marca en el renglón | ídem |
+| **AC16** "Eliminar cuenta" muestra el nombre de usuario | `AdminAccountSummary.displayName` (username, si no handle) | `web-admin/test/widget_accounts_test.dart` |
+| **AC17** Un JSON sin los campos nuevos no rompe la consola | defaults en los modelos Dart | ambas |
+
+**Cuenta protegida = la de `BOOTSTRAP_ADMIN_USERNAME`.** No se elimina y no cambia de rol, y nadie
+cambia su **propio** rol. Sin esos frenos, un administrador podía degradarse a analista o degradar al
+último administrador y **dejar el sistema sin nadie capaz de crear administradores desde la API**: la
+única salida sería entrar al servidor a correr el bootstrap a mano. Si la variable no está
+configurada, **no hay cuenta protegida**: blindar la cuenta equivocada sería peor que no blindar
+ninguna.
+
+**Gate #7 (matiz deliberado):** en `account_deletion` se anonimiza **quién ejecutó** la cancelación,
+nunca **qué se eliminó** — `deleted_account_id` no es FK y queda intacto. La identidad de quien
+ejecutó está desapareciendo en esa misma operación, así que conservarla sería imposible; es el mismo
+criterio que ya se aplicaba al revisor en `human_review`. El log sigue siendo append-only.
+
+**Gates:** ninguno se enmienda. **#2** (ninguna pantalla ni respuesta expone un correo; el `username`
+de las cuentas de consola es identidad real por diseño desde CR-002, no PII nueva), **#7**
+(reforzado), **#3** (nada de esto toca al voluntario). Sin migración.
+
+**Deuda que este CR NO cierra y vuelve más visible:** **revocación de tokens** (CR-027). Un usuario
+degradado de rol conserva su token hasta que vence, con el rol anterior en los claims. Siguen
+abiertas también la **fusión de instituciones** (CR-028) y la ausencia de un estado de cuenta para
+suspender sin eliminar.
+
+**628 pruebas verdes** (21 contrato · 9 mock · **248** backend · 205 móvil · **145** consola),
+2026-09-10. Delta: +13 backend, +9 consola.
+
+**Nota operativa:** la cuenta de administrador que originó el reporte se eliminó **a mano en la
+base** antes de este CR, con `pg_dump` previo y una guarda que abortaba si la sentencia afectaba algo
+distinto de una fila. No tenía actividad en ninguna de las seis tablas. Con este CR el mismo caso ya
+se resuelve desde la consola.

@@ -109,6 +109,9 @@ class AdminUserResponse(BaseModel):
     role: str
     has_email: bool  # NO exponemos el email; solo si lo tiene (gate #2 acotado)
     must_change_password: bool
+    # CR-040: cuenta de administrador principal (BOOTSTRAP_ADMIN_USERNAME). No se elimina ni cambia
+    # de rol; la consola lo usa para no ofrecer acciones que el backend va a rechazar.
+    protected: bool = False
 
 
 class AdminCreateUserResponse(AdminUserResponse):
@@ -138,10 +141,15 @@ class AdminAccountSummary(BaseModel):
 
     id: uuid.UUID
     handle: str
+    # CR-040: los usuarios de consola se conocen por su `username`; el `handle` es autogenerado y
+    # nadie lo ve. Sin este campo, la pantalla ARCO mostraba filas indistinguibles ("obs-XXXXXX").
+    username: str | None = None
     role: str
     auth_provider: str
     has_email: bool
     observations: int
+    # CR-040: cuenta de administrador principal — el DELETE la rechaza con 400.
+    protected: bool = False
 
 
 class DeleteAccountRequest(BaseModel):

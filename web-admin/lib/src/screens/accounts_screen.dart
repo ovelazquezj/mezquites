@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_exception.dart';
 import '../models/models.dart';
 import '../state/session.dart';
+import '../ui/confirm_delete_dialog.dart';
 import '../ui/copy.dart';
 
 /// ARCO — Cancelación de cuenta (CR-006). SOLO el `administrador`: busca una cuenta
@@ -61,9 +62,16 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
   Future<void> _confirmAndDelete(AdminAccountSummary account) async {
     // El diálogo gestiona y descarta su propio controlador; devuelve el motivo
     // (puede ser vacío) si se confirma, o null si se cancela.
-    final decision = await showDialog<_DeleteDecision>(
+    final decision = await showDialog<ConfirmDeleteDecision>(
       context: context,
-      builder: (ctx) => _DeleteAccountDialog(account: account),
+      builder: (ctx) => ConfirmDeleteDialog(
+        keyPrefix: 'accounts',
+        description: Copy.accountsConfirmBody(
+          nombre: account.displayName,
+          rol: Copy.roleLabel(account.role),
+          observaciones: account.observations,
+        ),
+      ),
     );
     if (decision == null) return; // cancelado
 
@@ -99,6 +107,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final miHandle = ref.watch(sessionProvider).session?.handle;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
@@ -196,24 +205,14 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                         style: theme.textTheme.bodyMedium)
                   else
                     for (final a in _results)
-                      ListTile(
-                        key: Key('account-row-${a.handle}'),
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(a.handle),
-                        subtitle: Text(
-                          '${a.role} · ${a.observations} observación(es)'
-                          '${a.hasEmail ? ' · con correo' : ''}',
-                        ),
-                        trailing: OutlinedButton.icon(
-                          key: Key('account-delete-${a.handle}'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: theme.colorScheme.error,
-                          ),
-                          icon: const Icon(Icons.delete_outline),
-                          label: const Text(Copy.accountsDelete),
-                          onPressed:
-                              _busy ? null : () => _confirmAndDelete(a),
-                        ),
+                      _AccountRow(
+                        account: a,
+                        // CR-040: nadie se elimina a sí mismo (se quedaría fuera
+                        // a media sesión) ni elimina la cuenta principal. El
+                        // backend responde 400 en ambos casos; aquí ni se ofrece.
+                        esPropia: a.handle == miHandle,
+                        busy: _busy,
+                        onDelete: () => _confirmAndDelete(a),
                       ),
                 ],
               ),
@@ -224,79 +223,50 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
   }
 }
 
-/// Resultado del diálogo de confirmación: solo se construye al confirmar (lleva el
-/// motivo capturado). `null` desde `showDialog` significa que se canceló.
-class _DeleteDecision {
-  const _DeleteDecision(this.reason);
-  final String reason;
-}
-
-/// Diálogo de confirmación de la cancelación ARCO. Gestiona su propio
-/// [TextEditingController] (lo descarta en `dispose`), evitando usarlo tras
-/// liberarlo durante la animación de cierre.
-class _DeleteAccountDialog extends StatefulWidget {
-  const _DeleteAccountDialog({required this.account});
+/// Un resultado de la búsqueda. Muestra el nombre por el que se conoce a la
+/// cuenta (CR-040: el nombre de acceso si es del equipo; si no, el handle) y
+/// desactiva el borrado cuando el backend lo va a rechazar de todos modos.
+class _AccountRow extends StatelessWidget {
+  const _AccountRow({
+    required this.account,
+    required this.esPropia,
+    required this.busy,
+    required this.onDelete,
+  });
 
   final AdminAccountSummary account;
-
-  @override
-  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
-}
-
-class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
-  final _reasonCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _reasonCtrl.dispose();
-    super.dispose();
-  }
+  final bool esPropia;
+  final bool busy;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final a = widget.account;
-    return AlertDialog(
-      key: const Key('accounts-confirm-dialog'),
-      title: const Text(Copy.accountsConfirmTitle),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Cuenta "${a.handle}" (${a.role}). Se eliminará su identidad y se '
-            'anonimizarán ${a.observations} observación(es). El dato ecológico '
-            'se conserva. Esta acción no se puede deshacer.',
-            style: theme.textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            key: const Key('accounts-reason'),
-            controller: _reasonCtrl,
-            maxLines: 2,
-            decoration: const InputDecoration(
-              labelText: Copy.accountsReasonLabel,
-              hintText: Copy.accountsReasonHint,
-            ),
-          ),
-        ],
+    final a = account;
+    final bloqueada = a.protected || esPropia;
+    final partes = <String>[
+      // El handle solo cuando NO es el título: para un usuario de consola es un
+      // código interno que nadie conoce, pero sirve para identificar la fila.
+      if (a.username != null && a.username!.isNotEmpty) a.handle,
+      Copy.roleLabel(a.role),
+      '${a.observations} observación(es)',
+      if (a.hasEmail) 'con correo',
+      if (esPropia) Copy.userTagSelf,
+      if (a.protected) Copy.userTagProtected,
+    ];
+    return ListTile(
+      key: Key('account-row-${a.handle}'),
+      contentPadding: EdgeInsets.zero,
+      title: Text(a.displayName),
+      subtitle: Text(partes.join(' · ')),
+      trailing: OutlinedButton.icon(
+        key: Key('account-delete-${a.handle}'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.error,
+        ),
+        icon: const Icon(Icons.delete_outline),
+        label: const Text(Copy.accountsDelete),
+        onPressed: (busy || bloqueada) ? null : onDelete,
       ),
-      actions: [
-        TextButton(
-          key: const Key('accounts-confirm-cancel'),
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text(Copy.accountsConfirmCancel),
-        ),
-        FilledButton(
-          key: const Key('accounts-confirm-ok'),
-          style: FilledButton.styleFrom(
-            backgroundColor: theme.colorScheme.error,
-          ),
-          onPressed: () =>
-              Navigator.of(context).pop(_DeleteDecision(_reasonCtrl.text)),
-          child: const Text(Copy.accountsConfirmOk),
-        ),
-      ],
     );
   }
 }

@@ -12,8 +12,16 @@ el ``administrador`` desde la web admin (no auto-servicio). Al eliminar:
   rol, motivo y conteo — nunca email/sub/username.
 
 Gate de rol: **SOLO ``administrador``** (no `admin_consorcio`). Endpoints:
-- ``GET    /admin/accounts`` — busca cuentas por handle (para localizar la cuenta a eliminar).
+- ``GET    /admin/accounts`` — busca cuentas por handle **o username** (CR-040).
 - ``DELETE /admin/accounts/{id}`` — Cancelación ARCO (anonimiza + elimina identidad + audita).
+
+**CR-040 (administración de cuentas desde la consola):** el borrado de un usuario de consola pasa
+por este mismo endpoint, así que la búsqueda mira también el ``username`` (el handle de esas cuentas
+es autogenerado y nadie lo conoce) y el repunte cubre las **6** FKs a ``account`` — faltaban
+``participation_session`` (NOT NULL: el borrado fallaba para cualquiera con sesiones),
+``problem_report`` y ``account_deletion.executed_by_account_id``. La cuenta de administrador
+principal (``BOOTSTRAP_ADMIN_USERNAME``) queda **protegida**: eliminarla dejaría el sistema sin
+forma de crear administradores desde la API.
 """
 
 from __future__ import annotations
@@ -21,9 +29,11 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
+from ..bootstrap import es_cuenta_protegida
+from ..config import get_settings
 from ..db import get_db
 from ..deps import CurrentUser, require_role
 from ..models import (
@@ -34,7 +44,9 @@ from ..models import (
     AccountDeletion,
     HumanReview,
     Observation,
+    ParticipationSession,
     PointsLedger,
+    ProblemReport,
 )
 from ..schemas import AdminAccountSummary, DeleteAccountRequest, DeleteAccountResponse
 
@@ -75,24 +87,44 @@ def _count_observations(db: Session, account_id: uuid.UUID) -> int:
 
 @router.get("", response_model=list[AdminAccountSummary])
 def search_accounts(
-    handle: str | None = Query(None, description="Filtra por coincidencia parcial de handle."),
+    handle: str | None = Query(
+        None, description="Busca por coincidencia parcial en el handle O el nombre de usuario."
+    ),
+    q: str | None = Query(
+        None, description="Alias de `handle` (mismo significado). Gana el primero no vacío."
+    ),
     limit: int = Query(50, le=200),
     user: CurrentUser = Depends(_administrador),
     db: Session = Depends(get_db),
 ) -> list[AdminAccountSummary]:
-    """Busca cuentas para localizar la que se va a cancelar. No expone PII (solo ``has_email``)."""
-    q = db.query(Account).filter(Account.id != SENTINEL_ACCOUNT_ID)
-    if handle:
-        q = q.filter(Account.handle.ilike(f"%{handle}%"))
-    rows = q.order_by(Account.created_at.desc()).limit(limit).all()
+    """Busca cuentas para localizar la que se va a cancelar. No expone PII (solo ``has_email``).
+
+    CR-040: la búsqueda mira **handle y username**. Antes solo miraba el handle, así que un usuario
+    de consola era **inencontrable**: su handle es autogenerado (``obs-XXXXXX``) y nadie lo conoce —
+    se le conoce por el `username` con el que entra. El administrador que intentaba eliminarlo no
+    obtenía ninguna fila y no había forma de llegar al `id` para el DELETE.
+    """
+    termino = next((t.strip() for t in (handle, q) if t and t.strip()), None)
+    consulta = db.query(Account).filter(Account.id != SENTINEL_ACCOUNT_ID)
+    if termino:
+        patron = f"%{termino}%"
+        # `username` es NULL en las cuentas del voluntario: el OR con NULL no las excluye porque el
+        # otro lado (handle) decide; una fila solo se filtra si NINGÚN lado coincide.
+        consulta = consulta.filter(
+            or_(Account.handle.ilike(patron), Account.username.ilike(patron))
+        )
+    rows = consulta.order_by(Account.created_at.desc()).limit(limit).all()
+    settings = get_settings()
     return [
         AdminAccountSummary(
             id=a.id,
             handle=a.handle,
+            username=a.username,
             role=a.role,
             auth_provider=a.auth_provider,
             has_email=bool(a.email),
             observations=_count_observations(db, a.id),
+            protected=es_cuenta_protegida(a, settings),
         )
         for a in rows
     ]
@@ -108,7 +140,8 @@ def delete_account(
     """Cancelación ARCO: anonimiza observaciones + elimina identidad + audita (gates #2/#7).
 
     Atómico: todo ocurre en una transacción; si algo falla, no se rompe el dataset ni quedan FKs
-    colgando. No se puede eliminar la cuenta centinela ni la propia cuenta del administrador.
+    colgando. No se puede eliminar la cuenta centinela, la propia cuenta del administrador ni la
+    cuenta de administrador principal (CR-040).
     """
     if account_id == SENTINEL_ACCOUNT_ID:
         raise HTTPException(status_code=400, detail="no se puede eliminar la cuenta centinela")
@@ -120,6 +153,10 @@ def delete_account(
     account = db.get(Account, account_id)
     if account is None:
         raise HTTPException(status_code=404, detail="cuenta no encontrada")
+    if es_cuenta_protegida(account, get_settings()):
+        raise HTTPException(
+            status_code=400, detail="la cuenta de administrador principal no se puede eliminar"
+        )
 
     deleted_role = account.role
     reason = body.reason if body else None
@@ -136,13 +173,33 @@ def delete_account(
         )
     )
 
-    # 2) Repunta el ledger de puntos y las revisiones que esta cuenta hizo (no romper FKs NOT NULL).
+    # 2) Repunta TODO lo que apunta a la cuenta (no romper FKs) — la misma transacción.
+    #    Son las 6 FKs a `account.id` que existen en el modelo; si alguna se olvida, el DELETE
+    #    revienta con IntegrityError (500) justo para las cuentas más activas. CR-040 añadió
+    #    `participation_session` (NOT NULL, sin ON DELETE ⇒ el borrado FALLABA para cualquier
+    #    voluntario con sesiones registradas), `problem_report` y `account_deletion`.
     db.query(PointsLedger).filter(PointsLedger.account_id == account_id).update(
         {PointsLedger.account_id: sentinel.id}, synchronize_session=False
     )
     db.query(HumanReview).filter(HumanReview.reviewer_account_id == account_id).update(
         {HumanReview.reviewer_account_id: sentinel.id}, synchronize_session=False
     )
+    db.query(ParticipationSession).filter(
+        ParticipationSession.account_id == account_id
+    ).update({ParticipationSession.account_id: sentinel.id}, synchronize_session=False)
+    # El reporte de problema conserva el dato de diagnóstico (user_agent/plataforma/mensaje) y
+    # pierde el vínculo con la persona: handle anónimo, igual que las observaciones (gate #2).
+    db.query(ProblemReport).filter(ProblemReport.account_id == account_id).update(
+        {ProblemReport.account_id: sentinel.id, ProblemReport.handle: ANON_HANDLE},
+        synchronize_session=False,
+    )
+    # Auditorías que ESTA cuenta ejecutó (si era administradora). `deleted_account_id` no es FK y no
+    # se toca: el registro de QUÉ se eliminó sobrevive intacto (gate #7). Lo que se anonimiza es
+    # QUIÉN lo ejecutó — su identidad está desapareciendo en esta misma operación, igual que ya se
+    # hacía con el revisor de `human_review`.
+    db.query(AccountDeletion).filter(
+        AccountDeletion.executed_by_account_id == account_id
+    ).update({AccountDeletion.executed_by_account_id: sentinel.id}, synchronize_session=False)
 
     # 3) Auditoría sin PII (gate #7) — ANTES de borrar la fila (executed_by es FK válida).
     db.add(
