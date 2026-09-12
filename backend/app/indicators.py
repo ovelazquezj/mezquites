@@ -176,11 +176,23 @@ def compute_indicators(
         "distribucion_niveles": niveles,
     }
 
+    # CR-042: **SUM + GROUP BY**. Antes esto era un SELECT sin agrupar volcado a un dict, así que
+    # dos filas de la misma `key` se pisaban y solo sobrevivía la última: en producción dos
+    # menciones en medios de valor 1 cada una se publicaban como 1.
+    #
+    # Se suman, no se toma la última, porque cada fila es **un evento que ocurrió** —una mesa, un
+    # evento W3, una mención—, no una corrección del registro anterior. Para corregir una captura
+    # equivocada está ``PATCH /admin/indicators/organizational/{id}``, que edita la fila en su
+    # lugar; capturar otra nunca significa "olvida la de antes".
+    #
+    # El filtro por `estado` se conserva tal cual: es el mismo filtro geográfico del resto del
+    # panel (una mesa con autoridades de Zacatecas no cuenta en el corte de Aguascalientes).
     org_rows = db.execute(
         text(
             """
-            SELECT key, value FROM organizational_indicator
+            SELECT key, SUM(value) FROM organizational_indicator
             WHERE (CAST(:estado AS text) IS NULL OR estado = :estado)
+            GROUP BY key
             """
         ),
         params,

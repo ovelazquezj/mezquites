@@ -448,6 +448,15 @@ class OrganizationalIndicator(Base):
 
     No se calculan automáticamente (mesas formales, eventos W3, menciones mediáticas): los teclea
     el ``admin_consorcio``. Alimentan el mismo dashboard público.
+
+    **Cada fila es un evento que ocurrió**, no el valor vigente del contador: dos menciones en
+    medios son dos filas, y el panel público las **suma** (CR-042). Por eso no hay UNIQUE sobre
+    ``key``; para corregir una captura equivocada está el PATCH, no una fila nueva.
+
+    CR-042 añade ``descripcion``: qué pasó, en texto libre. Nació de un uso real — el ``estado`` es
+    un **filtro geográfico** (va junto a ``municipio``/``cve_ent`` en el panel público) y la consola
+    lo ofrecía como texto libre llamado "Estado (opcional)", así que ahí se tecleaba el relato del
+    evento ("Visita Rotaract Ejecutivo"), inutilizando el filtro y perdiendo la descripción.
     """
 
     __tablename__ = "organizational_indicator"
@@ -455,9 +464,18 @@ class OrganizationalIndicator(Base):
     id: Mapped[uuid.UUID] = _uuid_pk()
     key: Mapped[str] = mapped_column(Text, nullable=False)
     value: Mapped[float] = mapped_column(Float, nullable=False)
+    # Entidad federativa (una de las 32) o la cadena "Otro". Nullable en la base por las filas
+    # anteriores a CR-042; la API sí lo exige en toda captura nueva.
     estado: Mapped[str | None] = mapped_column(Text)
+    descripcion: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        # La consola lista por indicador y en orden cronológico inverso; el panel público agrupa
+        # por `key`. Ese es el índice.
+        Index("organizational_indicator_key_idx", "key", "created_at"),
     )
 
 

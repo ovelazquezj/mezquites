@@ -15,7 +15,7 @@ import 'api_exception.dart';
 ///   POST /auth/recover (público)
 ///   GET  /admin/institutions · POST /admin/institutions
 ///   POST /admin/allies
-///   POST /admin/indicators/organizational
+///   GET/POST/PATCH/DELETE /admin/indicators/organizational
 ///   POST /admin/snapshots
 ///   GET  /public/observations (público) · GET /public/indicators (público)
 ///   GET  /restricted/observations (rol aliado_firmante/autorizado)
@@ -237,10 +237,14 @@ class ApiClient {
   // --- Admin: indicadores organizacionales (Q6 amendment, captura manual) ---
 
   /// Captura MANUAL de un indicador organizacional. SIN umbrales (U1).
-  Future<Map<String, dynamic>> addOrganizationalIndicator({
+  ///
+  /// `estado` es **obligatorio** desde CR-042 (el backend responde 422 sin él):
+  /// es el filtro geográfico con el que el panel público agrupa los registros.
+  Future<OrganizationalIndicator> addOrganizationalIndicator({
     required String key,
     required double value,
-    String? estado,
+    required String estado,
+    String? descripcion,
   }) async {
     final r = await _http.post(
       _uri('/admin/indicators/organizational'),
@@ -248,10 +252,57 @@ class ApiClient {
       body: json.encode({
         'key': key,
         'value': value,
-        if (estado != null && estado.isNotEmpty) 'estado': estado,
+        'estado': estado,
+        if (descripcion != null && descripcion.isNotEmpty)
+          'descripcion': descripcion,
       }),
     );
-    return _decode(r);
+    return OrganizationalIndicator.fromJson(_decode(r));
+  }
+
+  /// Registros ya capturados, del más reciente al más viejo (CR-042). Sin `key`
+  /// devuelve todos; con `key`, solo los de esa clave.
+  Future<List<OrganizationalIndicator>> listOrganizationalIndicators({
+    String? key,
+  }) async {
+    final r = await _http.get(
+      _uri('/admin/indicators/organizational',
+          (key == null || key.isEmpty) ? null : {'key': key}),
+      headers: _headers(json: false),
+    );
+    return _decodeList(r)
+        .map((e) => OrganizationalIndicator.fromJson((e as Map).cast()))
+        .toList();
+  }
+
+  /// Corrige un registro ya capturado (CR-042). Solo viajan los campos que se
+  /// pasan; la clave del indicador NO se cambia (se borra y se vuelve a
+  /// capturar, para no mover un número de una categoría a otra sin rastro).
+  Future<OrganizationalIndicator> patchOrganizationalIndicator({
+    required String id,
+    double? value,
+    String? estado,
+    String? descripcion,
+  }) async {
+    final r = await _http.patch(
+      _uri('/admin/indicators/organizational/$id'),
+      headers: _headers(),
+      body: json.encode({
+        if (value != null) 'value': value,
+        if (estado != null) 'estado': estado,
+        if (descripcion != null) 'descripcion': descripcion,
+      }),
+    );
+    return OrganizationalIndicator.fromJson(_decode(r));
+  }
+
+  /// Borra un registro capturado por error (CR-042). Responde 204 sin cuerpo.
+  Future<void> deleteOrganizationalIndicator({required String id}) async {
+    final r = await _http.delete(
+      _uri('/admin/indicators/organizational/$id'),
+      headers: _headers(json: false),
+    );
+    _decode(r); // valida el código de estado; el cuerpo viene vacío.
   }
 
   // --- Admin: snapshots trimestrales (Q5.B) ---

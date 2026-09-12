@@ -10,14 +10,22 @@ Criterios de aceptación cubiertos aquí (los de consola viven en `web-admin`):
 - **AC4**: el analista escribe una nota y queda con su autoría y su fecha.
 - **AC5** (gate #9, el criterio central): escribir una nota **NO** cambia ``estado_revision`` ni
   añade filas a ``human_review``.
-- **AC6**: evaluador y administrador también pueden escribir notas.
+- **AC6**, **acotado por CR-042**: escriben el ``analista`` y el ``administrador``. El
+  ``evaluador`` **ya no escribe** (403) — el área de comentarios es del analista y del
+  administrador— pero **sí las lee** en el detalle.
 - **AC7**: un rol sin revisión recibe 403; sin token, 401.
 - **AC8**: el detalle devuelve las notas de la más antigua a la más reciente, con ``autor_handle``,
-  para los tres roles de revisión.
+  para los tres roles de revisión (el ``evaluador`` incluido: lee aunque no escriba).
 - **AC9**: texto vacío, de solo espacios o de más de 2 000 caracteres ⇒ 422; 2 000 exactos ⇒ 201.
 - **AC10** (gate #7): append-only — no existe ruta de edición ni de borrado de notas.
 - **AC11** (gate #2): las notas no salen de la consola (ni público, ni restringido, ni los 2 CSV).
 - **AC12** (ARCO): al eliminar la cuenta autora, sus notas se conservan a nombre del centinela.
+
+**CR-042 (parte A) — cambio de conducta deliberado.** ``POST .../notas`` pasó de ``REVIEW_ROLES``
+(los tres) a ``_COMMENT_WRITE_ROLES`` = ``analista`` + ``administrador``. Las pruebas de escritura
+del ``evaluador`` que venían de CR-041 **afirman ahora 403**: es la regla nueva, no una regresión.
+La **lectura no cambia** (``GET /review/observations/{id}`` sigue con los tres roles), y el campo
+``nota`` que viaja con el **veredicto** tampoco: sigue siendo de evaluador/administrador.
 """
 
 from __future__ import annotations
@@ -162,31 +170,80 @@ def test_ac5_nota_sobre_confirmada_no_la_saca_del_publico(client, db_session):
     assert stats_despues == stats_antes
 
 
-# --- AC6: los tres roles de revisión escriben ---
+# --- AC6 (acotado por CR-042): escriben el analista y el administrador; el evaluador NO ---
 
 
-def test_ac6_evaluador_y_administrador_tambien_anotan(client, db_session):
+def test_ac6_cr042_el_administrador_anota_y_el_evaluador_recibe_403(client, db_session):
+    """**Esta prueba cambió de conducta con CR-042 y el cambio es intencional.**
+
+    En CR-041 se llamaba ``test_ac6_evaluador_y_administrador_tambien_anotan`` y afirmaba que el
+    ``evaluador`` escribía notas (201). Por decisión del usuario el área de comentarios es del
+    ``analista`` y del ``administrador``, así que el evaluador **recibe 403 al escribir**. Su
+    lectura no se tocó: eso lo cubre
+    ``test_cr042_el_evaluador_lee_las_notas_que_escribe_el_analista``.
+    """
     _, obs_id = _nueva_observacion(client)
-    for rol in ("evaluador", "administrador"):
-        cuenta = register(client, role=rol)
-        resp = client.post(
-            _nota_url(obs_id),
-            headers=auth_header(cuenta["token"]),
-            json={"texto": f"nota de {rol}"},
-        )
-        assert resp.status_code == 201, resp.text
-        assert resp.json()["autor_handle"] == cuenta["handle"]
 
-    total = db_session.execute(
-        text("SELECT count(*) FROM observation_note WHERE observation_id = :o"), {"o": obs_id}
-    ).scalar_one()
-    assert total == 2
+    administrador = register(client, role="administrador")
+    resp = client.post(
+        _nota_url(obs_id),
+        headers=auth_header(administrador["token"]),
+        json={"texto": "nota de administrador"},
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["autor_handle"] == administrador["handle"]
+
+    evaluador = register(client, role="evaluador")
+    resp = client.post(
+        _nota_url(obs_id),
+        headers=auth_header(evaluador["token"]),
+        json={"texto": "nota de evaluador"},
+    )
+    assert resp.status_code == 403, resp.text
+
+    # Solo quedó la del administrador: el 403 no escribió nada.
+    filas = db_session.execute(
+        text("SELECT texto FROM observation_note WHERE observation_id = :o"), {"o": obs_id}
+    ).scalars().all()
+    assert filas == ["nota de administrador"]
+
+
+def test_cr042_el_evaluador_lee_las_notas_que_escribe_el_analista(client, db_session):
+    """La prueba clave del cambio: el evaluador **no escribe pero sí lee**.
+
+    Es la mitad de CR-042 que se puede perder de vista al cerrar la escritura: el comentario suele
+    ser el contexto que ayuda al evaluador a decidir el veredicto, así que el detalle sigue
+    devolviéndole ``notas``.
+    """
+    _, obs_id = _nueva_observacion(client)
+    analista = register(client, role="analista")
+    evaluador = register(client, role="evaluador")
+
+    assert (
+        client.post(
+            _nota_url(obs_id), headers=auth_header(analista["token"]), json={"texto": NOTA}
+        ).status_code
+        == 201
+    )
+
+    detalle = client.get(
+        f"/api/v1/review/observations/{obs_id}", headers=auth_header(evaluador["token"])
+    )
+    assert detalle.status_code == 200, detalle.text
+    notas = detalle.json()["notas"]
+    assert [n["texto"] for n in notas] == [NOTA]
+    assert notas[0]["autor_handle"] == analista["handle"]
+
+    # Y la cola de revisión le sigue abierta: lee para poder emitir su veredicto.
+    cola = client.get("/api/v1/review/queue", headers=auth_header(evaluador["token"]))
+    assert cola.status_code == 200, cola.text
 
 
 # --- AC7: authz ---
 
 
 def test_ac7_rol_sin_revision_recibe_403(client, db_session):
+    """Ni el voluntario ni el aliado firmante escriben notas (nunca pudieron)."""
     voluntario, obs_id = _nueva_observacion(client)
     aliado = register(client, role="aliado_firmante")
 
@@ -207,16 +264,18 @@ def test_ac7_sin_token_es_401(client, db_session):
 
 
 def test_ac8_detalle_devuelve_notas_en_orden_para_los_tres_roles(client, db_session):
+    """CR-042: las escriben analista y administrador; las **leen los tres**, evaluador incluido."""
     _, obs_id = _nueva_observacion(client)
     analista = register(client, role="analista")
-    evaluador = register(client, role="evaluador")
+    otro_analista = register(client, role="analista")
     administrador = register(client, role="administrador")
+    evaluador = register(client, role="evaluador")
 
     # Se escriben en un orden conocido; el detalle debe devolverlas de la más antigua a la más
     # reciente, no en el orden en que la base decida devolver las filas.
     for cuenta, texto in (
         (analista, "primera: la copa se ve despejada"),
-        (evaluador, "segunda: la foto entra de perfil"),
+        (otro_analista, "segunda: la foto entra de perfil"),
         (administrador, "tercera: queda para seguimiento"),
     ):
         assert (
@@ -226,7 +285,7 @@ def test_ac8_detalle_devuelve_notas_en_orden_para_los_tres_roles(client, db_sess
             == 201
         )
 
-    for cuenta in (analista, evaluador, administrador):
+    for cuenta in (analista, otro_analista, administrador, evaluador):
         detalle = client.get(
             f"/api/v1/review/observations/{obs_id}", headers=auth_header(cuenta["token"])
         )
@@ -239,7 +298,7 @@ def test_ac8_detalle_devuelve_notas_en_orden_para_los_tres_roles(client, db_sess
         ]
         assert [n["autor_handle"] for n in notas] == [
             analista["handle"],
-            evaluador["handle"],
+            otro_analista["handle"],
             administrador["handle"],
         ]
         fechas = [n["created_at"] for n in notas]
@@ -444,9 +503,12 @@ def test_ac11_el_voluntario_no_ve_las_notas_en_su_perfil(client, db_session):
     obs_id = submit_confirmed_observation(
         client, voluntario["token"], lat=21.88, lon=-102.29
     ).json()["observation_id"]
-    evaluador = register(client, role="evaluador")
-    client.post(
-        _nota_url(obs_id), headers=auth_header(evaluador["token"]), json={"texto": secreto}
+    analista = register(client, role="analista")
+    assert (
+        client.post(
+            _nota_url(obs_id), headers=auth_header(analista["token"]), json={"texto": secreto}
+        ).status_code
+        == 201
     )
 
     for ruta in ("/api/v1/me/profile", "/api/v1/me/feedback", "/api/v1/me/evidence"):

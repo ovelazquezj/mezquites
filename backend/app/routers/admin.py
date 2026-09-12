@@ -1,6 +1,7 @@
 """Endpoints de la web admin del consorcio — rol ``admin_consorcio`` (Q6 amendment, Q4 F3, Q5.B).
 
-- ``POST /admin/indicators/organizational`` — captura manual de indicadores organizacionales.
+- ``GET/POST/PATCH/DELETE /admin/indicators/organizational`` — captura manual de indicadores
+  organizacionales (CR-042: antes solo existía el POST, así que lo capturado no se podía releer).
 - ``POST /admin/allies`` — promueve una cuenta a ``aliado_firmante`` (acceso a coords exactas).
 - ``POST /admin/snapshots`` — snapshot trimestral del dataset público.
 - ``GET/POST /admin/institutions`` — lista F3 + "solicitar agregar" (status=solicitada, ticket EA3).
@@ -10,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -23,6 +24,8 @@ from ..schemas import (
     InstitutionIn,
     InstitutionUpdateIn,
     OrganizationalIndicatorIn,
+    OrganizationalIndicatorOut,
+    OrganizationalIndicatorPatch,
     SnapshotResponse,
 )
 from ..snapshots import create_snapshot
@@ -33,17 +36,119 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 _admin = require_role("admin_consorcio", "administrador")
 
 
-@router.post("/indicators/organizational", status_code=status.HTTP_201_CREATED)
+def _indicador_out(ind: OrganizationalIndicator) -> OrganizationalIndicatorOut:
+    return OrganizationalIndicatorOut(
+        id=ind.id,
+        key=ind.key,
+        value=ind.value,
+        estado=ind.estado,
+        descripcion=ind.descripcion,
+        created_at=ind.created_at,
+    )
+
+
+@router.post(
+    "/indicators/organizational",
+    response_model=OrganizationalIndicatorOut,
+    status_code=status.HTTP_201_CREATED,
+)
 def add_organizational_indicator(
     body: OrganizationalIndicatorIn,
     user: CurrentUser = Depends(_admin),
     db: Session = Depends(get_db),
-) -> dict:
-    """Captura manual de un indicador organizacional Q6 (mesas, eventos W3, menciones)."""
-    ind = OrganizationalIndicator(key=body.key, value=body.value, estado=body.estado)
+) -> OrganizationalIndicatorOut:
+    """Captura manual de un indicador organizacional Q6 (mesas, eventos W3, menciones).
+
+    CR-042: devuelve la fila completa —con ``id``, ``descripcion`` y ``created_at``— porque ahora la
+    consola la lista, la edita y la borra, y para eso necesita el ``id`` que antes se quedaba aquí.
+    """
+    ind = OrganizationalIndicator(
+        key=body.key, value=body.value, estado=body.estado, descripcion=body.descripcion
+    )
     db.add(ind)
     db.commit()
-    return {"id": str(ind.id), "key": ind.key, "value": ind.value, "estado": ind.estado}
+    db.refresh(ind)
+    return _indicador_out(ind)
+
+
+@router.get("/indicators/organizational", response_model=list[OrganizationalIndicatorOut])
+def list_organizational_indicators(
+    key: str | None = None,
+    user: CurrentUser = Depends(_admin),
+    db: Session = Depends(get_db),
+) -> list[OrganizationalIndicatorOut]:
+    """Lista lo capturado, **más reciente primero**; filtro opcional por ``key`` (CR-042).
+
+    Faltaba por completo: la pantalla escribía y nunca leía, así que lo capturado "desaparecía" al
+    cambiar de sección y no había forma de saber qué ya estaba registrado —ni de detectar que el
+    panel público lo contaba mal—.
+    """
+    q = db.query(OrganizationalIndicator)
+    if key is not None:
+        q = q.filter(OrganizationalIndicator.key == key)
+    # Desempate por `id` para que el orden sea estable si dos capturas comparten `created_at`.
+    rows = q.order_by(
+        OrganizationalIndicator.created_at.desc(), OrganizationalIndicator.id.desc()
+    ).all()
+    return [_indicador_out(i) for i in rows]
+
+
+@router.patch(
+    "/indicators/organizational/{indicator_id}", response_model=OrganizationalIndicatorOut
+)
+def update_organizational_indicator(
+    indicator_id: uuid.UUID,
+    body: OrganizationalIndicatorPatch,
+    user: CurrentUser = Depends(_admin),
+    db: Session = Depends(get_db),
+) -> OrganizationalIndicatorOut:
+    """Corrige valor, entidad y/o descripción de un indicador ya capturado (CR-042).
+
+    Sin esto, arreglar un dígito mal tecleado obligaba a capturar otra fila — que el panel público
+    **suma**, así que la "corrección" duplicaba el error en vez de enmendarlo.
+    """
+    ind = db.get(OrganizationalIndicator, indicator_id)
+    if ind is None:
+        raise HTTPException(status_code=404, detail="indicador no encontrado")
+
+    if body.value is not None:
+        ind.value = body.value
+    if body.estado is not None:
+        ind.estado = body.estado
+    # `descripcion` se distingue por presencia, no por valor: mandar null explícitamente la LIMPIA
+    # (mismo criterio que el `estado` de las instituciones en CR-029).
+    if "descripcion" in body.model_fields_set:
+        ind.descripcion = body.descripcion
+
+    db.commit()
+    db.refresh(ind)
+    return _indicador_out(ind)
+
+
+@router.delete(
+    "/indicators/organizational/{indicator_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    # 204 no lleva cuerpo: sin `response_class=Response` FastAPI intentaría serializar `None` y
+    # devolvería el literal "null" con un Content-Length que contradice el propio 204.
+    response_class=Response,
+)
+def delete_organizational_indicator(
+    indicator_id: uuid.UUID,
+    user: CurrentUser = Depends(_admin),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Borra una captura equivocada (CR-042).
+
+    Es dato **tecleado a mano** por el propio administrador, no evidencia de campo: no aplica el
+    régimen append-only de ``human_review``/``observation_note`` (gate #7), que protege el juicio
+    emitido sobre el aporte de un tercero. Un indicador capturado por error solo ensucia la suma.
+    """
+    ind = db.get(OrganizationalIndicator, indicator_id)
+    if ind is None:
+        raise HTTPException(status_code=404, detail="indicador no encontrado")
+    db.delete(ind)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/allies", status_code=status.HTTP_200_OK)

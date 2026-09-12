@@ -30,6 +30,17 @@ class AuthSession {
   /// Roles que pueden emitir veredicto (NO incluye `analista`).
   bool get canEmitVerdict => role == 'evaluador' || role == 'administrador';
 
+  /// CR-042: ESCRIBIR comentarios sobre una observación (el área grande del
+  /// detalle, antes llamada "Notas"). Es del `analista` y del `administrador`.
+  ///
+  /// El `evaluador` queda fuera A PROPÓSITO: él ya tiene su campo "Nota
+  /// (opcional)" pegado al veredicto, y tener dos lugares donde escribir en la
+  /// misma ventana era justo la confusión que el usuario reportó. Leer sí lee
+  /// —los comentarios son el contexto que le ayuda a decidir—, así que la lista
+  /// no se gatea con esta capacidad: solo el campo, el aviso y el botón.
+  /// La autorización real la impone el backend (403 al evaluador).
+  bool get canWriteComments => role == 'analista' || role == 'administrador';
+
   /// Solo el `administrador` gestiona usuarios de backend (CR-002).
   bool get canManageUsers => role == 'administrador';
 
@@ -723,20 +734,79 @@ class ProblemReport {
 /// Catálogo de claves de indicadores organizacionales (Q6 amendment).
 /// Captura MANUAL en la web admin; sin lógica de umbrales (U1).
 class OrganizationalIndicatorKey {
-  const OrganizationalIndicatorKey(this.key, this.label);
+  const OrganizationalIndicatorKey(this.key, this.label, this.ayuda);
   final String key;
   final String label;
 
+  /// Qué se cuenta exactamente en el campo "Cantidad" (CR-042). La etiqueta sola
+  /// no bastaba: quien captura no sabía si el número eran eventos, personas o
+  /// asistentes. Se muestra bajo el campo y cambia al cambiar de indicador.
+  final String ayuda;
+
   /// Las 4 sub-categorías organizacionales de Q6-D1.
   static const List<OrganizationalIndicatorKey> all = [
-    OrganizationalIndicatorKey(
-        'mesas_formales_autoridades', 'Mesas formales con autoridades'),
+    OrganizationalIndicatorKey('mesas_formales_autoridades',
+        'Mesas formales con autoridades', 'Cuántas mesas o reuniones hubo'),
     OrganizationalIndicatorKey('aliados_firmantes_coords',
-        'Aliados firmantes con convenio'),
-    OrganizationalIndicatorKey('eventos_w3', 'Eventos realizados'),
+        'Aliados firmantes con convenio', 'Cuántos aliados firmaron'),
     OrganizationalIndicatorKey(
-        'menciones_mediaticas', 'Menciones en medios'),
+        'eventos_w3', 'Eventos realizados', 'Cuántos eventos se realizaron'),
+    OrganizationalIndicatorKey('menciones_mediaticas', 'Menciones en medios',
+        'Cuántas menciones aparecieron en medios'),
   ];
+
+  /// Busca una clave del catálogo; `null` si el backend devuelve una que la
+  /// consola todavía no conoce (la pantalla la muestra igual, sin romperse).
+  static OrganizationalIndicatorKey? byKey(String key) {
+    for (final k in all) {
+      if (k.key == key) return k;
+    }
+    return null;
+  }
+}
+
+/// Un registro de indicador organizacional guardado en el servidor (CR-042).
+///
+/// Antes la pantalla solo guardaba una lista **en memoria** ("Capturados en esta
+/// sesión") que se perdía al cambiar de sección; el dato sí estaba en la base,
+/// pero nadie lo leía. Este modelo es lo que devuelve
+/// `GET /admin/indicators/organizational`.
+class OrganizationalIndicator {
+  const OrganizationalIndicator({
+    required this.id,
+    required this.key,
+    required this.value,
+    required this.estado,
+    required this.createdAt,
+    this.descripcion,
+  });
+
+  final String id;
+
+  /// Clave del catálogo ([OrganizationalIndicatorKey]).
+  final String key;
+
+  /// Cantidad capturada. El panel público **suma** las de una misma clave.
+  final double value;
+
+  /// Entidad federativa (o "Otro"). Obligatoria: es el filtro geográfico.
+  final String estado;
+
+  /// Qué pasó, en palabras de quien captura. Opcional y puede faltar en el JSON.
+  final String? descripcion;
+
+  final DateTime createdAt;
+
+  factory OrganizationalIndicator.fromJson(Map<String, dynamic> j) =>
+      OrganizationalIndicator(
+        id: (j['id'] ?? '') as String,
+        key: (j['key'] ?? '') as String,
+        value: (j['value'] as num?)?.toDouble() ?? 0,
+        estado: (j['estado'] ?? '') as String,
+        descripcion: j['descripcion'] as String?,
+        createdAt: DateTime.tryParse((j['created_at'] ?? '') as String) ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+      );
 }
 
 /// Entidad federativa del catálogo geográfico (`GET /geo/estados`, CR-036).

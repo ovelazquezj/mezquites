@@ -39,6 +39,10 @@ class SessionState {
   bool get canReview => session?.canReview ?? false;
   bool get canEmitVerdict => session?.canEmitVerdict ?? false;
 
+  /// Escribir comentarios sobre una observación (CR-042): `analista`/`administrador`.
+  /// El `evaluador` los LEE pero no los escribe. La autorización real la impone el backend.
+  bool get canWriteComments => session?.canWriteComments ?? false;
+
   /// Gestión de usuarios de backend (CR-002): SOLO `administrador`.
   bool get canManageUsers => session?.canManageUsers ?? false;
 

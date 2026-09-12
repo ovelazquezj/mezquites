@@ -5,10 +5,23 @@ observación; el veredicto y el etiquetado son **autoritativos en el backend** y
 el log append-only ``human_review`` (gate #7).
 
 RBAC (``deps.require_role``):
-- ``evaluador``, ``analista``, ``administrador``  → cola, detalle, imagen, stats, **notas** (CR-041).
-- ``evaluador``, ``administrador``                → emitir veredicto (POST).
+- ``evaluador``, ``analista``, ``administrador``  → cola, detalle (incluidas las **notas**), imagen
+  y stats.
+- ``evaluador``, ``administrador``                → emitir veredicto (``POST .../verdict``).
+- ``analista``, ``administrador``                 → **escribir** notas (``POST .../notas``, CR-042).
 - ``analista``                                    → **sin voto** (recibe 403 al emitir veredicto),
-  pero sí puede anotar: la nota de CR-041 no cambia ``estado_revision`` (gate #9).
+  pero sí anota: la nota no cambia ``estado_revision`` (gate #9).
+
+**CR-042 — por qué leer y escribir notas no tienen los mismos roles.** CR-041 abrió la escritura de
+notas a los tres roles de revisión; por decisión del usuario el área de comentarios es del
+``analista`` y del ``administrador``, y el ``evaluador`` **ya no escribe** ahí (recibe 403). Lo que
+**no** cambia es la **lectura**: el detalle sigue devolviendo ``notas`` a los tres, porque el
+comentario suele ser justo el contexto que ayuda al evaluador a decidir el veredicto — quitarle la
+lectura sería quitarle información para revisar.
+
+Ojo con el homónimo: el campo ``nota`` que viaja **dentro del veredicto** (``VerdictRequest.nota``,
+guardado en ``human_review.nota``) es otra cosa y **no se toca**: pertenece a quien emite veredicto y
+conserva sus roles (``REVIEW_VERDICT_ROLES``).
 
 La imagen de revisión se sirve **cruda** (con su EXIF original, incluido el GPS de la cámara) a
 todos los roles de revisión. El saneo de GPS (``exif.strip_gps``) quedó **ocioso** (CR-025): ya no
@@ -52,6 +65,12 @@ router = APIRouter(prefix="/review", tags=["review"])
 _reviewer = require_role(*REVIEW_ROLES)
 # Roles que pueden emitir veredicto (NO incluye `analista`).
 _verdict_role = require_role(*REVIEW_VERDICT_ROLES)
+# CR-042: quién ESCRIBE en el área de notas. Es una constante **local de este módulo** a propósito:
+# no es un rol nuevo ni una categoría del dominio, es el reparto de un área de la consola, así que
+# `models.REVIEW_ROLES` sigue significando "quién revisa" y no hay que tocarlo. La LECTURA de las
+# notas se queda en `_reviewer` (los tres roles): el evaluador las lee aunque no las escriba.
+_COMMENT_WRITE_ROLES = ("analista", "administrador")
+_comment_writer = require_role(*_COMMENT_WRITE_ROLES)
 # Acceso a la imagen: roles de revisión + `aliado_firmante`. La imagen se sirve cruda (sin saneo de
 # GPS): el saneo (`exif.strip_gps`) quedó ocioso (CR-025).
 _image_role = require_role(*REVIEW_ROLES, "aliado_firmante")
@@ -199,15 +218,26 @@ def review_detail(
 def create_observation_note(
     observation_id: uuid.UUID,
     body: ObservationNoteIn,
-    user: CurrentUser = Depends(_reviewer),
+    user: CurrentUser = Depends(_comment_writer),
     db: Session = Depends(get_db),
 ) -> ObservationNoteOut:
-    """Escribe una nota sobre la observación, **sin emitir veredicto** (CR-041).
+    """Escribe una nota sobre la observación, **sin emitir veredicto** (CR-041, acotado por CR-042).
 
-    Roles: los tres de revisión (``REVIEW_ROLES``), **incluido el ``analista``**. Ese es el motivo
-    del CR: hasta ahora la única forma de dejar una nota era ``POST .../verdict``, restringido a
-    evaluador/administrador, así que el analista —solo lectura por decisión sellada— no podía anotar
-    nada sin convertirse en revisor con voto.
+    Roles que **escriben**: ``_COMMENT_WRITE_ROLES`` = ``analista`` y ``administrador``. El
+    ``analista`` está aquí por el motivo original de CR-041: hasta entonces la única forma de dejar
+    una nota era ``POST .../verdict``, restringido a evaluador/administrador, así que el analista
+    —solo lectura por decisión sellada— no podía anotar nada sin convertirse en revisor con voto.
+
+    **CR-042:** el ``evaluador`` sale de la escritura (recibe **403**) por decisión del usuario: el
+    área de comentarios es del analista y del administrador. Pero **sigue leyéndolas**:
+    ``GET /review/observations/{id}`` no cambia, conserva ``_reviewer`` (los tres roles de revisión)
+    y sigue devolviendo ``notas``. La asimetría es deliberada — el comentario suele ser el contexto
+    que ayuda al evaluador a decidir el veredicto, así que cerrarle la lectura le quitaría
+    información justo para lo único que sí le toca hacer.
+
+    No confundir con el campo ``nota`` del **veredicto** (``VerdictRequest.nota`` →
+    ``human_review.nota``): ese es de quien emite veredicto, conserva sus roles
+    (``REVIEW_VERDICT_ROLES``) y **CR-042 no lo toca**.
 
     **No toca ``observation.estado_revision``, no escribe en ``human_review`` y no recomputa la
     etiqueta L3.** Es el punto entero del CR: desde CR-026 el veredicto es lo que decide si la

@@ -1186,3 +1186,110 @@ consola** (verificado sobre 9 respuestas). **#1**: riesgo residual anotado, el m
 
 **660 pruebas verdes** (21 contrato · 9 mock · **267** backend · 205 móvil · **158** consola),
 2026-09-10. Delta: +19 backend, +13 consola.
+
+---
+
+## CR-042 — Comentarios en la revisión, e indicadores organizacionales que no se pierden (2026-09-12)
+
+**Origen:** dos reportes del usuario usando la consola, ambos sobre pantallas que CR-041 acababa de
+tocar o que llevaban tiempo a medias. Diseño en
+[`CR-042-comentarios-e-indicadores.md`](../change-requests/CR-042-comentarios-e-indicadores.md).
+**Backend + consola; con migración `0011`.**
+
+### Parte A — dos cajas de texto que parecían la misma
+
+El usuario reportó *"dos áreas de notas, debiendo ser solo una"*. **La primera lectura fue
+equivocada y él la corrigió:** no sobra ninguna. El **campo pequeño** "Nota (opcional)" viaja con el
+veredicto y es de quien vota; el **área grande** de CR-041 no cambia el estado de la observación. Lo
+que fallaba era el **nombre**: ambas se llamaban *nota*.
+
+🔎 **Un segundo malentendido, este mío, hubo que deshacerlo sobre el código:** no era "la del
+evaluador y la del analista". El área grande la escribían **los tres** roles de revisión, y el campo
+pequeño lo ve **quien vota**, que incluye al administrador. El **analista veía UNA** caja; el
+evaluador y el administrador veían **DOS**. El usuario vio dos porque entró como administrador.
+
+**Por qué "Comentarios" y no "Observaciones":** en este software una *observación* es el registro de
+un mezquite y la pantalla se llama "Revisión de observaciones". Un botón "Agregar observación" ahí
+dentro se habría leído como "agregar un árbol".
+
+| # | Criterio | Implementación | Prueba |
+|---|---|---|---|
+| **AC1** El evaluador **no** escribe comentarios | `_COMMENT_WRITE_ROLES = ("analista","administrador")` local en `review.py` | `test_cr041_notas.py` (403 y sin fila escrita) |
+| **AC2** El evaluador **sí LEE** los comentarios del analista | el `GET` del detalle no cambió: sigue con `_reviewer` (los tres) | ídem |
+| **AC3** Analista y administrador siguen escribiendo | `_comment_writer` | ídem |
+| **AC4** En pantalla el evaluador ve la lista, no el campo ni el botón | `AuthSession.canWriteComments`; la sección se parte en leer/escribir | `widget_cr041_notas_test.dart` |
+| **AC5** "Nota (opcional)" y los botones de veredicto intactos | el bloque de veredicto no se tocó | ídem |
+| **AC6** Los textos dicen Comentario; los viejos ya no aparecen | `Copy.notes*` → `Copy.comments*` (10 constantes, identificadores incluidos) | ídem |
+
+**Decisión de diseño:** el evaluador **lee** aunque no escriba. Ese comentario suele ser justo el
+contexto que ayuda a decidir el veredicto; esconderlo a quien decide habría sido peor que el problema
+original. Y el permiso se cerró **también en el servidor**: taparlo solo en el cliente habría dejado
+la escritura abierta por API.
+
+⚠️ **Las `Key`s de los widgets NO se renombraron** (`review-nota-nueva`, `review-notas-lista`…). Son
+identificadores de prueba, no texto para nadie: renombrarlas era ruido con riesgo y sin beneficio.
+
+### Parte B — los indicadores desaparecían, y el panel contaba de menos
+
+El usuario reportó que al salir de la sección y volver, los indicadores ya no estaban, y que *"solo
+el primer casillero es intuitivo"*. Aparecieron **tres** fallas, y la peor no era la reportada.
+
+1. **Desaparecían porque nadie los leía nunca.** La pantalla guardaba una lista local ("Capturados en
+   esta sesión") y **no existía endpoint para consultarlos**: la consola sabía escribir y no sabía
+   leer. `HomeShell` monta las pantallas con `_screens[_index]` (no `IndexedStack`, CR-039), así que
+   el `State` se destruye al cambiar de sección. **Los datos sí estaban guardados.**
+2. 🔎 **El panel público contaba de menos. Verificado en producción.** La agregación era
+   `{key: value}` sobre un `SELECT` **sin `GROUP BY` ni `SUM`**: dos filas de la misma clave se
+   pisaban y solo sobrevivía la última. **Dos menciones en medios de valor 1 se publicaban como 1.**
+   La prueba existente registraba **un** renglón por clave, y por eso nunca lo detectó.
+3. **`estado` pedía la entidad federativa y se usaba como descripción.** Es el filtro geográfico del
+   panel, pero la pantalla lo pedía como texto libre bajo "Estado (opcional)" y ahí se tecleaba lo
+   que pasó (*"Visita Rotaract Ejecutivo"*). Esas filas quedaban fuera de cualquier corte por
+   entidad, y **no había ningún campo para lo que de verdad se quería escribir**.
+
+| # | Criterio | Implementación | Prueba |
+|---|---|---|---|
+| **AC7** El panel **suma** los registros de una misma clave | `SELECT key, SUM(value) … GROUP BY key` | `test_cr042_indicadores.py` |
+| **AC8** El filtro por entidad sigue funcionando | el `WHERE` de `estado` se conservó tal cual | ídem |
+| **AC9** Listar, editar y borrar; 404 con id inexistente | `GET`/`PATCH`/`DELETE /admin/indicators/organizational` | ídem |
+| **AC10** Entidad ausente o vacía al registrar → 422 | `estado` obligatorio en `OrganizationalIndicatorIn` | ídem |
+| **AC11** Sin token 401; rol ajeno 403 en los cuatro | `require_role("admin_consorcio","administrador")` | ídem |
+| **AC12** La pantalla **carga la lista del servidor al abrir** | fetch en `initState` + recarga tras cada cambio | `widget_cr042_indicadores_test.dart` |
+| **AC13** Registrar manda los cuatro datos y recarga | `addOrganizationalIndicator` con `descripcion` y `estado` | ídem |
+| **AC14** Sin entidad seleccionada no se registra | botón deshabilitado | ídem |
+| **AC15** La entidad ofrece las 32 del catálogo más "Otro" | `geoEstadosProvider` (CR-036), sin catálogo nuevo | ídem |
+| **AC16** El total por indicador suma varios renglones | `org-total-<clave>` | ídem |
+| **AC17** Editar y borrar solo actúan tras confirmar | diálogos propios | ídem |
+| **AC18** Gate #1 (U1): sigue el aviso de que no hay metas ni semáforos | `org-u1-note` palabra por palabra | ídem |
+
+**Formulario nuevo:** Indicador · Cantidad (1 por defecto, con ayuda de qué se cuenta) · **¿Qué
+pasó?** · **Entidad** (32 + "Otro", obligatoria). "Capturados en esta sesión" se reemplazó por la
+lista real del servidor, con fecha, descripción, entidad y **total por indicador**.
+
+⚠️ **`estado` NO pasó a NOT NULL en la base.** Forzarlo exigiría inventar una entidad para las filas
+ya capturadas, que son justo las que traen texto libre ahí. La obligatoriedad vive en la API, sobre
+las capturas nuevas. Por lo mismo, `estado` sale nullable en la respuesta y el desplegable de edición
+conserva un valor fuera de catálogo: si no, abrir el diálogo lo borraría en silencio.
+
+⚠️ **No se reusó el diálogo de borrado compartido** (`ConfirmDeleteDialog`): pide un **motivo** para
+la bitácora ARCO (gate #7), que no aplica a borrar un contador mal tecleado.
+
+⚠️ **Editar no permite cambiar el indicador**, solo cantidad, descripción y entidad: mover un número
+de una categoría a otra sin rastro sería reescribir el histórico. Para eso se borra y se recaptura.
+
+**Diferencia deliberada con los comentarios:** los indicadores **se editan y se borran**; los
+comentarios de revisión **no**. Un comentario es el registro histórico de lo que alguien observó; un
+indicador es un dato de gestión tecleado a mano que puede traer una errata. Cosas distintas.
+
+**Gates:** ninguno se enmienda. **#1 (U1)** intacto y con prueba. **#7**: el borrado de un indicador
+no viola append-only, que cubre `human_review` y `observation_note`, no un contador que el propio
+admin teclea. **#2**: los comentarios siguen sin salir de la consola.
+
+⚠️ **La migración se verificó A MANO contra un PostGIS real** (`upgrade`, `downgrade`, `upgrade`, más
+comparación de columnas e índices contra una base espejo hecha con `create_all`): el `conftest` usa
+`create_all` y **nunca ejecuta alembic**.
+⚠️ **La prueba de la suma no es vacua:** se revirtió el arreglo a propósito y **4 pruebas fallaron**,
+entre ellas la central con el síntoma exacto de producción (`assert 1 == 2`).
+
+**706 pruebas verdes** (21 contrato · 9 mock · **288** backend · 205 móvil · **183** consola),
+2026-09-12. Delta: +21 backend, +25 consola.

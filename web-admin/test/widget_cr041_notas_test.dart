@@ -13,12 +13,22 @@ import 'package:mezquite_web_admin/src/ui/copy.dart';
 
 import 'helpers.dart';
 
-/// CR-041 — notas escritas sobre una observación.
+/// CR-041 — notas escritas sobre una observación, **con las enmiendas de CR-042**.
 ///
-/// Dos cosas que el analista no podía hacer y ahora sí: **abrir** el detalle (el menú
+/// CR-041 abrió dos cosas que el analista no podía hacer: **abrir** el detalle (el menú
 /// Revisión se gateaba por `canEmitVerdict`, no por `canReview`) y **anotar** sin emitir
-/// un veredicto. Lo que NO cambia: sigue sin botones de veredicto, y escribir una nota
-/// no toca `estado_revision` (gate #9; eso lo prueba el backend).
+/// un veredicto. Lo que NO cambia: sigue sin botones de veredicto, y escribir no toca
+/// `estado_revision` (gate #9; eso lo prueba el backend).
+///
+/// **CR-042 cambia dos cosas de esa área** y este archivo las cubre:
+///  1. Se llama **Comentarios**, no "Notas" — en la misma ventana está el campo "Nota
+///     (opcional)" del veredicto y el usuario reportó que se confundían.
+///  2. **Escriben** solo `analista` y `administrador`. El **`evaluador` LEE** la lista
+///     (es su contexto para decidir) pero ya NO ve campo, aviso ni botón: él escribe en
+///     "Nota (opcional)", que CR-042 dejó intacto.
+///
+/// Las `Key` conservan el nombre `...nota...` de CR-041 a propósito: son identificadores
+/// internos, no texto para el usuario.
 final List<int> _kPng1x1 = base64Decode(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
 
@@ -150,34 +160,154 @@ void main() {
         (tester) async {
       await abrirDetalle(tester, _api(), 'analista');
 
-      // Ve la observación (foto + historial + notas).
+      // Ve la observación (foto + historial + comentarios).
       expect(find.byKey(const Key('review-image')), findsOneWidget);
       expect(find.text(Copy.reviewHistoryTitle), findsOneWidget);
       expect(find.byKey(const Key('review-notas-lista')), findsOneWidget);
-      // Pero no puede decidir.
+      // Pero no puede decidir: ni botones de veredicto ni el campo que viaja con ellos.
       expect(find.byKey(const Key('review-confirm')), findsNothing);
       expect(find.byKey(const Key('review-reject')), findsNothing);
       expect(find.byKey(const Key('review-reopen')), findsNothing);
+      expect(find.byKey(const Key('review-nota')), findsNothing);
     });
 
-    testWidgets('el evaluador sí los ve, y conserva su campo de nota del veredicto',
-        (tester) async {
+    testWidgets(
+        'el evaluador conserva sus 3 botones y su campo "Nota (opcional)" '
+        '(CR-042 no tocó el bloque del veredicto)', (tester) async {
       await abrirDetalle(tester, _api(), 'evaluador');
 
       expect(find.byKey(const Key('review-confirm')), findsOneWidget);
       expect(find.byKey(const Key('review-reject')), findsOneWidget);
       expect(find.byKey(const Key('review-reopen')), findsOneWidget);
-      // El campo viejo (viaja con el veredicto) NO se tocó, y el nuevo es otro.
+      // El campo pequeño del veredicto: mismo nombre, mismo lugar, mismos roles.
       expect(find.byKey(const Key('review-nota')), findsOneWidget);
-      expect(find.byKey(const Key('review-nota-nueva')), findsOneWidget);
+      expect(find.text(Copy.reviewNoteLabel), findsOneWidget);
     });
   });
 
-  // --- AC8: las notas del backend se pintan con su autor ---
+  // --- CR-042: quién ESCRIBE comentarios y quién solo los LEE ---
 
-  group('CR-041 AC8 — la lista de notas', () {
-    testWidgets('pinta las notas que devuelve el backend, con su autor',
+  group('CR-042 — el evaluador lee comentarios pero no los escribe', () {
+    testWidgets(
+        'CONDUCTA NUEVA: el evaluador ve el título, la intro y la LISTA, '
+        'pero NO el campo, ni el aviso, ni el botón', (tester) async {
+      // Antes de CR-042 esta misma pantalla le daba campo y botón al evaluador:
+      // dos zonas de escritura en una ventana, que es lo que se reportó como confuso.
+      await abrirDetalle(
+        tester,
+        _api(notas: [
+          {
+            'id': 'n1',
+            'texto': 'La foto solo muestra el tronco.',
+            'autor_handle': 'obs-ANALISTA',
+            'created_at': '2026-09-01T08:00:00Z',
+          },
+        ]),
+        'evaluador',
+      );
+
+      // LEE: el contexto que le ayuda a decidir sigue completo.
+      expect(find.text(Copy.commentsTitle), findsOneWidget);
+      expect(find.text(Copy.commentsIntro), findsOneWidget);
+      expect(find.byKey(const Key('review-notas-lista')), findsOneWidget);
+      expect(
+        find.descendant(
+            of: find.byKey(const Key('review-notas-lista')),
+            matching: find.textContaining('La foto solo muestra el tronco.')),
+        findsOneWidget,
+      );
+
+      // NO ESCRIBE.
+      expect(find.byKey(const Key('review-nota-nueva')), findsNothing,
+          reason: 'CR-042: escribir comentarios es del analista y el administrador');
+      expect(find.byKey(const Key('review-notas-aviso')), findsNothing);
+      expect(find.byKey(const Key('review-nota-agregar')), findsNothing);
+      expect(find.text(Copy.commentsFieldLabel), findsNothing);
+      expect(find.text(Copy.commentsAddButton), findsNothing);
+    });
+
+    testWidgets('sin comentarios, el evaluador igual ve el mensaje de vacío',
         (tester) async {
+      await abrirDetalle(tester, _api(), 'evaluador');
+
+      expect(find.byKey(const Key('review-notas-vacio')), findsOneWidget);
+      expect(find.text(Copy.commentsEmpty), findsOneWidget);
+      expect(find.byKey(const Key('review-nota-nueva')), findsNothing);
+    });
+
+    for (final role in ['analista', 'administrador']) {
+      testWidgets('$role SÍ ve lista, campo, aviso y botón', (tester) async {
+        await abrirDetalle(tester, _api(), role);
+
+        expect(find.byKey(const Key('review-notas-lista')), findsOneWidget);
+        expect(find.byKey(const Key('review-nota-nueva')), findsOneWidget);
+        expect(find.byKey(const Key('review-notas-aviso')), findsOneWidget);
+        expect(find.byKey(const Key('review-nota-agregar')), findsOneWidget);
+      });
+
+      testWidgets('$role guarda un comentario y sale el POST', (tester) async {
+        final posts = <http.Request>[];
+        await abrirDetalle(tester, _api(posts: posts), role);
+
+        await tester.enterText(find.byKey(const Key('review-nota-nueva')),
+            'Comentario de $role.');
+        await tester.pump();
+        await tester.ensureVisible(find.byKey(const Key('review-nota-agregar')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('review-nota-agregar')));
+        await tester.pumpAndSettle();
+
+        expect(posts, hasLength(1));
+        expect(posts.single.url.path, endsWith('/review/observations/o1/notas'));
+        expect(json.decode(posts.single.body), {'texto': 'Comentario de $role.'});
+        expect(find.text(Copy.commentsAdded), findsOneWidget);
+
+        await tester.pumpAndSettle(const Duration(seconds: 5)); // timers del SnackBar
+      });
+    }
+
+    testWidgets('el administrador conserva además los botones de veredicto',
+        (tester) async {
+      // Es el único rol que hace las dos cosas: escribe comentarios Y vota.
+      await abrirDetalle(tester, _api(), 'administrador');
+
+      expect(find.byKey(const Key('review-nota-nueva')), findsOneWidget);
+      expect(find.byKey(const Key('review-confirm')), findsOneWidget);
+      expect(find.byKey(const Key('review-nota')), findsOneWidget);
+    });
+  });
+
+  // --- CR-042: los textos ---
+
+  group('CR-042 — el área se llama Comentarios, no Notas', () {
+    testWidgets('aparecen los textos nuevos y no quedan los viejos',
+        (tester) async {
+      await abrirDetalle(tester, _api(), 'analista');
+
+      expect(find.text(Copy.commentsTitle), findsOneWidget);
+      expect(find.text(Copy.commentsFieldLabel), findsOneWidget);
+      expect(find.text(Copy.commentsAddButton), findsOneWidget);
+      expect(find.text(Copy.commentsEmpty), findsOneWidget);
+
+      // Los textos de CR-041 ya no deben salir en ninguna parte de la pantalla.
+      expect(find.text('Notas'), findsNothing);
+      expect(find.text('Escribe una nota'), findsNothing);
+      expect(find.text('Agregar nota'), findsNothing);
+      expect(find.text('Todavía nadie ha escrito una nota aquí.'), findsNothing);
+    });
+
+    testWidgets('pero "Nota (opcional)" del veredicto sigue llamándose igual',
+        (tester) async {
+      await abrirDetalle(tester, _api(), 'evaluador');
+      expect(find.text(Copy.reviewNoteLabel), findsOneWidget);
+      expect(Copy.reviewNoteLabel, 'Nota (opcional)');
+    });
+  });
+
+  // --- AC8: los comentarios del backend se pintan con su autor ---
+
+  group('CR-041 AC8 — la lista de comentarios', () {
+    testWidgets('pinta los que devuelve el backend, con su autor', (tester) async {
       await abrirDetalle(
         tester,
         _api(notas: [
@@ -206,14 +336,14 @@ void main() {
           findsOneWidget);
       expect(find.descendant(of: lista, matching: find.textContaining('obs-EVAL')),
           findsOneWidget);
-      // Con notas no se anuncia el vacío.
+      // Con comentarios no se anuncia el vacío.
       expect(find.byKey(const Key('review-notas-vacio')), findsNothing);
     });
 
-    testWidgets('sin notas explica el vacío en texto llano', (tester) async {
+    testWidgets('sin comentarios explica el vacío en texto llano', (tester) async {
       await abrirDetalle(tester, _api(), 'analista');
       expect(find.byKey(const Key('review-notas-vacio')), findsOneWidget);
-      expect(find.text(Copy.notesEmpty), findsOneWidget);
+      expect(find.text(Copy.commentsEmpty), findsOneWidget);
     });
 
     testWidgets('un detalle SIN el campo `notas` no rompe la pantalla',
@@ -226,12 +356,23 @@ void main() {
       expect(find.byKey(const Key('review-notas-vacio')), findsOneWidget);
       expect(find.byKey(const Key('review-nota-nueva')), findsOneWidget);
     });
+
+    testWidgets('un detalle SIN el campo `notas` tampoco rompe al evaluador',
+        (tester) async {
+      // El evaluador no tiene campo donde escribir: la sección se queda en lista vacía.
+      await abrirDetalle(tester, _api(notas: null), 'evaluador');
+
+      expect(find.text('No se pudo cargar el detalle.'), findsNothing);
+      expect(find.byKey(const Key('review-notas-lista')), findsOneWidget);
+      expect(find.byKey(const Key('review-notas-vacio')), findsOneWidget);
+      expect(find.byKey(const Key('review-nota-nueva')), findsNothing);
+    });
   });
 
-  // --- AC4: escribir una nota ---
+  // --- AC4: escribir un comentario ---
 
-  group('CR-041 AC4 — escribir una nota', () {
-    testWidgets('hace POST a /notas con el texto y la nota aparece en la lista',
+  group('CR-041 AC4 — escribir un comentario', () {
+    testWidgets('hace POST a /notas con el texto y aparece en la lista',
         (tester) async {
       final posts = <http.Request>[];
       await abrirDetalle(tester, _api(posts: posts), 'analista');
@@ -263,8 +404,8 @@ void main() {
         findsOneWidget,
       );
       expect(find.byKey(const Key('review-notas-vacio')), findsNothing);
-      expect(find.text(Copy.notesAdded), findsOneWidget);
-      // El diálogo sigue abierto: anotar no es despedirse de la observación.
+      expect(find.text(Copy.commentsAdded), findsOneWidget);
+      // El diálogo sigue abierto: comentar no es despedirse de la observación.
       expect(find.byKey(const Key('review-nota-nueva')), findsOneWidget);
 
       await tester.pumpAndSettle(const Duration(seconds: 5)); // timers del SnackBar
@@ -289,11 +430,31 @@ void main() {
       await tester.tap(find.byKey(const Key('review-nota-agregar')));
       await tester.pumpAndSettle();
 
-      expect(find.text(Copy.notesInvalid), findsOneWidget);
+      expect(find.text(Copy.commentsInvalid), findsOneWidget);
       // Sin códigos internos ni "422" en pantalla.
       expect(find.textContaining('422'), findsNothing);
       expect(habilitado(tester, 'review-nota-agregar'), isTrue,
           reason: 'se puede reintentar tras corregir');
+
+      await tester.pumpAndSettle(const Duration(seconds: 5));
+    });
+
+    testWidgets('un 403 del backend se explica en texto llano (CR-042)',
+        (tester) async {
+      // La consola ya no le pinta el campo al evaluador, pero un bundle viejo en caché
+      // sí puede: el backend responde 403 y el mensaje tiene que ser entendible.
+      await abrirDetalle(tester, _api(postStatus: 403), 'analista');
+
+      await tester.enterText(
+          find.byKey(const Key('review-nota-nueva')), 'texto cualquiera');
+      await tester.pump();
+      await tester.ensureVisible(find.byKey(const Key('review-nota-agregar')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('review-nota-agregar')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(Copy.commentsForbidden), findsOneWidget);
+      expect(find.textContaining('403'), findsNothing);
 
       await tester.pumpAndSettle(const Duration(seconds: 5));
     });
@@ -306,7 +467,7 @@ void main() {
     await abrirDetalle(tester, _api(), 'analista');
 
     expect(find.byKey(const Key('review-notas-aviso')), findsOneWidget);
-    expect(find.text(Copy.notesPrivacyWarning), findsOneWidget);
+    expect(find.text(Copy.commentsPrivacyWarning), findsOneWidget);
     expect(find.textContaining('datos personales'), findsWidgets);
   });
 }

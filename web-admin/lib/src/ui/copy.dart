@@ -173,26 +173,30 @@ class Copy {
   static const reviewLocationNote =
       'En la revisión ves el estado y el municipio de cada observación.';
 
-  // --- Notas escritas sobre una observación (CR-041) ---
-  // La nota de arriba ("Nota (opcional)") viaja con el veredicto y solo la escribe
-  // quien decide. Éstas las puede dejar cualquiera de los tres roles de revisión, y
-  // NO cambian el estado de la observación.
-  static const notesTitle = 'Notas';
-  static const notesIntro =
+  // --- Comentarios escritos sobre una observación (CR-041, renombrados en CR-042) ---
+  // Se llamaban "Notas" y convivían en la misma ventana con el campo "Nota
+  // (opcional)" de arriba, que viaja con el veredicto: dos cosas con el mismo
+  // nombre y distinto efecto. CR-042 las renombra a COMENTARIOS para separarlas.
+  // Los LEEN los tres roles de revisión; los ESCRIBEN solo `analista` y
+  // `administrador` (el evaluador ya escribe en el campo del veredicto).
+  // No cambian el estado de la observación.
+  static const commentsTitle = 'Comentarios';
+  static const commentsIntro =
       'Comentarios escritos sobre esta observación. Quedan guardados con quien '
       'los escribió y su fecha; no cambian si la observación queda confirmada o '
       'retirada.';
-  static const notesEmpty = 'Todavía nadie ha escrito una nota aquí.';
-  static const notesFieldLabel = 'Escribe una nota';
-  static const notesAddButton = 'Agregar nota';
-  static const notesPrivacyWarning =
+  static const commentsEmpty = 'Todavía nadie ha escrito comentarios aquí.';
+  static const commentsFieldLabel = 'Escribe un comentario';
+  static const commentsAddButton = 'Agregar comentario';
+  static const commentsPrivacyWarning =
       'No escribas datos personales de nadie: ni nombres, ni teléfonos, ni '
       'correos, ni direcciones.';
-  static const notesAdded = 'Nota guardada.';
-  static const notesInvalid =
-      'La nota no puede ir vacía y no debe pasar de 2 000 caracteres.';
-  static const notesError = 'No se pudo guardar la nota. Inténtalo de nuevo.';
-  static const notesForbidden = 'Tu cuenta no puede escribir notas.';
+  static const commentsAdded = 'Comentario guardado.';
+  static const commentsInvalid =
+      'El comentario no puede ir vacío y no debe pasar de 2 000 caracteres.';
+  static const commentsError =
+      'No se pudo guardar el comentario. Inténtalo de nuevo.';
+  static const commentsForbidden = 'Tu cuenta no puede escribir comentarios.';
   static const monitorIntro =
       'Métricas de la revisión de observaciones. Solo consulta.';
 
@@ -290,6 +294,78 @@ class Copy {
   static const problemsPlatformLabel = 'Plataforma';
   static const problemsVersionLabel = 'Versión';
   static const problemsStatusLabel = 'Estado';
+
+  // --- Indicadores organizacionales (Q6 amendment; reescritos en CR-042) ---
+  // La pantalla guardaba una lista en memoria ("Capturados en esta sesión") que
+  // se perdía al cambiar de sección, y el tercer campo pedía la entidad
+  // federativa con la etiqueta "Estado (opcional)", así que ahí se escribía lo
+  // que había pasado. Ahora: la lista viene del servidor, la entidad se elige de
+  // una lista y "¿Qué pasó?" tiene su propio campo.
+  static const orgTitle = 'Indicadores organizacionales';
+  static const orgIntro =
+      'Captura manual. Solo se registran y se les da seguimiento: ningún '
+      'indicador define metas, semáforos ni aprobación/reprobación.';
+  static const orgFormTitle = 'Registrar indicador';
+  static const orgKeyLabel = 'Indicador';
+  static const orgValueLabel = 'Cantidad';
+  static const orgValueInvalid = 'Ingresa un valor numérico.';
+  static const orgDescripcionLabel = '¿Qué pasó?';
+  static const orgDescripcionHint =
+      'En pocas palabras: qué fue, con quién, dónde';
+  static const orgEntidadLabel = 'Entidad';
+  static const orgEntidadHint = 'Elige una';
+  /// Opción para lo que no cae en una entidad federativa (nacional, en línea,
+  /// fuera del país). Es el valor literal que se guarda, no una etiqueta.
+  static const orgEntidadOtro = 'Otro';
+  static const orgEntidadRequerida =
+      'Elige la entidad para poder registrar el indicador.';
+  static const orgEntidadLoadError =
+      'No se pudo cargar la lista de entidades. Puedes registrar como "Otro" o '
+      'volver a intentarlo más tarde.';
+  static const orgSubmit = 'Registrar';
+  static const orgAdded = 'Indicador registrado.';
+  static const orgAddError = 'No se pudo registrar. Inténtalo de nuevo.';
+
+  // Lista guardada en el servidor.
+  static const orgListTitle = 'Indicadores registrados';
+  static const orgListIntro =
+      'Todo lo capturado hasta ahora, de lo más reciente a lo más antiguo. El '
+      'panel público suma las cantidades de cada indicador.';
+  static const orgTotalsTitle = 'Total por indicador';
+  static const orgReload = 'Actualizar';
+  static const orgLoading = 'Cargando los indicadores registrados…';
+  static const orgLoadError =
+      'No se pudieron cargar los indicadores registrados. Inténtalo de nuevo.';
+  static const orgEmpty =
+      'Todavía no hay indicadores registrados. Captura el primero arriba.';
+  static const orgNoDescripcion = 'Sin descripción.';
+
+  // Editar y borrar un registro.
+  static const orgEdit = 'Editar';
+  static const orgEditTitle = 'Editar el indicador registrado';
+  static const orgEditCancel = 'Cancelar';
+  static const orgEditOk = 'Guardar cambios';
+  static const orgEdited = 'Indicador actualizado.';
+  static const orgEditError =
+      'No se pudo guardar el cambio. Inténtalo de nuevo.';
+  static const orgDelete = 'Eliminar';
+  static const orgDeleteTitle = '¿Eliminar este registro?';
+  static const orgDeleteCancel = 'Cancelar';
+  static const orgDeleteOk = 'Sí, eliminar';
+  static const orgDeleted = 'Registro eliminado.';
+  static const orgDeleteError =
+      'No se pudo eliminar el registro. Inténtalo de nuevo.';
+  static const orgGone =
+      'Ese registro ya no existe. Se actualizó la lista.';
+
+  /// Texto del diálogo de borrado: nombra lo que se va a eliminar.
+  static String orgDeleteBody({
+    required String indicador,
+    required String cantidad,
+    required String entidad,
+  }) =>
+      'Vas a eliminar "$indicador" con cantidad $cantidad en $entidad. Deja de '
+      'contar en el total y no se puede deshacer.';
 
   /// Estado de un reporte de problema (wire del backend) → etiqueta legible.
   static String problemStatus(String wire) =>

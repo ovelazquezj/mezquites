@@ -93,7 +93,10 @@ def test_organizational_indicator_capture_and_surface(client, db_session):
     resp = client.post(
         "/api/v1/admin/indicators/organizational",
         headers=auth_header(admin["token"]),
-        json={"key": "mesas_formales", "value": 3},
+        # CR-042: `estado` pasó a ser obligatorio (es el filtro geográfico del panel, no un campo
+        # de texto libre). Un solo registro sigue publicándose con su propio valor: la suma de uno
+        # es él mismo.
+        json={"key": "mesas_formales", "value": 3, "estado": "Aguascalientes"},
     )
     assert resp.status_code == 201
     data = client.get("/api/v1/public/indicators").json()

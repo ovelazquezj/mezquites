@@ -362,10 +362,94 @@ class Indicators(BaseModel):
 # --- Admin (web admin) ---
 
 
+DESCRIPCION_INDICADOR_MAX = 500
+
+
+def _descripcion_indicador(v: str | None) -> str | None:
+    """Recorta la descripción; en blanco es "sin descripción" (``None``), no una cadena vacía."""
+    if v is None:
+        return None
+    limpio = v.strip()
+    if not limpio:
+        return None
+    if len(limpio) > DESCRIPCION_INDICADOR_MAX:
+        raise ValueError(
+            f"la descripción no puede exceder {DESCRIPCION_INDICADOR_MAX} caracteres"
+        )
+    return limpio
+
+
+def _estado_indicador(v: str) -> str:
+    """``estado`` del indicador organizacional: obligatorio y no vacío (CR-042).
+
+    Es el **filtro geográfico** del panel público, no un campo de texto libre: la consola manda una
+    de las 32 entidades o la cadena "Otro". Aceptarlo vacío o en blanco es lo que permitió que se
+    usara como descripción y dejó el filtro sin casar con nada.
+    """
+    limpio = re.sub(r"\s+", " ", v).strip()
+    if not limpio:
+        raise ValueError("el estado del indicador no puede ir vacío")
+    return limpio
+
+
 class OrganizationalIndicatorIn(BaseModel):
+    """Captura manual de un indicador organizacional Q6 (CR-042: + descripción, estado obligatorio).
+
+    Cada captura es **un evento que ocurrió**; el panel público suma las que comparten ``key``.
+    """
+
     key: str
     value: float
+    estado: str
+    descripcion: str | None = None
+
+    @field_validator("estado")
+    @classmethod
+    def _limpia_estado(cls, v: str) -> str:
+        return _estado_indicador(v)
+
+    @field_validator("descripcion")
+    @classmethod
+    def _limpia_descripcion(cls, v: str | None) -> str | None:
+        return _descripcion_indicador(v)
+
+
+class OrganizationalIndicatorOut(BaseModel):
+    """Un indicador organizacional tal como lo lee la consola (CR-042).
+
+    ``estado`` viaja nullable aunque la captura lo exija: las filas anteriores a CR-042 no lo tienen
+    (o traen texto libre), y ocultarlas haría imposible corregirlas desde la consola.
+    """
+
+    id: uuid.UUID
+    key: str
+    value: float
+    estado: str | None
+    descripcion: str | None
+    created_at: datetime
+
+
+class OrganizationalIndicatorPatch(BaseModel):
+    """Corrección de un indicador ya capturado (CR-042). Todo opcional; se aplica lo que venga.
+
+    Un valor mal tecleado se **corrige aquí**: capturar otra fila no lo arregla, lo duplica (el
+    panel suma). ``descripcion: null`` explícito la limpia; ``estado`` solo se cambia por otro
+    válido, nunca se vacía.
+    """
+
+    value: float | None = None
     estado: str | None = None
+    descripcion: str | None = None
+
+    @field_validator("estado")
+    @classmethod
+    def _limpia_estado(cls, v: str | None) -> str | None:
+        return None if v is None else _estado_indicador(v)
+
+    @field_validator("descripcion")
+    @classmethod
+    def _limpia_descripcion(cls, v: str | None) -> str | None:
+        return _descripcion_indicador(v)
 
 
 class AllyIn(BaseModel):

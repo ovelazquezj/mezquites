@@ -188,6 +188,11 @@ String _fmtDate(DateTime d) =>
 
 /// Detalle de una observación con visor de imagen + veredicto (Confirmar/Retirar).
 /// `analista` ve el detalle e historial pero NO los botones de veredicto.
+///
+/// Dos zonas de texto distintas conviven aquí y NO son la misma cosa (CR-042):
+/// los **Comentarios** (área grande, arriba) no tocan el estado de la observación y
+/// los escriben `analista`/`administrador`; la **Nota (opcional)** (campo pequeño,
+/// abajo) viaja con el veredicto y la escribe quien vota.
 class ReviewDetailDialog extends ConsumerStatefulWidget {
   const ReviewDetailDialog({super.key, required this.observationId});
 
@@ -202,9 +207,12 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
   final _notaCtrl = TextEditingController();
   bool _busy = false;
 
-  // CR-041: notas escritas en esta sesión del diálogo. Se agregan a las que trajo el
-  // detalle en vez de recargarlo: recargar volvería a pasar por el spinner y a
-  // descargar la fotografía completa solo para pintar un renglón de texto.
+  // CR-041: comentarios escritos en esta sesión del diálogo. Se agregan a los que
+  // trajo el detalle en vez de recargarlo: recargar volvería a pasar por el spinner y
+  // a descargar la fotografía completa solo para pintar un renglón de texto.
+  //
+  // Las `Key` siguen diciendo "nota(s)" a propósito: son identificadores internos de
+  // prueba, no texto para el usuario; renombrarlas sería ruido y riesgo sin ganancia.
   final _notaNuevaCtrl = TextEditingController();
   final List<ObservationNote> _notasNuevas = [];
   bool _guardandoNota = false;
@@ -222,8 +230,8 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
     super.dispose();
   }
 
-  /// Guarda una nota (CR-041). No emite veredicto ni cambia `estado_revision`: el
-  /// diálogo se queda abierto y la nota aparece en la lista.
+  /// Guarda un comentario (CR-041). No emite veredicto ni cambia `estado_revision`:
+  /// el diálogo se queda abierto y el comentario aparece en la lista.
   Future<void> _agregarNota() async {
     final texto = _notaNuevaCtrl.text.trim();
     if (texto.isEmpty || _guardandoNota) return;
@@ -240,16 +248,18 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
         _guardandoNota = false;
       });
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text(Copy.notesAdded)));
+          .showSnackBar(const SnackBar(content: Text(Copy.commentsAdded)));
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _guardandoNota = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(switch (e.statusCode) {
-            422 => Copy.notesInvalid,
-            401 || 403 => Copy.notesForbidden,
-            _ => Copy.notesError,
+            422 => Copy.commentsInvalid,
+            // CR-042: el backend responde 403 al evaluador. La consola ya no le
+            // pinta el campo, pero un bundle en caché puede seguir mostrándolo.
+            401 || 403 => Copy.commentsForbidden,
+            _ => Copy.commentsError,
           }),
         ),
       );
@@ -257,13 +267,26 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
       if (!mounted) return;
       setState(() => _guardandoNota = false);
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text(Copy.notesError)));
+          .showSnackBar(const SnackBar(content: Text(Copy.commentsError)));
     }
   }
 
-  /// Sección "Notas" (CR-041), visible para los TRES roles de revisión: el analista
-  /// no vota, pero sí puede dejar escrito lo que ve.
-  Widget _seccionNotas(ThemeData theme, ReviewObservationDetail d) {
+  /// Sección "Comentarios" (CR-041, renombrada y re-gateada en CR-042).
+  ///
+  /// **Leer, siempre:** el título, la introducción y la lista (o el mensaje de vacío)
+  /// se pintan para quien abra el detalle, el `evaluador` incluido. Los comentarios
+  /// son el contexto que le ayuda a decidir; esconderlos le quitaría información.
+  ///
+  /// **Escribir, solo con [SessionState.canWriteComments]** (`analista` y
+  /// `administrador`): el campo, el aviso de datos personales y el botón. El
+  /// `evaluador` ya escribe en "Nota (opcional)", el campo que viaja con su
+  /// veredicto; tener dos lugares de escritura en la misma ventana era justo la
+  /// confusión reportada. El backend impone lo mismo (403 al evaluador).
+  Widget _seccionNotas(
+    ThemeData theme,
+    ReviewObservationDetail d, {
+    required bool puedeEscribir,
+  }) {
     final notas = [...d.notas, ..._notasNuevas];
     final puedeGuardar =
         !_guardandoNota && _notaNuevaCtrl.text.trim().isNotEmpty;
@@ -271,9 +294,9 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 24),
-        Text(Copy.notesTitle, style: theme.textTheme.titleLarge),
+        Text(Copy.commentsTitle, style: theme.textTheme.titleLarge),
         const SizedBox(height: 4),
-        Text(Copy.notesIntro, style: theme.textTheme.bodySmall),
+        Text(Copy.commentsIntro, style: theme.textTheme.bodySmall),
         const SizedBox(height: 8),
         Column(
           key: const Key('review-notas-lista'),
@@ -281,7 +304,7 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
           children: [
             if (notas.isEmpty)
               Text(
-                Copy.notesEmpty,
+                Copy.commentsEmpty,
                 key: const Key('review-notas-vacio'),
                 style: theme.textTheme.bodySmall,
               )
@@ -296,33 +319,35 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
                 ),
           ],
         ),
-        const SizedBox(height: 12),
-        TextField(
-          key: const Key('review-nota-nueva'),
-          controller: _notaNuevaCtrl,
-          maxLines: 3,
-          minLines: 2,
-          maxLength: 2000,
-          decoration: const InputDecoration(
-            labelText: Copy.notesFieldLabel,
-            alignLabelWithHint: true,
+        if (puedeEscribir) ...[
+          const SizedBox(height: 12),
+          TextField(
+            key: const Key('review-nota-nueva'),
+            controller: _notaNuevaCtrl,
+            maxLines: 3,
+            minLines: 2,
+            maxLength: 2000,
+            decoration: const InputDecoration(
+              labelText: Copy.commentsFieldLabel,
+              alignLabelWithHint: true,
+            ),
+            onChanged: (_) => setState(() {}),
           ),
-          onChanged: (_) => setState(() {}),
-        ),
-        // Gate #2: el texto es libre y nadie puede filtrarlo por software; el aviso
-        // va junto al campo, donde se escribe.
-        Text(
-          Copy.notesPrivacyWarning,
-          key: const Key('review-notas-aviso'),
-          style: theme.textTheme.bodySmall,
-        ),
-        const SizedBox(height: 8),
-        FilledButton.icon(
-          key: const Key('review-nota-agregar'),
-          onPressed: puedeGuardar ? _agregarNota : null,
-          icon: const Icon(Icons.note_add_outlined),
-          label: const Text(Copy.notesAddButton),
-        ),
+          // Gate #2: el texto es libre y nadie puede filtrarlo por software; el aviso
+          // va junto al campo, donde se escribe.
+          Text(
+            Copy.commentsPrivacyWarning,
+            key: const Key('review-notas-aviso'),
+            style: theme.textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          FilledButton.icon(
+            key: const Key('review-nota-agregar'),
+            onPressed: puedeGuardar ? _agregarNota : null,
+            icon: const Icon(Icons.note_add_outlined),
+            label: const Text(Copy.commentsAddButton),
+          ),
+        ],
       ],
     );
   }
@@ -366,7 +391,11 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final canVerdict = ref.watch(sessionProvider).canEmitVerdict;
+    final sesion = ref.watch(sessionProvider);
+    final canVerdict = sesion.canEmitVerdict;
+    // CR-042: escribir comentarios es del analista y del administrador. Se lee aquí,
+    // en el build del Consumer, no dentro del builder del FutureBuilder.
+    final canWriteComments = sesion.canWriteComments;
     return Dialog(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 720, maxHeight: 760),
@@ -438,15 +467,17 @@ class _ReviewDetailDialogState extends ConsumerState<ReviewDetailDialog> {
                           style: theme.textTheme.bodyMedium,
                         ),
                       ),
-                  // CR-041: notas escritas, independientes del veredicto. Van debajo
-                  // del historial para que el contexto se lea ANTES de decidir.
-                  _seccionNotas(theme, d),
+                  // CR-041/CR-042: comentarios escritos, independientes del veredicto.
+                  // Van debajo del historial para que el contexto se lea ANTES de
+                  // decidir; por eso los LEEN los tres roles aunque solo dos escriban.
+                  _seccionNotas(theme, d, puedeEscribir: canWriteComments),
                   if (canVerdict) ...[
                     const SizedBox(height: 24),
                     const Divider(),
                     const SizedBox(height: 8),
-                    // Este campo NO es el de las notas de arriba: viaja con el veredicto
-                    // y se guarda en el log de revisión (CR-001, 1 891 notas en uso).
+                    // Este campo NO es el de los comentarios de arriba: viaja con el
+                    // veredicto y se guarda en el log de revisión (CR-001, 1 891 notas
+                    // en uso). CR-042 lo dejó intacto a propósito: nombre, lugar y roles.
                     TextField(
                       key: const Key('review-nota'),
                       controller: _notaCtrl,
