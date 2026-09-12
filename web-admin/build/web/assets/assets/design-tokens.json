@@ -1,0 +1,54 @@
+{
+  "$comment": "Design system compartido (movil Flutter + web admin). T7. Estetica minimalista tipo eBird. Paleta oficial del Proyecto Mezquite (CR-003). Cambiar aqui actualiza ambos clientes; mantener sincronizadas las copias mobile/assets y web-admin/assets.",
+  "meta": {
+    "version": "0.2.0",
+    "status": "oficial_mezquite",
+    "pending": "Ninguno: la paleta oficial Mezquite resuelve el pendiente de marca para ambas apps Flutter (CR-003)."
+  },
+  "color": {
+    "brand": {
+      "mezquite_navy":  { "value": "#1F3A6E", "status": "oficial_mezquite" },
+      "mezquite_blue":  { "value": "#2E6FB7", "status": "oficial_mezquite" },
+      "mezquite_gold":  { "value": "#E0A21A", "status": "oficial_mezquite" },
+      "mezquite_green": { "value": "#5C9A3A", "status": "oficial_mezquite" }
+    },
+    "eco": {
+      "green_700": { "value": "#3F7327", "status": "oficial_mezquite" },
+      "green_500": { "value": "#5C9A3A", "status": "oficial_mezquite" },
+      "green_300": { "value": "#A7D38B", "status": "oficial_mezquite" }
+    },
+    "neutral": {
+      "ink_900":   { "value": "#1A1C1E" },
+      "ink_600":   { "value": "#44474B" },
+      "ink_300":   { "value": "#C3C7CE" },
+      "surface":   { "value": "#FFFFFF" },
+      "surface_2": { "value": "#F5F7FA" }
+    },
+    "semantic": {
+      "primary":      { "ref": "color.brand.mezquite_navy" },
+      "secondary":    { "ref": "color.brand.mezquite_gold" },
+      "accent":       { "ref": "color.brand.mezquite_green" },
+      "blue":         { "ref": "color.brand.mezquite_blue" },
+      "background":   { "ref": "color.neutral.surface_2" },
+      "on_primary":   { "ref": "color.neutral.surface" },
+      "text":         { "ref": "color.neutral.ink_900" },
+      "text_muted":   { "ref": "color.neutral.ink_600" },
+      "success":      { "ref": "color.eco.green_700" },
+      "info":         { "ref": "color.brand.mezquite_blue" }
+    }
+  },
+  "typography": {
+    "font_family_base": { "value": "Inter, Roboto, system-ui, sans-serif" },
+    "font_family_wordmark": { "value": "Fraunces", "$comment": "Serif de Google Fonts SOLO para el wordmark 'Mezquite' (CR-003). El texto base sigue en la sans del design system." },
+    "scale": {
+      "display": { "size": 28, "weight": 700, "line": 34 },
+      "title":   { "size": 20, "weight": 600, "line": 26 },
+      "body":    { "size": 16, "weight": 400, "line": 24 },
+      "caption": { "size": 13, "weight": 400, "line": 18 }
+    }
+  },
+  "radius":  { "sm": 8, "md": 12, "lg": 20, "pill": 999 },
+  "spacing": { "xs": 4, "sm": 8, "md": 16, "lg": 24, "xl": 32 },
+  "elevation": { "none": 0, "card": 1, "raised": 3 },
+  "density": { "$comment": "Baja densidad visual, minimalista tipo eBird", "level": "comfortable" }
+}

@@ -1,0 +1,35 @@
+{
+    "name": "Mezquite — Consola",
+    "short_name": "Mezquite Consola",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#1F3A6E",
+    "theme_color": "#1F3A6E",
+    "description": "Consola del Club Rotario Bosques Aguascalientes para revisar y analizar observaciones.",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192-v2.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512-v2.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192-v2.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512-v2.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}
