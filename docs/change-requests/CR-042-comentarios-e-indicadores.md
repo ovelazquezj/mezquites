@@ -173,6 +173,34 @@ comportamientos distintos.
 
 ## Despliegue
 
+### Lo que salió mal en este despliegue, y cómo se cerró
+
+El despliegue se dio por bueno verificando el **hash de lo que el servidor entrega**, y se reportó
+como si eso significara que el usuario ya lo veía. **No es lo mismo, y el usuario siguió viendo la
+consola anterior.**
+
+La causa no estaba en el código ni en el servidor, sino en el `Caddyfile`: los bloques de SPA **no
+mandaban ningún encabezado de caché**, solo `etag` y `last-modified`. Sin una instrucción explícita
+el navegador aplica caché heurística y puede no volver a preguntar durante horas. Encima, ambas apps
+son PWA con *service worker*, que añade una segunda copia.
+
+**Arreglo (2026-09-12):** `Cache-Control: no-cache` en los dos bloques de SPA. No significa "no
+guardes", sino "guarda pero **revalida** antes de usar": con el `etag` que Caddy ya emitía, una
+recarga sin cambios responde **304 sin cuerpo** (verificado: 0 bytes descargados). Se aplica a
+**todos** los archivos del SPA porque Flutter Web **no** pone el hash del contenido en el nombre:
+`main.dart.js`, `flutter_bootstrap.js` y los de `assets/` cambian en cada build conservando la URL.
+Es la misma lección de CR-024 con los íconos de la PWA.
+
+**No afecta el uso sin conexión** (CR-031, AC15): la PWA sirve desde el almacén del *service worker*
+y la cola de capturas vive en IndexedDB. Ninguno de los dos es la caché HTTP.
+
+La API y las páginas legales no se tocaron (van por otros bloques del `Caddyfile`).
+
+**Regla que queda:** un despliegue de consola o app **no está verificado** con el hash del origen.
+Hace falta comprobarlo desde un navegador limpio, o dejar dicho explícitamente que falta ese paso.
+
+---
+
 Backend con **migración 0011** + bundle de la **consola**. La app del voluntario **no cambia**, así
 que su bundle no se toca y su caché no se invalida. Orden: respaldo, backend, verificación, consola.
 Al final, borrado de los tres registros con respaldo previo y guarda que aborte si la sentencia

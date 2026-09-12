@@ -10,6 +10,25 @@
 # autenticado. El contenedor `api` solo escucha en 127.0.0.1 del host, así que al quitarla de aquí
 # deja de ser alcanzable desde fuera; además el backend ya solo la monta en dev.
 #
+# ⚠️ CACHÉ (2026-09-12): los dos bloques de SPA mandan `Cache-Control: no-cache`. Antes NO se mandaba
+# ningún encabezado de caché, solo `etag` y `last-modified`, así que el navegador decidía por su
+# cuenta cuánto tiempo confiar en lo que ya tenía guardado (caché heurística) y podía no volver a
+# preguntar durante horas. Consecuencia real y observada: se desplegó la consola, el servidor entregó
+# el bundle nuevo —verificado por hash— y el usuario siguió viendo la aplicación anterior.
+#
+# `no-cache` NO significa "no guardes": significa "guárdalo, pero **revalida** antes de usarlo". Con
+# el `etag` que Caddy ya emite, una recarga sin cambios responde **304 sin cuerpo**, así que el costo
+# es una petición condicional por archivo, no volver a bajar nada.
+#
+# Se aplica a TODOS los archivos del SPA, no solo a `index.html`, porque Flutter Web **no** pone el
+# hash del contenido en el nombre de los archivos: `main.dart.js`, `flutter_bootstrap.js` y los de
+# `assets/` cambian en cada build conservando la misma URL. Cachear cualquiera de ellos por tiempo
+# fijo reproduce el mismo bug (es la misma lección de CR-024 con los íconos de la PWA: cambiar el
+# contenido sin cambiar la URL no basta).
+#
+# NO afecta el uso sin conexión (CR-031, AC15): la PWA sirve desde el almacén del *service worker* y
+# la cola de capturas vive en IndexedDB. Ninguno de los dos es la caché HTTP que este encabezado toca.
+#
 # Variables (desde .env.prod):
 #   APP_DOMAIN    p.ej. app.mezquite.org    (web del voluntario)
 #   ADMIN_DOMAIN  p.ej. admin.mezquite.org  (consola del Club)
@@ -47,6 +66,7 @@
 	# SPA Flutter Web: si la ruta no existe como archivo, sirve index.html.
 	handle {
 		root * /srv/voluntario
+		header Cache-Control "no-cache"
 		try_files {path} /index.html
 		file_server
 	}
@@ -65,6 +85,7 @@
 
 	handle {
 		root * /srv/admin
+		header Cache-Control "no-cache"
 		try_files {path} /index.html
 		file_server
 	}
